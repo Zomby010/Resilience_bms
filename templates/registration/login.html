@@ -1,0 +1,32 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in | RESILIENCE</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+<div class="login-wrap">
+  <main class="login-card">
+    <div class="brand">RESILIENCE<span>Business Management System</span></div>
+    <h1>Sign in</h1>
+    <form method="post">
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="errorlist">{{ form.non_field_errors }}</div>{% endif %}
+      <div class="field">
+        <label for="{{ form.username.id_for_label }}">Username</label>
+        <input type="text" name="username" id="{{ form.username.id_for_label }}" autocomplete="username" autofocus required>
+      </div>
+      <div class="field">
+        <label for="{{ form.password.id_for_label }}">Password</label>
+        <input type="password" name="password" id="{{ form.password.id_for_label }}" autocomplete="current-password" required>
+      </div>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button class="btn" type="submit">Sign in</button>
+    </form>
+    <p class="muted small">Accounts are created by your Manager. Forgot your password? Ask the Manager to reset it.</p>
+  </main>
+</div>
+</body>
+</html>

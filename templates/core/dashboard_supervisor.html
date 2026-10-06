@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Supervisor dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Welcome, {{ user.first_name|default:user.username }}</h1><p class="muted">Your team and the reports waiting for you.</p></div>
+  <a class="btn" href="{% url 'reports:create' %}">Submit a report to management</a>
+</div>
+
+<div class="grid kpis">
+  <div class="kpi gold"><div class="num">{{ to_review_count }}</div><div class="lbl">Awaiting your review</div></div>
+  <div class="kpi slate"><div class="num">{{ team|length }}</div><div class="lbl">Staff on your team</div></div>
+  <div class="kpi"><div class="num">{{ team_report_count }}</div><div class="lbl">Team reports</div></div>
+  <div class="kpi green"><div class="num">{{ feedback_given }}</div><div class="lbl">Feedback given</div></div>
+</div>
+
+<div class="grid two">
+  <div class="card">
+    <h2>To review <a class="small" href="{% url 'reports:list' %}?scope=team&amp;status=pending">View all</a></h2>
+    <div class="table-wrap"><table><tbody>
+      {% for r in to_review %}
+        <tr><td><a href="{{ r.get_absolute_url }}">{{ r.title }}</a><br><span class="muted small">{{ r.author }} &middot; {{ r.created_at|date:"d M, H:i" }}</span></td></tr>
+      {% empty %}<tr><td class="empty">Nothing waiting. Nice work.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </div>
+  <div class="card">
+    <h2>My team</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Name</th><th class="num">Reports</th><th class="num">Open</th></tr></thead>
+      <tbody>
+      {% for m in team %}
+        <tr><td>{{ m }}</td><td class="num">{{ m.report_count }}</td><td class="num">{{ m.open_count }}</td></tr>
+      {% empty %}<tr><td colspan="3" class="empty">No staff are assigned to you yet. Ask the Manager.</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>My reports to management <a class="small" href="{% url 'reports:list' %}?scope=mine">View all</a></h2>
+  <div class="table-wrap"><table><tbody>
+    {% for r in my_reports %}
+      <tr><td><a href="{{ r.get_absolute_url }}">{{ r.title }}</a></td><td>{{ r.created_at|date:"d M Y" }}</td>
+      <td class="right">{% include "partials/status.html" with status=r.status label=r.get_status_display %}</td></tr>
+    {% empty %}<tr><td class="empty">You have not submitted any reports.</td></tr>{% endfor %}
+  </tbody></table></div>
+</div>
+{% endblock %}

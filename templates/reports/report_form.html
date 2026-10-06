@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ title }}</h1>
+    <p class="muted">
+      {% if user.role == 'staff' %}
+        {% if user.supervisor %}This goes to your supervisor, {{ user.supervisor }}, and is visible to management.{% else %}You have no supervisor assigned yet, so this goes straight to management.{% endif %}
+      {% else %}This goes to management.{% endif %}
+    </p>
+  </div>
+</div>
+<div class="card">
+  <form method="post" class="stack">
+    {% csrf_token %}
+    {% include "partials/form.html" %}
+    <div class="form-actions">
+      <button class="btn" type="submit">Submit</button>
+      <a class="btn secondary" href="{% url 'reports:list' %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Delete expense{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Delete expense #{{ object.pk }}?</h1></div>
+<div class="card">
+  <p>{{ object.date|date:"d M Y" }} &middot; {{ object.category }} &middot; {{ object.description }} &middot; <strong>KES {{ object.amount|floatformat:2 }}</strong></p>
+  <p class="muted">The record is removed from the ledger, but this deletion stays in the permanent history.</p>
+  <form method="post" class="form-actions">
+    {% csrf_token %}
+    <button class="btn danger" type="submit">Yes, delete</button>
+    <a class="btn secondary" href="{{ object.get_absolute_url }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

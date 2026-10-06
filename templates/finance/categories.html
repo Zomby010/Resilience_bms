@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Expense categories{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Expense categories</h1></div>
+<div class="grid two">
+  <div class="card">
+    <h2>Add a category</h2>
+    <form method="post" class="stack">
+      {% csrf_token %}
+      {% include "partials/form.html" %}
+      <div class="form-actions"><button class="btn" type="submit">Add</button></div>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Existing categories</h2>
+    <ul>{% for c in categories %}<li>{{ c.name }}</li>{% empty %}<li class="muted">None yet.</li>{% endfor %}</ul>
+  </div>
+</div>
+{% endblock %}

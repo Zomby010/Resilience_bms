@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Not found{% endblock %}
+{% block content %}
+<div class="card"><h1>Page not found</h1>
+<p class="muted">It may not exist, or you may not have access to it.</p>
+<a class="btn" href="{% url 'core:home' %}">Back to dashboard</a></div>
+{% endblock %}

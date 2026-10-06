@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ title }}</h1></div>
+<div class="card">
+  {% if not has_categories %}
+    <p>You need at least one category first. <a href="{% url 'finance:categories' %}">Add a category</a>.</p>
+  {% else %}
+  <form method="post" class="stack">
+    {% csrf_token %}
+    {% include "partials/form.html" %}
+    <div class="form-actions">
+      <button class="btn" type="submit">Save</button>
+      <a class="btn secondary" href="{% url 'finance:list' %}">Cancel</a>
+    </div>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

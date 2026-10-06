@@ -1,0 +1,60 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Dashboard{% endblock %} | RESILIENCE</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="app">
+  <aside class="sidebar">
+    <a href="{% url 'core:home' %}" class="brand">RESILIENCE<span>Business Management</span></a>
+    {% with ns=request.resolver_match.namespace %}
+    <nav class="nav" aria-label="Main">
+      <a href="{% url 'core:home' %}" class="{% if ns == 'core' %}active{% endif %}">Dashboard</a>
+
+      {% if user.role != 'secretary' %}
+        <div class="group">Reporting</div>
+        <a href="{% url 'reports:list' %}" class="{% if ns == 'reports' and request.resolver_match.url_name != 'create' %}active{% endif %}">
+          {% if user.role == 'staff' %}My reports{% else %}Reports{% endif %}</a>
+        {% if user.role == 'staff' or user.role == 'supervisor' %}
+          <a href="{% url 'reports:create' %}" class="{% if request.resolver_match.url_name == 'create' and ns == 'reports' %}active{% endif %}">Submit a report</a>
+        {% endif %}
+      {% endif %}
+
+      {% if user.role == 'secretary' or user.role == 'manager' %}
+        <div class="group">Finance</div>
+        <a href="{% url 'finance:list' %}" class="{% if ns == 'finance' and request.resolver_match.url_name != 'history' and request.resolver_match.url_name != 'categories' %}active{% endif %}">Expenditure</a>
+        <a href="{% url 'finance:history' %}" class="{% if request.resolver_match.url_name == 'history' %}active{% endif %}">History</a>
+        {% if user.role == 'secretary' %}
+          <a href="{% url 'finance:categories' %}" class="{% if request.resolver_match.url_name == 'categories' %}active{% endif %}">Categories</a>
+        {% endif %}
+      {% endif %}
+
+      {% if user.role == 'manager' %}
+        <div class="group">Administration</div>
+        <a href="{% url 'accounts:team' %}" class="{% if ns == 'accounts' and 'team' in request.path %}active{% endif %}">Team &amp; accounts</a>
+      {% endif %}
+
+      <div class="group">Account</div>
+      <a href="{% url 'accounts:profile' %}" class="{% if request.resolver_match.url_name == 'profile' %}active{% endif %}">My details</a>
+      <a href="{% url 'accounts:password_change' %}">Change password</a>
+    </nav>
+    {% endwith %}
+    <div class="userbox">
+      <strong>{{ user }}</strong>
+      <span>{{ user.get_role_display }}</span>
+      <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="btn small" type="submit">Sign out</button></form>
+    </div>
+  </aside>
+  <main class="main" id="main">
+    {% if messages %}
+      <ul class="messages" role="status">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+</body>
+</html>

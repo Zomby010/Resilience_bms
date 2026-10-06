@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Expenditure history{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Expenditure history</h1><p class="muted">Every create, edit and delete, kept permanently.</p></div></div>
+<div class="card">
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>When</th><th>Action</th><th>Expense</th><th>By</th><th>Details</th></tr></thead>
+    <tbody>
+    {% for e in entries %}
+      <tr>
+        <td>{{ e.at|date:"d M Y, H:i" }}</td>
+        <td>{{ e.get_action_display }}</td>
+        <td>{% if e.expense_id %}<a href="{{ e.expense.get_absolute_url }}">#{{ e.expense_number }}</a>{% else %}#{{ e.expense_number }}{% endif %}</td>
+        <td>{{ e.by }}</td>
+        <td class="small">{{ e.details }}</td>
+      </tr>
+    {% empty %}<tr><td colspan="5" class="empty">Nothing recorded yet.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% include "partials/pagination.html" %}
+</div>
+{% endblock %}

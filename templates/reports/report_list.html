@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{% if user.role == 'staff' %}My reports{% else %}Reports{% endif %}</h1>
+    <p class="muted">{{ paginator.count }} report{{ paginator.count|pluralize }}</p>
+  </div>
+  {% if can_submit %}<a class="btn" href="{% url 'reports:create' %}">Submit a report</a>{% endif %}
+</div>
+<div class="card">
+  <form method="get" class="filters">
+    <div><label for="q">Search</label><input id="q" name="q" value="{{ q }}" placeholder="Title, text or author"></div>
+    <div><label for="status">Status</label>
+      <select id="status" name="status"><option value="">Any status</option>
+        {% for value, label in statuses %}<option value="{{ value }}" {% if value == f_status %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select></div>
+    {% if user.role != 'staff' %}
+    <div><label for="scope">Show</label>
+      <select id="scope" name="scope">
+        <option value="">All I can see</option>
+        <option value="mine" {% if f_scope == 'mine' %}selected{% endif %}>My own reports</option>
+        <option value="team" {% if f_scope == 'team' %}selected{% endif %}>{% if user.role == 'manager' %}Everyone else{% else %}My team{% endif %}</option>
+      </select></div>
+    {% endif %}
+    <button class="btn secondary" type="submit">Filter</button>
+  </form>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Report</th>{% if user.role != 'staff' %}<th>From</th>{% endif %}<th>Submitted</th><th>Status</th><th class="num">Replies</th></tr></thead>
+    <tbody>
+    {% for r in reports %}
+      <tr>
+        <td><a href="{{ r.get_absolute_url }}">{{ r.title }}</a></td>
+        {% if user.role != 'staff' %}<td>{{ r.author }} <span class="muted small">({{ r.author.get_role_display }})</span></td>{% endif %}
+        <td>{{ r.created_at|date:"d M Y, H:i" }}</td>
+        <td>{% include "partials/status.html" with status=r.status label=r.get_status_display %}</td>
+        <td class="num">{{ r.replies.count }}</td>
+      </tr>
+    {% empty %}<tr><td colspan="5" class="empty">No reports to show.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% include "partials/pagination.html" %}
+</div>
+{% endblock %}

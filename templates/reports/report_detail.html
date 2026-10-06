@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ report.title }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ report.title }}</h1>
+    <p>{% include "partials/status.html" with status=report.status label=report.get_status_display %}</p>
+  </div>
+  <div class="form-actions">
+    {% if can_edit %}<a class="btn secondary" href="{% url 'reports:edit' report.pk %}">Edit</a>{% endif %}
+    <a class="btn secondary" href="{% url 'reports:list' %}">Back to reports</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="meta">
+    <span>From <strong>{{ report.author }}</strong> ({{ report.author.get_role_display }})</span>
+    <span>Submitted {{ report.created_at|date:"d M Y, H:i" }}</span>
+    {% if report.author.supervisor %}<span>Supervisor: {{ report.author.supervisor }}</span>{% endif %}
+  </div>
+  <div class="report-body">{{ report.body }}</div>
+</div>
+
+<div class="card">
+  <h2>Accountability trail</h2>
+  <ul class="timeline">
+    <li>Submitted by <strong>{{ report.author }}</strong> on {{ report.created_at|date:"d M Y, H:i" }}</li>
+    {% if report.reviewed_at %}<li>Reviewed by <strong>{{ report.reviewed_by|default:"(removed user)" }}</strong> on {{ report.reviewed_at|date:"d M Y, H:i" }}</li>{% endif %}
+    {% if report.completed_at %}<li>Completed by <strong>{{ report.completed_by|default:"(removed user)" }}</strong> on {{ report.completed_at|date:"d M Y, H:i" }}</li>{% endif %}
+  </ul>
+</div>
+
+<div class="card">
+  <h2>Feedback &amp; replies</h2>
+  {% for reply in replies %}
+    <div class="reply">
+      <div class="who">{{ reply.author }} <span class="muted small">({{ reply.author.get_role_display }}) &middot; {{ reply.created_at|date:"d M Y, H:i" }}</span></div>
+      <div style="white-space: pre-wrap">{{ reply.body }}</div>
+    </div>
+  {% empty %}
+    <p class="muted">No replies yet.</p>
+  {% endfor %}
+
+  {% if reply_form %}
+    <form method="post" action="{% url 'reports:reply' report.pk %}" class="stack" style="margin-top:1rem">
+      {% csrf_token %}
+      {% include "partials/form.html" with form=reply_form %}
+      <div class="form-actions"><button class="btn" type="submit">Send reply</button></div>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Team &amp; accounts{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Team &amp; accounts</h1><p class="muted">Everyone in the company and who they report to.</p></div>
+  <a class="btn" href="{% url 'accounts:user_create' %}">Add team member</a>
+</div>
+<div class="card">
+  <form method="get" class="filters">
+    <div><label for="q">Search</label><input id="q" name="q" value="{{ q }}" placeholder="Name or username"></div>
+    <div><label for="role">Role</label>
+      <select id="role" name="role"><option value="">All roles</option>
+        {% for value, label in roles %}<option value="{{ value }}" {% if value == selected_role %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select></div>
+    <button class="btn secondary" type="submit">Filter</button>
+  </form>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Supervisor</th><th class="num">Team</th><th class="num">Reports</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for p in people %}
+      <tr>
+        <td>{{ p }}</td><td>{{ p.username }}</td>
+        <td><span class="badge role">{{ p.get_role_display }}</span></td>
+        <td>{{ p.supervisor|default:"-" }}</td>
+        <td class="num">{% if p.role == 'supervisor' %}{{ p.team_size }}{% else %}-{% endif %}</td>
+        <td class="num">{{ p.report_count }}</td>
+        <td>{% if p.is_active %}Active{% else %}<span class="badge off">Disabled</span>{% endif %}</td>
+        <td class="right"><a href="{% url 'accounts:user_edit' p.pk %}">Edit</a></td>
+      </tr>
+    {% empty %}<tr><td colspan="8" class="empty">No one matches.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

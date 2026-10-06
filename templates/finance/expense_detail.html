@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Expense #{{ expense.pk }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ expense.description }}</h1><p class="muted">Expense #{{ expense.pk }}</p></div>
+  <div class="form-actions">
+    {% if can_edit %}
+      <a class="btn secondary" href="{% url 'finance:edit' expense.pk %}">Edit</a>
+      <a class="btn danger" href="{% url 'finance:delete' expense.pk %}">Delete</a>
+    {% endif %}
+    <a class="btn secondary" href="{% url 'finance:list' %}">Back</a>
+  </div>
+</div>
+<div class="card">
+  <div class="meta">
+    <span>Date: <strong>{{ expense.date|date:"d M Y" }}</strong></span>
+    <span>Category: <strong>{{ expense.category }}</strong></span>
+    <span>Amount: <strong>KES {{ expense.amount|floatformat:2 }}</strong></span>
+    <span>Reference: <strong>{{ expense.reference|default:"-" }}</strong></span>
+    <span>Recorded by: <strong>{{ expense.recorded_by }}</strong></span>
+  </div>
+</div>
+<div class="card">
+  <h2>History</h2>
+  <ul class="timeline">
+    {% for entry in log %}
+      <li><strong>{{ entry.get_action_display }}</strong> by {{ entry.by }} on {{ entry.at|date:"d M Y, H:i" }}<br><span class="muted small">{{ entry.details }}</span></li>
+    {% empty %}<li class="muted">No history recorded.</li>{% endfor %}
+  </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Manager dashboard{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Manager dashboard</h1><p class="muted">Company activity at a glance.</p></div></div>
+
+<div class="grid kpis">
+  <div class="kpi gold"><div class="num">{{ open_count }}</div><div class="lbl">Pending reports</div><div class="muted small">{{ awaiting_supervisor }} awaiting first review</div></div>
+  <div class="kpi green"><div class="num">{{ completed_count }}</div><div class="lbl">Completed reports</div></div>
+  <div class="kpi slate"><div class="num">{{ active_supervisors }}</div><div class="lbl">Active supervisors</div></div>
+  <div class="kpi"><div class="num">{{ feedback_sent }}</div><div class="lbl">Feedback sent</div></div>
+  <div class="kpi slate"><div class="num">{{ month_total|floatformat:0 }}</div><div class="lbl">KES spent, {{ month_label }}</div></div>
+</div>
+
+<div class="grid two">
+  <div class="card">
+    <h2>Reports: pending vs. completed <span class="muted small">last 6 months</span></h2>
+    <div class="chart" role="img" aria-label="Bar chart of pending and completed reports per month">
+      {% for m in chart %}
+        <div class="col"><div class="bars">
+          <div class="bar open" style="height: {{ m.open_pct }}%" title="{{ m.open }} pending"></div>
+          <div class="bar done" style="height: {{ m.completed_pct }}%" title="{{ m.completed }} completed"></div>
+        </div></div>
+      {% endfor %}
+    </div>
+    <div class="chart-labels">{% for m in chart %}<span>{{ m.label }}<br>{{ m.open }} / {{ m.completed }}</span>{% endfor %}</div>
+    <div class="legend"><span><i style="background:var(--gold)"></i>Pending</span><span><i style="background:var(--green)"></i>Completed</span></div>
+  </div>
+
+  <div class="card">
+    <h2>Supervisor performance <a class="small" href="{% url 'accounts:team' %}?role=supervisor">Manage</a></h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Supervisor</th><th class="num">Team</th><th class="num">Team reports</th><th class="num">Open</th><th class="num">Feedback</th></tr></thead>
+      <tbody>
+      {% for s in supervisors %}
+        <tr><td>{{ s }}</td><td class="num">{{ s.team_size }}</td><td class="num">{{ s.team_reports }}</td><td class="num">{{ s.team_open }}</td><td class="num">{{ s.feedback_given }}</td></tr>
+      {% empty %}<tr><td colspan="5" class="empty">No supervisors yet.</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+</div>
+
+<div class="grid two">
+  <div class="card">
+    <h2>Latest reports <a class="small" href="{% url 'reports:list' %}">View all</a></h2>
+    <div class="table-wrap"><table>
+      <tbody>
+      {% for r in recent_reports %}
+        <tr><td><a href="{{ r.get_absolute_url }}">{{ r.title }}</a><br><span class="muted small">{{ r.author }} &middot; {{ r.created_at|date:"d M, H:i" }}</span></td>
+        <td class="right">{% include "partials/status.html" with status=r.status label=r.get_status_display %}</td></tr>
+      {% empty %}<tr><td class="empty">No reports yet.</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+  <div class="card">
+    <h2>Recent activity</h2>
+    <ul class="timeline">
+      {% for e in activity %}
+        <li><strong>{{ e.who }}</strong> {{ e.what }} <a href="{{ e.report.get_absolute_url }}">open</a><br><span class="muted small">{{ e.when|date:"d M Y, H:i" }}</span></li>
+      {% empty %}<li class="muted">No activity yet.</li>{% endfor %}
+    </ul>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Feedback history</h2>
+  <ul class="timeline">
+    {% for p in feedback_history %}
+      <li><strong>{{ p.author }}</strong> on <a href="{{ p.report.get_absolute_url }}">{{ p.report.title }}</a> <span class="muted small">&middot; {{ p.created_at|date:"d M Y, H:i" }}</span><br>{{ p.body|truncatechars:140 }}</li>
+    {% empty %}<li class="muted">No feedback yet.</li>{% endfor %}
+  </ul>
+</div>
+{% endblock %}

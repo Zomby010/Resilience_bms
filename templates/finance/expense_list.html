@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Expenditure{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Expenditure tracker</h1>
+    <p class="muted">{% if can_edit %}Record and manage company expenses.{% else %}View-only access. Only the Secretary can change records.{% endif %}</p>
+  </div>
+  {% if can_edit %}<a class="btn" href="{% url 'finance:create' %}">Record an expense</a>{% endif %}
+</div>
+
+<div class="grid kpis">
+  <div class="kpi"><div class="num">KES {{ total|floatformat:2 }}</div><div class="lbl">Total for current filter</div></div>
+  <div class="kpi slate"><div class="num">{{ paginator.count }}</div><div class="lbl">Transactions</div></div>
+</div>
+
+<div class="card">
+  <form method="get" class="filters">
+    <div><label for="q">Search</label><input id="q" name="q" value="{{ q }}" placeholder="Description, reference, category"></div>
+    <div><label for="category">Category</label>
+      <select id="category" name="category"><option value="">All</option>
+        {% for c in categories %}<option value="{{ c.pk }}" {% if f_category == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+      </select></div>
+    <div><label for="from">From</label><input id="from" type="date" name="from" value="{{ f_from }}"></div>
+    <div><label for="to">To</label><input id="to" type="date" name="to" value="{{ f_to }}"></div>
+    <button class="btn secondary" type="submit">Filter</button>
+    <a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}export=csv">Export CSV</a>
+  </form>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Reference</th><th class="num">Amount (KES)</th><th>Recorded by</th></tr></thead>
+    <tbody>
+    {% for e in expenses %}
+      <tr>
+        <td>{{ e.date|date:"d M Y" }}</td>
+        <td>{{ e.category }}</td>
+        <td><a href="{{ e.get_absolute_url }}">{{ e.description }}</a></td>
+        <td>{{ e.reference|default:"-" }}</td>
+        <td class="num">{{ e.amount|floatformat:2 }}</td>
+        <td>{{ e.recorded_by }}</td>
+      </tr>
+    {% empty %}<tr><td colspan="6" class="empty">No expenses match.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% include "partials/pagination.html" %}
+</div>
+{% endblock %}
