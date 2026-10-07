@@ -85,7 +85,9 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "tracking.context_processors.location_reminder",
+                "notifications.context_processors.bell",
             ],
+            "builtins": ["core.templatetags.ui"],
         },
     },
 ]
@@ -151,6 +153,20 @@ if "test" in sys.argv[1:2]:
 
 # Application-specific
 CURRENCY = "KES"
+
+# Email. Without EMAIL_HOST, emails are printed to the console and nothing is sent; a real
+# provider is set up only after the owner approves one (Gate 7). Tests always use memory.
+if os.environ.get("EMAIL_HOST"):
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = os.environ["EMAIL_HOST"]
+    EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+    EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+    EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", True)
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_TIMEOUT = 15
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Resilience BMS <no-reply@localhost>")
 
 # Hardened defaults whenever DEBUG is off.
 if not DEBUG:
