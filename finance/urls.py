@@ -12,4 +12,7 @@ urlpatterns = [
     path("<int:pk>/", views.ExpenseDetailView.as_view(), name="detail"),
     path("<int:pk>/edit/", views.ExpenseUpdateView.as_view(), name="edit"),
     path("<int:pk>/delete/", views.ExpenseDeleteView.as_view(), name="delete"),
+    path("approvals/", views.ApprovalsView.as_view(), name="approvals"),
+    path("<int:pk>/approve/", views.DecideView.as_view(approve=True), name="approve"),
+    path("<int:pk>/reject/", views.DecideView.as_view(approve=False), name="reject"),
 ]

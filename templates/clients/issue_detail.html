@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ issue.number }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ issue.number }}: {{ issue.subject }}</h1>
+    <p class="muted">{% if office %}<a href="{{ issue.client.get_absolute_url }}">{{ issue.client }}</a>{% else %}{{ issue.client }}{% endif %} · Priority {% badge issue "priority" %} · {% badge issue %}</p>
+  </div>
+  {% if office and user.role == 'secretary' %}
+    {% if escalation %}<a class="btn secondary" href="{% url 'escalations:detail' escalation.pk %}">Sent to Manager ({{ escalation.get_status_display|lower }})</a>
+    {% else %}<a class="btn secondary" href="{% url 'escalations:create' %}?type=issue&amp;id={{ issue.pk }}">Send to Manager</a>{% endif %}
+  {% endif %}
+</div>
+
+{% if issue.status == 'supervisor_needed' %}<div class="danger-box"><strong>Supervisor needed.</strong> This client has no supervisor, so nobody is working on this issue yet. {% if office %}Choose a supervisor below.{% endif %}</div>{% endif %}
+
+<div class="grid two">
+  <div>
+    <div class="card">
+      <h2>What was reported</h2>
+      <div class="meta"><span>Reported by {{ issue.created_by }} on {{ issue.created_at|date:"d M Y H:i" }}</span><span>Supervisor: {{ issue.supervisor|default:"nobody yet" }}</span></div>
+      <div class="report-body">{{ issue.description }}</div>
+      {% if files %}<h3 class="small" style="margin-top:1rem">Files</h3><ul class="attachments">{% for a in files %}<li><a href="{% url 'core:file' a.pk %}">{{ a.original_name }}</a> <span class="small muted">({{ a.uploaded_by }}, {{ a.uploaded_at|date:"d M" }})</span></li>{% endfor %}</ul>{% endif %}
+      {% if issue.resolution_note %}<div class="info" style="margin-top:1rem"><strong>How it was resolved:</strong> {{ issue.resolution_note }} <span class="small">({{ issue.resolved_by }}, {{ issue.resolved_at|date:"d M Y" }})</span></div>{% endif %}
+    </div>
+
+    {% if moves %}
+    <div class="card">
+      <h2>Update the status</h2>
+      <form method="post" action="{% url 'clients:issue_status' issue.pk %}" class="stack-form">{% csrf_token %}
+        <label for="status-note">Note <span class="muted small">(needed when you resolve or reopen)</span></label>
+        <textarea id="status-note" name="note" rows="2" placeholder="What was done, or why it is being reopened"></textarea>
+        <div class="actions">{% for to, label in moves %}<button class="btn {% if to == 'resolved' or to == 'closed' %}{% else %}secondary{% endif %} big" type="submit" name="to" value="{{ to }}">{{ label }}</button>{% endfor %}</div>
+        {% if not office %}<p class="small muted">Only the office can close an issue. When you mark it resolved, the Secretary checks with the client and closes it.</p>{% endif %}
+      </form>
+    </div>
+    {% endif %}
+
+    {% if office and issue.status != 'resolved' and issue.status != 'closed' %}
+    <div class="card">
+      <h2>{% if issue.supervisor %}Give to another supervisor{% else %}Choose a supervisor{% endif %}</h2>
+      <form method="post" action="{% url 'clients:issue_assign' issue.pk %}" class="inline-form">{% csrf_token %}
+        {{ assign_form.supervisor }}<button class="btn" type="submit">Assign</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Progress notes</h2>
+    {% if issue.status != 'closed' %}
+    <form method="post" action="{% url 'clients:issue_note' issue.pk %}" enctype="multipart/form-data" class="stack-form" style="margin-bottom:1rem">{% csrf_token %}
+      {{ note_form.body.errors }}{{ note_form.body }}
+      <label class="small">{{ note_form.attachment.label }} {{ note_form.attachment }}</label>
+      <div><button class="btn" type="submit">Add note</button></div>
+    </form>
+    {% endif %}
+    <ul class="timeline">
+    {% for n in notes %}
+      <li>
+        <div class="small muted">{{ n.created_at|date:"d M Y H:i" }} · {{ n.author|default:"System" }}{% if n.status_to and n.status_to != n.status_from %} · status changed to <strong>{{ n.status_to_label }}</strong>{% endif %}</div>
+        {% if n.body %}<div>{{ n.body|linebreaksbr }}</div>{% endif %}
+      </li>
+    {% empty %}<li class="empty">No notes yet.</li>{% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

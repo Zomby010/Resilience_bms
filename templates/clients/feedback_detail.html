@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ fb.subject }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ fb.subject }}</h1><p class="muted">{{ fb.get_kind_display }} from <a href="{{ fb.client.get_absolute_url }}?tab=feedback">{{ fb.client }}</a> · {% badge fb %}</p></div>
+  <div class="actions">
+    {% if fb.status == 'new' %}<form method="post" action="{% url 'clients:feedback_review' fb.pk %}">{% csrf_token %}<button class="btn secondary" type="submit">Mark as reviewed</button></form>{% endif %}
+    {% if fb.status != 'closed' %}
+      <form method="post" action="{% url 'clients:feedback_make_issue' fb.pk %}">{% csrf_token %}<button class="btn secondary" type="submit" data-confirm="Create a client issue from this feedback? It goes to the client's supervisor.">Turn into an issue</button></form>
+      {% if user.role == 'secretary' %}{% if escalation %}<a class="btn secondary" href="{% url 'escalations:detail' escalation.pk %}">Sent to Manager ({{ escalation.get_status_display|lower }})</a>{% else %}<a class="btn secondary" href="{% url 'escalations:create' %}?type=feedback&amp;id={{ fb.pk }}">Send to Manager</a>{% endif %}{% endif %}
+      <form method="post" action="{% url 'clients:feedback_close' fb.pk %}">{% csrf_token %}<button class="btn danger" type="submit" data-confirm="Close this feedback?">Close</button></form>
+    {% endif %}
+  </div>
+</div>
+<div class="grid two">
+  <div class="card">
+    <div class="meta"><span>Received by {{ fb.get_channel_display|lower }}</span><span>Recorded by {{ fb.recorded_by }} on {{ fb.recorded_at|date:"d M Y H:i" }}</span></div>
+    <div class="report-body">{{ fb.body }}</div>
+    {% if issues %}<h3 class="small" style="margin-top:1rem">Issues created from this</h3><ul class="plain-list">{% for i in issues %}<li><a href="{{ i.get_absolute_url }}">{{ i.number }} {{ i.subject }}</a> {% badge i %}</li>{% endfor %}</ul>{% endif %}
+  </div>
+  <div class="card">
+    <h2>Response</h2>
+    {% if fb.response %}
+      <div class="reply"><div class="who">{{ fb.responded_by }} · by {{ fb.get_response_channel_display|lower }} · {{ fb.responded_at|date:"d M Y H:i" }}</div><p>{{ fb.response|linebreaksbr }}</p></div>
+    {% endif %}
+    {% if fb.status != 'closed' %}
+      <form method="post" action="{% url 'clients:feedback_respond' fb.pk %}" class="fields">{% csrf_token %}
+        {% with form=response_form %}{% include "partials/form.html" %}{% endwith %}
+        {% if not fb.client.email %}<p class="small muted">This client has no email address, so choose phone, WhatsApp or in person.</p>{% endif %}
+        <div class="form-actions"><button class="btn" type="submit">Save response</button></div>
+      </form>
+    {% elif not fb.response %}<p class="muted">Closed without a response.</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

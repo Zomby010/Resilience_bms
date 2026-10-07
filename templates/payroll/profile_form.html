@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Pay details for {{ person }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Pay details for {{ person }}</h1><p class="muted">Confidential. These amounts pre-fill each new month's payroll. Changing them does not change payrolls already started.</p></div></div>
+<div class="card">
+  <form method="post" class="fields">{% csrf_token %}
+    {% include "partials/form.html" %}
+    <div class="form-actions"><button class="btn" type="submit">Save</button><a class="btn secondary" href="{% url 'payroll:profiles' %}">Cancel</a></div>
+  </form>
+</div>
+{% endblock %}

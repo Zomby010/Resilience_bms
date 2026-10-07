@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Company settings{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Company settings</h1><p class="muted">These details are printed on invoices and used in client emails. Only you (the Manager) can change them.</p></div>
+</div>
+<div class="card">
+  <form method="post" enctype="multipart/form-data" class="fields">
+    {% csrf_token %}
+    {% include "partials/form.html" %}
+    {% if object.logo %}<p class="small muted">Current logo: {{ object.logo.name }}</p>{% endif %}
+    <div class="form-actions"><button class="btn" type="submit">Save settings</button></div>
+  </form>
+  {% if object.updated_by %}<p class="small muted">Last changed by {{ object.updated_by }} on {{ object.updated_at|date:"d M Y H:i" }}.</p>{% endif %}
+</div>
+{% endblock %}

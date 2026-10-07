@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Items needing Manager approval{% endblock %}
+{% block content %}
+<div class="page-head"><div>
+  <h1>{% if can_edit %}Items needing my approval{% else %}Items needing Manager approval{% endif %}</h1>
+  <p class="muted">{% if can_edit %}Tick the items that must come to you before the Secretary can give them out. Requests for these items wait for your decision first.{% else %}The Manager chooses these items. Requests for them go to the Manager first. Only the Manager can change this list.{% endif %}</p>
+</div></div>
+
+{% if waiting %}
+<div class="card">
+  <h2>Requests waiting for {% if can_edit %}you{% else %}the Manager{% endif %}</h2>
+  <ul class="timeline">{% for r in waiting %}<li><a href="{{ r.get_absolute_url }}"><strong>{{ r.requester }}</strong> asked for {{ r.qty_requested }} x {{ r.item.name }}</a> <span class="small muted">{{ r.created_at|timesince }} ago</span></li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<div class="card">
+  <form method="post">{% csrf_token %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>{% if can_edit %}Needs my approval{% else %}Needs approval{% endif %}</th><th>Item</th><th>Category</th><th>Last changed</th></tr></thead>
+      <tbody>
+      {% for i in items %}
+        <tr>
+          <td>{% if can_edit %}<label class="check-label"><input type="checkbox" name="flagged" value="{{ i.pk }}" {% if i.needs_manager_approval %}checked{% endif %}> Yes</label>
+              {% else %}{% if i.needs_manager_approval %}<span class="badge pending">Yes</span>{% else %}<span class="muted">No</span>{% endif %}{% endif %}</td>
+          <td><strong>{{ i.name }}</strong> <span class="small muted">{{ i.code }}</span></td>
+          <td>{{ i.category }}</td>
+          <td class="small muted">{% if i.flag_changed_by %}{{ i.flag_changed_by }}, {{ i.flag_changed_at|date:"d M Y" }}{% else %}-{% endif %}</td>
+        </tr>
+      {% empty %}<tr><td colspan="4" class="empty">No items in the library yet.</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+    {% if can_edit %}<div class="form-actions" style="margin-top:1rem"><button class="btn big" type="submit">Save my choices</button></div>{% endif %}
+  </form>
+</div>
+{% endblock %}

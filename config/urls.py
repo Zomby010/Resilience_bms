@@ -7,5 +7,11 @@ urlpatterns = [
     path("reports/", include("reports.urls")),
     path("finance/", include("finance.urls")),
     path("location/", include("tracking.urls")),
+    path("notifications/", include("notifications.urls")),
+    path("invoices/", include("billing.urls")),
+    path("payroll/", include("payroll.urls")),
+    path("escalations/", include("escalations.urls")),
+    path("", include("clients.urls")),
+    path("", include("inventory.urls")),
     path("", include("core.urls")),
 ]

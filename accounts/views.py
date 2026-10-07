@@ -86,5 +86,12 @@ class UserUpdateView(RoleRequiredMixin, UpdateView):
         return ctx
 
     def form_valid(self, form):
+        was = User.objects.get(pk=self.object.pk)
+        response = super().form_valid(form)
         messages.success(self.request, f"{form.instance} was updated.")
-        return super().form_valid(form)
+        if was.role == Role.SUPERVISOR and was.is_active and not (self.object.is_active and self.object.role == Role.SUPERVISOR):
+            # Their clients and open client issues go back to the office to be given a new supervisor.
+            from clients.services import supervisor_deactivated
+
+            supervisor_deactivated(self.object, self.request.user)
+        return response

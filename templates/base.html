@@ -12,16 +12,18 @@
 <div class="app">
   <aside class="sidebar">
     <a href="{% url 'core:home' %}" class="brand">RESILIENCE<span>Business Management</span></a>
-    {% with ns=request.resolver_match.namespace %}
-    <nav class="nav" aria-label="Main">
-      <a href="{% url 'core:home' %}" class="{% if ns == 'core' %}active{% endif %}">Dashboard</a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav">Menu</button>
+    {% with ns=request.resolver_match.namespace un=request.resolver_match.url_name %}
+    <nav class="nav" id="main-nav" aria-label="Main">
+      <a href="{% url 'core:home' %}" class="{% if ns == 'core' and un == 'home' %}active{% endif %}">Dashboard</a>
+      <a href="{% url 'notifications:inbox' %}" class="bell {% if ns == 'notifications' %}active{% endif %}">Notifications{% if unread_notifications %} <span class="count" aria-label="{{ unread_notifications }} unread">{{ unread_notifications }}</span>{% endif %}</a>
 
       {% if user.role != 'secretary' %}
         <div class="group">Reporting</div>
-        <a href="{% url 'reports:list' %}" class="{% if ns == 'reports' and request.resolver_match.url_name != 'create' %}active{% endif %}">
+        <a href="{% url 'reports:list' %}" class="{% if ns == 'reports' and un != 'create' %}active{% endif %}">
           {% if user.role == 'staff' %}My reports{% else %}Reports{% endif %}</a>
         {% if user.role == 'staff' or user.role == 'supervisor' %}
-          <a href="{% url 'reports:create' %}" class="{% if request.resolver_match.url_name == 'create' and ns == 'reports' %}active{% endif %}">Submit a report</a>
+          <a href="{% url 'reports:create' %}" class="{% if un == 'create' and ns == 'reports' %}active{% endif %}">Submit a report</a>
         {% endif %}
       {% endif %}
 
@@ -30,28 +32,59 @@
         <a href="{% url 'tracking:mine' %}" class="{% if ns == 'tracking' %}active{% endif %}">My location</a>
       {% elif user.role == 'manager' %}
         <div class="group">GPS Tracker</div>
-        <a href="{% url 'tracking:tracker' %}" class="{% if request.resolver_match.url_name == 'tracker' %}active{% endif %}">Live tracker</a>
-        <a href="{% url 'tracking:sites' %}" class="{% if ns == 'tracking' and request.resolver_match.url_name in 'sites site_create site_edit' %}active{% endif %}">Work sites</a>
-        <a href="{% url 'tracking:people' %}" class="{% if ns == 'tracking' and request.resolver_match.url_name in 'people person_edit' %}active{% endif %}">Assign sites</a>
-        <a href="{% url 'tracking:history' %}" class="{% if ns == 'tracking' and request.resolver_match.url_name == 'history' %}active{% endif %}">Location history</a>
+        <a href="{% url 'tracking:tracker' %}" class="{% if un == 'tracker' %}active{% endif %}">Live tracker</a>
+        <a href="{% url 'tracking:sites' %}" class="{% if ns == 'tracking' and un in 'sites site_create site_edit' %}active{% endif %}">Work sites</a>
+        <a href="{% url 'tracking:people' %}" class="{% if ns == 'tracking' and un in 'people person_edit' %}active{% endif %}">Assign sites</a>
+        <a href="{% url 'tracking:history' %}" class="{% if ns == 'tracking' and un == 'history' %}active{% endif %}">Location history</a>
+      {% endif %}
+
+      {% if user.role == 'supervisor' %}
+        <div class="group">Clients</div>
+        <a href="{% url 'clients:issue_list' %}" class="{% if ns == 'clients' %}active{% endif %}">My client issues</a>
+      {% elif user.role == 'secretary' or user.role == 'manager' %}
+        <div class="group">Clients</div>
+        <a href="{% url 'clients:list' %}" class="{% if ns == 'clients' and 'issue' not in un and 'feedback' not in un %}active{% endif %}">Clients</a>
+        <a href="{% url 'clients:issue_list' %}" class="{% if ns == 'clients' and 'issue' in un %}active{% endif %}">Client issues</a>
+        <a href="{% url 'clients:feedback_list' %}" class="{% if ns == 'clients' and 'feedback' in un %}active{% endif %}">Client feedback</a>
       {% endif %}
 
       {% if user.role == 'secretary' or user.role == 'manager' %}
-        <div class="group">Finance</div>
-        <a href="{% url 'finance:list' %}" class="{% if ns == 'finance' and request.resolver_match.url_name != 'history' and request.resolver_match.url_name != 'categories' %}active{% endif %}">Expenditure</a>
-        <a href="{% url 'finance:history' %}" class="{% if request.resolver_match.url_name == 'history' %}active{% endif %}">History</a>
+        <div class="group">Money</div>
+        <a href="{% url 'billing:list' %}" class="{% if ns == 'billing' %}active{% endif %}">Invoices</a>
+        <a href="{% url 'finance:list' %}" class="{% if ns == 'finance' and un != 'history' and un != 'categories' and un != 'approvals' %}active{% endif %}">Expenditure</a>
+        <a href="{% url 'finance:history' %}" class="{% if ns == 'finance' and un == 'history' %}active{% endif %}">Expense history</a>
         {% if user.role == 'secretary' %}
-          <a href="{% url 'finance:categories' %}" class="{% if request.resolver_match.url_name == 'categories' %}active{% endif %}">Categories</a>
+          <a href="{% url 'finance:categories' %}" class="{% if un == 'categories' and ns == 'finance' %}active{% endif %}">Expense categories</a>
+        {% else %}
+          <a href="{% url 'finance:approvals' %}" class="{% if un == 'approvals' %}active{% endif %}">Expense approvals</a>
         {% endif %}
+        <a href="{% url 'payroll:list' %}" class="{% if ns == 'payroll' %}active{% endif %}">Payroll</a>
       {% endif %}
 
-      {% if user.role == 'manager' %}
+      <div class="group">Items</div>
+      {% if user.role == 'staff' or user.role == 'supervisor' %}
+        <a href="{% url 'inventory:browse' %}" class="{% if ns == 'inventory' and un in 'browse request_new request_sent' %}active{% endif %}">Ask for an item</a>
+        <a href="{% url 'inventory:mine' %}" class="{% if ns == 'inventory' and 'mine' in un %}active{% endif %}">My item requests</a>
+      {% else %}
+        <a href="{% url 'inventory:library' %}" class="{% if ns == 'inventory' and un in 'library create detail edit categories' %}active{% endif %}">Item library</a>
+        <a href="{% url 'inventory:request_list' %}" class="{% if ns == 'inventory' and un in 'request_list request_detail' %}active{% endif %}">Item requests</a>
+        <a href="{% url 'inventory:overdue' %}" class="{% if ns == 'inventory' and un == 'overdue' %}active{% endif %}">Overdue items</a>
+        <a href="{% url 'inventory:flags' %}" class="{% if ns == 'inventory' and un == 'flags' %}active{% endif %}">{% if user.role == 'manager' %}Items needing my approval{% else %}Items needing Manager approval{% endif %}</a>
+      {% endif %}
+
+      {% if user.role == 'secretary' %}
+        <div class="group">Manager</div>
+        <a href="{% url 'escalations:list' %}" class="{% if ns == 'escalations' %}active{% endif %}">Sent to Manager</a>
+      {% elif user.role == 'manager' %}
         <div class="group">Administration</div>
+        <a href="{% url 'escalations:list' %}" class="{% if ns == 'escalations' %}active{% endif %}">Sent to me</a>
         <a href="{% url 'accounts:team' %}" class="{% if ns == 'accounts' and 'team' in request.path %}active{% endif %}">Team &amp; accounts</a>
+        <a href="{% url 'core:company_settings' %}" class="{% if un == 'company_settings' %}active{% endif %}">Company settings</a>
+        <a href="{% url 'core:audit' %}" class="{% if un == 'audit' %}active{% endif %}">Audit log</a>
       {% endif %}
 
       <div class="group">Account</div>
-      <a href="{% url 'accounts:profile' %}" class="{% if request.resolver_match.url_name == 'profile' %}active{% endif %}">My details</a>
+      <a href="{% url 'accounts:profile' %}" class="{% if un == 'profile' %}active{% endif %}">My details</a>
       <a href="{% url 'accounts:password_change' %}">Change password</a>
     </nav>
     {% endwith %}
@@ -74,6 +107,7 @@
     {% block content %}{% endblock %}
   </main>
 </div>
+<script src="{% static 'js/menu.js' %}" defer></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Notifications</h1><p class="muted">Messages from the system about things that need you. Tap one to open it.</p></div>
+  <form method="post" action="{% url 'notifications:read_all' %}">{% csrf_token %}<button class="btn secondary" type="submit">Mark all as read</button></form>
+</div>
+<div class="card">
+  <div class="tabs">
+    <a href="{% url 'notifications:inbox' %}" class="{% if f.unread != '1' %}on{% endif %}">All</a>
+    <a href="?unread=1" class="{% if f.unread == '1' %}on{% endif %}">Unread{% if unread_notifications %} ({{ unread_notifications }}){% endif %}</a>
+  </div>
+  <ul class="note-list">
+  {% for n in notes %}
+    <li class="{% if not n.is_read %}unread{% endif %} {% if n.priority == 'high' %}high{% endif %}">
+      <a href="{% url 'notifications:open' n.pk %}">
+        <strong>{% if n.priority == 'high' %}Important: {% endif %}{{ n.title }}</strong>
+        {% if n.message %}<span>{{ n.message }}</span>{% endif %}
+        <small class="muted">{{ n.created_at|timesince }} ago{% if not n.is_read %} · new{% endif %}</small>
+      </a>
+    </li>
+  {% empty %}<li class="empty">You have no notifications.</li>{% endfor %}
+  </ul>
+  {% include "partials/pagination.html" %}
+</div>
+{% endblock %}

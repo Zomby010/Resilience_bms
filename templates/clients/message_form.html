@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Message to {{ client.name }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% if msg %}Edit message{% else %}Send a message{% endif %} to {{ client.name }}</h1>
+<p class="muted">{% if client.email %}It will be emailed to <strong>{{ client.email }}</strong>.{% else %}This client has no email address. You can save it and record that you told them by phone.{% endif %}</p></div></div>
+<div class="card">
+  <form method="post" enctype="multipart/form-data" class="fields">{% csrf_token %}
+    {% include "partials/form.html" %}
+    <div class="form-actions">
+      {% if client.email %}<button class="btn" type="submit" name="action" value="send">Send email now</button>{% endif %}
+      <button class="btn secondary" type="submit" name="action" value="draft">Save as draft</button>
+      <a class="btn secondary" href="{{ client.get_absolute_url }}?tab=messages">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Payroll {{ run.period|date:"F Y" }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Payroll {{ run.period|date:"F Y" }} {% badge run %}</h1>
+  <p class="muted">Confidential. Prepared by {{ run.created_by }}{% if run.submitted_by %} · submitted by {{ run.submitted_by }} on {{ run.submitted_at|date:"d M Y" }}{% endif %}{% if run.decided_by %} · {{ run.get_status_display|lower }} by {{ run.decided_by }}{% endif %}</p></div>
+  <div class="actions">
+    <a class="btn secondary" href="{% url 'payroll:export' run.pk %}">Download payment file (CSV)</a>
+    <a class="btn secondary" href="{% url 'payroll:print' run.pk %}" target="_blank">Print</a>
+    {% if user.role == 'secretary' %}{% if escalation %}<a class="btn secondary" href="{% url 'escalations:detail' escalation.pk %}">Question sent to Manager</a>{% else %}<a class="btn secondary" href="{% url 'escalations:create' %}?type=payroll&amp;id={{ run.pk }}">Ask the Manager a question</a>{% endif %}{% endif %}
+  </div>
+</div>
+{% if run.decision_note and run.status != 'approved' %}<div class="warn"><strong>Manager's note:</strong> {{ run.decision_note }}</div>{% endif %}
+{% if run.status == 'approved' %}<div class="info">Approved and locked. Only the Manager can reopen it, with a reason.</div>{% endif %}
+
+<div class="grid kpis">
+  <div class="kpi slate"><div class="num">{{ lines|length }}</div><div class="lbl">People</div></div>
+  <div class="kpi"><div class="num">{{ run.total_gross|money }}</div><div class="lbl">Gross pay (KES)</div></div>
+  <div class="kpi gold"><div class="num">{{ run.total_deductions|money }}</div><div class="lbl">Deductions (KES)</div></div>
+  <div class="kpi green"><div class="num">{{ run.total_net|money }}</div><div class="lbl">Net pay (KES)</div></div>
+</div>
+
+<div class="card">
+  <h2>Pay sheet</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th class="num">Basic</th><th class="num">Allow.</th><th class="num">Overtime</th><th class="num">Bonus</th><th class="num">Gross</th><th class="num">Deductions</th><th class="num">Net pay</th><th>Pay to</th>{% if editable %}<th></th>{% endif %}</tr></thead>
+    <tbody>
+    {% for l in lines %}
+      <tr>
+        <td>{{ l.employee_name }}<br><span class="small muted">{{ l.employee_number }} · {{ l.role }}</span></td>
+        <td class="num">{{ l.basic|money }}</td><td class="num">{{ l.allowances|money }}</td><td class="num">{{ l.overtime|money }}</td><td class="num">{{ l.bonus|money }}</td>
+        <td class="num">{{ l.gross|money }}</td><td class="num">{{ l.total_deductions|money }}</td>
+        <td class="num"><strong {% if l.net < 0 %}style="color:var(--red-dark)"{% endif %}>{{ l.net|money }}</strong></td>
+        <td class="small">{{ l.get_payment_method_display|default:"-" }} {{ l.payment_detail|masked }}</td>
+        {% if editable %}<td class="actions">
+          <a class="btn small secondary" href="{% url 'payroll:line_edit' run.pk l.pk %}">Edit</a>
+          <form method="post" action="{% url 'payroll:line_remove' run.pk l.pk %}">{% csrf_token %}<button class="btn small danger" type="submit" data-confirm="Remove {{ l.employee_name }} from this month's payroll?">Remove</button></form>
+        </td>{% endif %}
+      </tr>
+    {% empty %}<tr><td colspan="10" class="empty">Nobody on this payroll.</td></tr>{% endfor %}
+    <tr class="total-row"><td>Total</td><td colspan="4"></td><td class="num">{{ run.total_gross|money }}</td><td class="num">{{ run.total_deductions|money }}</td><td class="num">{{ run.total_net|money }}</td><td colspan="2"></td></tr>
+    </tbody>
+  </table></div>
+  {% if editable %}
+  <form method="post" action="{% url 'payroll:add_person' run.pk %}" class="inline-form" style="margin-top:1rem">{% csrf_token %}
+    <label for="id_person">Add someone</label> {{ add_form.person }} <button class="btn secondary" type="submit">Add</button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="grid two">
+  <div class="card">
+    <h2>Next step</h2>
+    {% if editable and user.role == 'secretary' %}
+      <p>When every line is correct, send it to the Manager for approval.</p>
+      <form method="post" action="{% url 'payroll:submit' run.pk %}">{% csrf_token %}<button class="btn big" type="submit" data-confirm="Send this payroll to the Manager for approval?">Send to Manager for approval</button></form>
+    {% elif editable %}<p class="muted">The Secretary sends this payroll for approval when it is ready.</p>
+    {% elif decidable and user.role == 'manager' %}
+      <form method="post" class="stack-form">{% csrf_token %}
+        <label for="note">Note (needed if you send it back or reject it)</label>
+        <textarea id="note" name="note" rows="2"></textarea>
+        <div class="actions">
+          <button class="btn" formaction="{% url 'payroll:approve' run.pk %}" type="submit" data-confirm="Approve this payroll? It will be locked.">Approve</button>
+          <button class="btn secondary" formaction="{% url 'payroll:request_changes' run.pk %}" type="submit">Send back for changes</button>
+          <button class="btn danger" formaction="{% url 'payroll:reject' run.pk %}" type="submit" data-confirm="Reject this payroll? A new one can be started for the month.">Reject</button>
+        </div>
+      </form>
+    {% elif decidable %}<p class="muted">Waiting for the Manager to approve.</p>
+    {% elif run.status == 'approved' and user.role == 'manager' %}
+      <form method="post" action="{% url 'payroll:reopen' run.pk %}" class="stack-form">{% csrf_token %}
+        <label for="reopen-note">Reason for reopening</label><textarea id="reopen-note" name="note" rows="2" required></textarea>
+        <div><button class="btn danger" type="submit" data-confirm="Reopen this approved payroll for changes?">Reopen for changes</button></div>
+      </form>
+    {% else %}<p class="muted">Nothing to do.</p>{% endif %}
+  </div>
+  <div class="card"><h2>History</h2><ul class="timeline small">{% for e in history %}<li>{{ e.at|date:"d M Y H:i" }} · {{ e.actor|default:"System" }}: {{ e.summary }}</li>{% empty %}<li class="empty">Nothing yet.</li>{% endfor %}</ul></div>
+</div>
+{% endblock %}

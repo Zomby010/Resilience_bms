@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Payroll{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Payroll</h1><p class="muted">Confidential. Only the Secretary and the Manager can see this. The Secretary prepares each month and the Manager approves it.</p></div>
+  <div class="actions"><a class="btn secondary" href="{% url 'payroll:profiles' %}">Pay details per person</a><a class="btn" href="{% url 'payroll:create' %}">Start a new month</a></div>
+</div>
+{% if no_profile %}<div class="warn">{{ no_profile }} person{{ no_profile|pluralize:"s" }} {{ no_profile|pluralize:"has,have" }} no pay details yet. <a href="{% url 'payroll:profiles' %}">Add them</a> so their pay is filled in automatically.</div>{% endif %}
+<div class="card">
+  <form method="get" class="filters">
+    <div><label for="status">Status</label><select id="status" name="status"><option value="">All</option>{% for v, l in statuses %}<option value="{{ v }}" {% if f.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    <button class="btn secondary" type="submit">Filter</button>
+  </form>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Month</th><th>Status</th><th class="num">Gross (KES)</th><th class="num">Deductions (KES)</th><th class="num">Net pay (KES)</th><th>Prepared by</th></tr></thead>
+    <tbody>
+    {% for r in runs %}
+      <tr><td><a href="{{ r.get_absolute_url }}"><strong>{{ r.period|date:"F Y" }}</strong></a></td><td>{% badge r %}</td><td class="num">{{ r.total_gross|money }}</td><td class="num">{{ r.total_deductions|money }}</td><td class="num">{{ r.total_net|money }}</td><td>{{ r.created_by }}</td></tr>
+    {% empty %}<tr><td colspan="6" class="empty">No payroll yet. <a href="{% url 'payroll:create' %}">Start a new month</a>.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% include "partials/pagination.html" %}
+</div>
+{% endblock %}

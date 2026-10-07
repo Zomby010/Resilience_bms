@@ -12,6 +12,10 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 from accounts.models import Role
 from accounts.permissions import RoleRequiredMixin
 
+from core.mixins import ActionView
+from core.services.files import attachments_for, save_attachment
+
+from . import services
 from .forms import CategoryForm, ExpenseForm
 from .models import Expense, ExpenseCategory, ExpenseLog
 
@@ -63,7 +67,8 @@ class ExpenseListView(RoleRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        filtered = self.get_filtered()
+        # Expenses waiting for (or refused) Manager approval are listed but left out of totals.
+        filtered = self.get_filtered().filter(status=Expense.Status.RECORDED)
         ctx["total"] = filtered.aggregate(total=Sum("amount"))["total"] or 0
         ctx["by_category"] = (
             filtered.values("category__name").annotate(total=Sum("amount")).order_by("-total")[:6]
@@ -88,6 +93,7 @@ class ExpenseDetailView(RoleRequiredMixin, DetailView):
         ctx = super().get_context_data(**kwargs)
         ctx["log"] = self.object.log.select_related("by")
         ctx["can_edit"] = self.request.user.role in EDIT_ROLES
+        ctx["files"] = attachments_for(self.object)
         return ctx
 
 
@@ -101,7 +107,13 @@ class ExpenseCreateView(RoleRequiredMixin, CreateView):
         with transaction.atomic():
             response = super().form_valid(form)
             ExpenseLog.record(self.object, ExpenseLog.Action.CREATED, self.request.user)
-        messages.success(self.request, "Expense recorded.")
+            if form.cleaned_data.get("receipt"):
+                save_attachment(self.object, form.cleaned_data["receipt"], self.request.user)
+            services.after_save(self.object, self.request.user)
+        if self.object.status == Expense.Status.AWAITING_APPROVAL:
+            messages.warning(self.request, "Expense recorded. It is above the approval limit, so it waits for the Manager.")
+        else:
+            messages.success(self.request, "Expense recorded.")
         return response
 
     def get_context_data(self, **kwargs):
@@ -118,13 +130,17 @@ class ExpenseUpdateView(RoleRequiredMixin, UpdateView):
     template_name = "finance/expense_form.html"
 
     def form_valid(self, form):
-        before = Expense.objects.get(pk=self.object.pk).snapshot()
+        old = Expense.objects.get(pk=self.object.pk)
+        before = old.snapshot()
         with transaction.atomic():
             response = super().form_valid(form)
             ExpenseLog.record(
                 self.object, ExpenseLog.Action.UPDATED, self.request.user,
                 details=f"{before}  ->  {self.object.snapshot()}",
             )
+            if form.cleaned_data.get("receipt"):
+                save_attachment(self.object, form.cleaned_data["receipt"], self.request.user)
+            services.after_save(self.object, self.request.user, old_amount=old.amount)
         messages.success(self.request, "Expense updated.")
         return response
 
@@ -177,3 +193,24 @@ class CategoryView(RoleRequiredMixin, CreateView):
     def form_valid(self, form):
         messages.success(self.request, "Category added.")
         return super().form_valid(form)
+
+
+class ApprovalsView(RoleRequiredMixin, ListView):
+    """Expenses above the limit, waiting for the Manager (owner decision D9)."""
+
+    allowed_roles = (Role.MANAGER,)
+    template_name = "finance/approvals.html"
+    context_object_name = "expenses"
+
+    def get_queryset(self):
+        return Expense.objects.filter(status=Expense.Status.AWAITING_APPROVAL).select_related("category", "recorded_by")
+
+
+class DecideView(ActionView):
+    allowed_roles = (Role.MANAGER,)
+    model = Expense
+    approve = True
+
+    def act(self, expense):
+        services.decide(expense, self.request.user, self.approve, self.request.POST.get("note", ""))
+        return "Expense approved." if self.approve else "Expense rejected. The Secretary has been told."

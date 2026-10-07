@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Record feedback{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Record feedback from {{ client.name }}</h1><p class="muted">Write down what the client told you, in their words if possible.</p></div></div>
+<div class="card">
+  <form method="post" class="fields">{% csrf_token %}
+    {% include "partials/form.html" %}
+    <div class="form-actions"><button class="btn" type="submit">Save feedback</button><a class="btn secondary" href="{{ client.get_absolute_url }}?tab=feedback">Cancel</a></div>
+  </form>
+</div>
+{% endblock %}

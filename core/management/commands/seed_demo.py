@@ -10,6 +10,7 @@ import secrets
 from datetime import time, timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
@@ -48,6 +49,8 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
+        if not settings.DEBUG:
+            raise CommandError("seed_demo only runs with DJANGO_DEBUG=1 (never on a live database).")
         if User.objects.filter(username="manager").exists():
             raise CommandError("Demo data already exists (user 'manager' found). Aborting.")
 
@@ -106,7 +109,79 @@ class Command(BaseCommand):
         for i, username in enumerate(["supervisor1", "staff1", "staff2", "supervisor2", "staff3", "staff4"]):
             TrackingProfile.objects.create(user=users[username], site=sites[0 if i < 3 else 1])
 
+        _seed_operations(users, sites, rng)
+
         self.stdout.write(self.style.SUCCESS("Demo data created. One-time passwords (note them down now):"))
         for username, _first, _last, role, _sup in PEOPLE:
             self.stdout.write(f"  {username:<12} {role:<11} {passwords[username]}")
         self.stdout.write(f"Reports: {Report.objects.count()}  Completed: {Report.objects.filter(status=Status.COMPLETED).count()}")
+
+
+def _seed_operations(users, sites, rng):
+    """Made-up clients, issues, an invoice, items, item requests and a draft payroll. No emails are sent."""
+    from billing import services as billing
+    from billing.models import Invoice, InvoiceLine
+    from clients import services as clients
+    from clients.models import Client, Feedback
+    from core.models import CompanySettings
+    from inventory import services as inventory
+    from inventory.models import Category, Item
+    from payroll import services as payroll
+    from payroll.models import PayProfile
+
+    sec, mgr = users["secretary"], users["manager"]
+    company = CompanySettings.load()
+    company.company_name, company.phone, company.email = "Resilience Security (demo)", "0700000000", "office@example.com"
+    company.address = "P.O. Box 0000, Kisumu"
+    company.payment_instructions = "M-Pesa Paybill 000000, account: invoice number"
+    company.save()
+
+    acme = clients.create_client(Client(name="Lakeside Apartments", contact_person="Mr. Otieno", phone="0712000001",
+                                        email="lakeside@example.com", area="Milimani", monthly_charge=Decimal("85000"),
+                                        supervisor=users["supervisor1"]), sec)
+    mall = clients.create_client(Client(name="Kondele Market Stores", contact_person="Mrs. Atieno", phone="0712000002",
+                                        email="kondele@example.com", area="Kondele", monthly_charge=Decimal("60000"),
+                                        supervisor=users["supervisor2"]), sec)
+    clients.create_client(Client(name="Riverside School", phone="0712000003", area="Riat"), sec)
+    clients.set_client_sites(acme, [sites[1]], sec)
+    clients.set_client_sites(mall, [sites[0]], sec)
+
+    issue = clients.create_issue(acme, "Gate light not working", "Security light at the back gate has been off for 2 nights.",
+                                 "high", sec)
+    clients.change_issue_status(issue, "in_progress", users["supervisor1"], "Electrician called.")
+    clients.create_issue(mall, "Guard late for night shift", "The night guard arrived at 7:40 pm on Tuesday.", "normal", sec)
+    Feedback.objects.create(client=mall, kind="compliment", channel="phone", subject="Thank you for quick response",
+                            body="The guards stopped a break-in attempt last week.", recorded_by=sec)
+
+    today = timezone.localdate()
+    inv = Invoice(client=acme, invoice_date=today.replace(day=1), due_date=today.replace(day=1) + timedelta(days=14))
+    billing.save_draft(inv, [InvoiceLine(description=f"Security services, {today:%B %Y}", quantity=1,
+                                         unit_price=Decimal("85000"))], sec, creating=True)
+    seq, number = billing._next_number(inv.invoice_date.year)
+    Invoice.objects.filter(pk=inv.pk).update(status="sent", number=number, year=inv.invoice_date.year, seq=seq,
+                                             bill_to_name=acme.name, sent_by=sec, sent_at=timezone.now())
+    inv.refresh_from_db()
+    billing.record_payment(inv, today, Decimal("40000"), "mpesa", "QDEMO123", sec)
+    billing.save_draft(Invoice(client=mall, invoice_date=today, due_date=today + timedelta(days=14)),
+                       [InvoiceLine(description="Security services", quantity=1, unit_price=Decimal("60000"))], sec, creating=True)
+
+    def cat(name):
+        return Category.objects.get_or_create(name=name)[0]
+
+    torch = inventory.create_item(Item(name="Torch", category=cat("Torches"), returnable=True, min_stock=3), 8, sec)
+    radio = inventory.create_item(Item(name="Two-way radio", category=cat("Radios"), returnable=True, min_stock=2), 4, sec)
+    inventory.create_item(Item(name="Uniform shirt", category=cat("Uniforms"), returnable=False, min_stock=5), 20, sec)
+    inventory.create_item(Item(name="Rain coat", category=cat("Uniforms"), returnable=True, min_stock=2), 2, sec)
+    inventory.set_manager_flags([radio.pk], mgr)
+    radio.refresh_from_db()
+    r1 = inventory.create_request(torch, 1, "My torch stopped working.", users["staff1"])
+    inventory.approve_request(r1, sec, 1, today + timedelta(days=30), hand_over_now=True)
+    inventory.claim_return(r1, users["staff1"])
+    inventory.create_request(torch, 2, "Night shift at Kondele.", users["staff3"])
+    inventory.create_request(radio, 1, "Need to call the supervisor.", users["supervisor2"])
+
+    for u in users.values():
+        if u.role != Role.MANAGER:
+            PayProfile.objects.create(user=u, basic_salary=Decimal(rng.choice([15000, 18000, 22000, 30000])),
+                                      payment_method="mpesa", mpesa_number=f"07{rng.randint(10000000, 99999999)}")
+    payroll.create_run(today.replace(day=1), sec)

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ item.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ item.name }} {% if not item.is_active %}<span class="badge role">Retired</span>{% endif %}</h1>
+  <p class="muted">{{ item.code }} · {{ item.category }} · {% if item.returnable %}Must be returned{% else %}Given to keep{% endif %}{% if item.needs_manager_approval %} · <strong>Needs Manager approval</strong>{% endif %}</p></div>
+  <div class="actions">
+    <a class="btn secondary" href="{% url 'inventory:edit' item.pk %}">Edit details</a>
+    {% if user.role == 'secretary' %}{% if escalation %}<a class="btn secondary" href="{% url 'escalations:detail' escalation.pk %}">Sent to Manager</a>{% else %}<a class="btn secondary" href="{% url 'escalations:create' %}?type=item&amp;id={{ item.pk }}">Send to Manager</a>{% endif %}{% endif %}
+  </div>
+</div>
+<div class="qty-grid">
+  <div><strong>{{ item.qty_available }}</strong><span>In the store</span></div>
+  <div><strong>{{ item.qty_reserved }}</strong><span>Waiting for collection</span></div>
+  <div><strong>{{ item.qty_issued }}</strong><span>Out with people</span></div>
+  <div><strong>{{ item.qty_damaged }}</strong><span>Damaged</span></div>
+  <div><strong>{{ item.qty_lost }}</strong><span>Lost</span></div>
+  <div><strong>{{ item.total }}</strong><span>Total</span></div>
+</div>
+{% if item.min_stock and item.is_low %}<div class="warn">Low on stock: {{ item.qty_available }} left, minimum is {{ item.min_stock }}.</div>{% endif %}
+<div class="grid two">
+  <div>
+    {% if item.is_active %}
+    <div class="card">
+      <h2>Update stock</h2>
+      <form method="post" action="{% url 'inventory:adjust' item.pk %}" class="fields">{% csrf_token %}
+        {% with form=adjust_form %}{% include "partials/form.html" %}{% endwith %}
+        <div class="form-actions"><button class="btn" type="submit">Save</button></div>
+      </form>
+      <p class="small muted">Giving items to people is done through item requests, not here.</p>
+    </div>
+    {% endif %}
+    <div class="card">
+      <h2>Details</h2>
+      <dl class="facts">
+        <dt>Condition</dt><dd>{{ item.condition_note|default:"-" }}</dd>
+        <dt>Kept at</dt><dd>{{ item.storage_location|default:"-" }}</dd>
+        <dt>Minimum stock</dt><dd>{{ item.min_stock }}</dd>
+        <dt>Description</dt><dd>{{ item.description|default:"-"|linebreaksbr }}</dd>
+        {% if item.flag_changed_by %}<dt>Approval setting</dt><dd>Changed by {{ item.flag_changed_by }} on {{ item.flag_changed_at|date:"d M Y" }}</dd>{% endif %}
+      </dl>
+      {% if item.is_active %}
+        <form method="post" action="{% url 'inventory:deactivate' item.pk %}" style="margin-top:1rem">{% csrf_token %}<button class="btn danger small" type="submit" data-confirm="Retire {{ item.name }}? It stays in the records but can no longer be requested.">Retire this item</button></form>
+      {% else %}
+        <form method="post" action="{% url 'inventory:reactivate' item.pk %}" style="margin-top:1rem">{% csrf_token %}<button class="btn small" type="submit">Bring back into use</button></form>
+      {% endif %}
+    </div>
+    <div class="card">
+      <h2>Who has it now</h2>
+      <ul class="timeline small">{% for r in open_requests %}<li><a href="{{ r.get_absolute_url }}">{{ r.requester }}</a>: {{ r.qty_issued|default:r.qty_requested }} · {% badge r %}{% if r.expected_return_date %} · due {{ r.expected_return_date|date:"d M Y" }}{% endif %}</li>{% empty %}<li class="empty">Nobody.</li>{% endfor %}</ul>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Stock history</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>When</th><th>What</th><th class="num">Qty</th><th class="num">In store after</th><th>By</th></tr></thead>
+      <tbody>{% for m in movements %}<tr><td>{{ m.at|date:"d M Y H:i" }}</td><td>{{ m.get_action_display }}{% if m.reason %}<br><span class="small muted">{{ m.reason }}</span>{% endif %}</td><td class="num">{{ m.quantity }}</td><td class="num">{{ m.after.qty_available }}</td><td>{{ m.by }}</td></tr>{% empty %}<tr><td colspan="5" class="empty">No stock changes yet.</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </div>
+</div>
+{% endblock %}

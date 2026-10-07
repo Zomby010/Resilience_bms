@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Send to Manager{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Send to Manager</h1>
+<p class="muted">{% if record %}The Manager will see the full {{ kind_label|lower }} with its notes and files, so you only need to say what you need from them.{% else %}Use this for any matter that is not linked to a client issue, feedback, item or payroll.{% endif %}</p></div></div>
+<div class="card">
+  {% if record %}<p>About: <a href="{{ record.get_absolute_url }}" target="_blank"><strong>{{ record }}</strong></a> ({{ kind_label }})</p>{% endif %}
+  <form method="post" class="fields">{% csrf_token %}
+    {% include "partials/form.html" %}
+    <div class="form-actions"><button class="btn" type="submit">Send to Manager</button>
+      <a class="btn secondary" href="{% if record %}{{ record.get_absolute_url }}{% else %}{% url 'escalations:list' %}{% endif %}">Cancel</a></div>
+  </form>
+</div>
+{% endblock %}

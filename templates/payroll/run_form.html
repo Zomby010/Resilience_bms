@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Start a new payroll month{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Start a new payroll month</h1><p class="muted">Everyone with pay details (except Managers) is added with their usual pay. You can then enter overtime, bonuses and deductions for each person.</p></div></div>
+<div class="card">
+  <form method="post" class="fields">{% csrf_token %}
+    {% include "partials/form.html" %}
+    <div class="form-actions"><button class="btn" type="submit">Start payroll</button><a class="btn secondary" href="{% url 'payroll:list' %}">Cancel</a></div>
+  </form>
+</div>
+{% endblock %}

@@ -6,7 +6,7 @@
   {% if not has_categories %}
     <p>You need at least one category first. <a href="{% url 'finance:categories' %}">Add a category</a>.</p>
   {% else %}
-  <form method="post" class="stack">
+  <form method="post" class="stack" enctype="multipart/form-data">
     {% csrf_token %}
     {% include "partials/form.html" %}
     <div class="form-actions">

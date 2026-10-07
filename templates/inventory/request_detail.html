@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Item request{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ req.requester }}: {{ req.qty_requested }} x {{ req.item.name }}</h1>
+  <p class="muted">{{ req.requester.get_role_display }} · asked {{ req.created_at|date:"d M Y H:i" }} · {% badge req %}{% if is_overdue %} <span class="badge off">Overdue</span>{% endif %}</p></div>
+  <a class="btn secondary" href="{{ req.item.get_absolute_url }}">Open item ({{ req.item.qty_available }} in store)</a>
+</div>
+{% if own %}<div class="warn">This is your own request. Another member of the office must approve it and confirm its return.</div>{% endif %}
+
+<div class="grid two">
+  <div>
+    <div class="card">
+      <h2>Request</h2>
+      <dl class="facts">
+        <dt>Reason</dt><dd>{{ req.reason|linebreaksbr }}</dd>
+        <dt>Item type</dt><dd>{% if req.item.returnable %}Must be returned{% else %}Given to keep{% endif %}</dd>
+        {% if req.manager_decided_by %}<dt>Manager</dt><dd>{{ req.manager_decided_by }}, {{ req.manager_decided_at|date:"d M Y H:i" }}</dd>{% endif %}
+        {% if req.decided_by %}<dt>Approved by</dt><dd>{{ req.decided_by }}, {{ req.decided_at|date:"d M Y H:i" }} ({{ req.qty_issued }} given)</dd>{% endif %}
+        {% if req.handed_over_by %}<dt>Handed over</dt><dd>{{ req.handed_over_by }}, {{ req.handed_over_at|date:"d M Y H:i" }}</dd>{% endif %}
+        {% if req.expected_return_date %}<dt>Return by</dt><dd>{{ req.expected_return_date|date:"d M Y" }}</dd>{% endif %}
+        {% if req.return_claimed_at %}<dt>Says returned</dt><dd>{{ req.return_claimed_at|date:"d M Y H:i" }}</dd>{% endif %}
+        {% if req.return_approved_by %}<dt>Return checked</dt><dd>{{ req.return_approved_by }}, {{ req.return_approved_at|date:"d M Y H:i" }}: {{ req.qty_returned_good }} good, {{ req.qty_returned_damaged }} damaged, {{ req.qty_lost }} lost</dd>{% endif %}
+        {% if req.return_notes %}<dt>Return notes</dt><dd>{{ req.return_notes }}</dd>{% endif %}
+        {% if req.reject_reason %}<dt>Reason given</dt><dd>{{ req.reject_reason }}</dd>{% endif %}
+      </dl>
+    </div>
+    <div class="card"><h2>History</h2><ul class="timeline small">{% for e in history %}<li>{{ e.at|date:"d M Y H:i" }} · {{ e.actor|default:"System" }}: {{ e.summary }}</li>{% empty %}<li class="empty">Nothing yet.</li>{% endfor %}</ul></div>
+  </div>
+
+  <div>
+  {% if req.status == 'awaiting_manager' %}
+    <div class="card">
+      <h2>Waiting for the Manager</h2>
+      {% if user.role == 'manager' and not own %}
+        <form method="post" action="{% url 'inventory:manager_approve' req.pk %}">{% csrf_token %}<button class="btn big" type="submit">Approve: the Secretary may give it out</button></form>
+        <form method="post" action="{% url 'inventory:manager_reject' req.pk %}" class="stack-form" style="margin-top:1rem">{% csrf_token %}
+          <label for="mr">Or reject, with a reason</label><textarea id="mr" name="reason" rows="2" required></textarea>
+          <div><button class="btn danger" type="submit">Reject</button></div>
+        </form>
+      {% else %}<p class="muted">This item needs the Manager's approval before it can be given out.</p>{% endif %}
+    </div>
+  {% elif req.status == 'pending' and not own %}
+    <div class="card">
+      <h2>Approve</h2>
+      <form method="post" action="{% url 'inventory:approve' req.pk %}" class="fields">{% csrf_token %}
+        {% with form=approve_form %}{% include "partials/form.html" %}{% endwith %}
+        <div class="form-actions"><button class="btn" type="submit">Approve</button></div>
+      </form>
+      <p class="small muted">Approving keeps the item aside. Tick "hand it over now" if the person is with you.</p>
+    </div>
+    <div class="card">
+      <form method="post" action="{% url 'inventory:reject' req.pk %}" class="stack-form">{% csrf_token %}
+        <label for="rr">Reject, with a reason the person will see</label><textarea id="rr" name="reason" rows="2" required></textarea>
+        <div><button class="btn danger" type="submit">Reject request</button></div>
+      </form>
+    </div>
+  {% elif req.status == 'ready' %}
+    <div class="card">
+      <h2>Waiting for collection</h2>
+      {% if not own %}<form method="post" action="{% url 'inventory:handover' req.pk %}">{% csrf_token %}<button class="btn big" type="submit" data-confirm="Confirm you have physically handed {{ req.qty_issued }} x {{ req.item.name }} to {{ req.requester }}?">I have handed it over</button></form>{% endif %}
+      <form method="post" action="{% url 'inventory:cancel_approval' req.pk %}" class="stack-form" style="margin-top:1rem">{% csrf_token %}
+        <label for="ca">Not collected? Cancel and put it back in the store</label><textarea id="ca" name="reason" rows="2" required></textarea>
+        <div><button class="btn danger" type="submit">Cancel approval</button></div>
+      </form>
+    </div>
+  {% elif req.status == 'issued' or req.status == 'return_claimed' %}{% if req.item.returnable %}
+    <div class="card">
+      <h2>{% if req.status == 'return_claimed' %}{{ req.requester }} says it was returned{% else %}Out with {{ req.requester }}{% endif %}</h2>
+      {% if own %}<p class="muted">Another member of the office must confirm the return of your own item.</p>
+      {% else %}
+        <p><strong>Only confirm when you physically have the item in your hands.</strong></p>
+        <form method="post" action="{% url 'inventory:approve_return' req.pk %}" class="fields">{% csrf_token %}
+          {% with form=return_form %}{% include "partials/form.html" %}{% endwith %}
+          <p class="small muted">The three numbers must add up to {{ req.qty_issued }}.</p>
+          <div class="form-actions"><button class="btn" type="submit">Confirm return</button></div>
+        </form>
+      {% endif %}
+      {% if req.status == 'return_claimed' %}
+        <form method="post" action="{% url 'inventory:not_received' req.pk %}" class="stack-form" style="margin-top:1rem">{% csrf_token %}
+          <label for="nr">Not received? Tell the person (it stays listed as with them)</label><textarea id="nr" name="note" rows="2" required></textarea>
+          <div><button class="btn danger" type="submit">I have not received it</button></div>
+        </form>
+      {% else %}
+        <form method="post" action="{% url 'inventory:remind' req.pk %}" style="margin-top:1rem">{% csrf_token %}<button class="btn secondary" type="submit">Send a reminder</button></form>
+      {% endif %}
+    </div>
+  {% endif %}{% endif %}
+    {% if movements %}<div class="card"><h2>Stock changes</h2><ul class="timeline small">{% for m in movements %}<li>{{ m.at|date:"d M Y H:i" }} · {{ m.get_action_display }} · {{ m.quantity }} · {{ m.by }}</li>{% endfor %}</ul></div>{% endif %}
+  </div>
+</div>
+{% endblock %}

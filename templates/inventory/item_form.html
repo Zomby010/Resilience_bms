@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{% if object %}Edit {{ object.name }}{% else %}Add an item{% endif %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% if object %}Edit {{ object.name }}{% else %}Add an item{% endif %}</h1>
+<p class="muted">{% if object %}Quantities are changed with "Update stock" on the item page, so every change is recorded.{% else %}The item gets a code like ITM-0001 automatically.{% endif %} Only the Manager decides which items need his approval.</p></div></div>
+<div class="card">
+  <form method="post" class="fields">{% csrf_token %}
+    {% include "partials/form.html" %}
+    <div class="form-actions"><button class="btn" type="submit">Save item</button><a class="btn secondary" href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'inventory:library' %}{% endif %}">Cancel</a></div>
+  </form>
+</div>
+{% endblock %}

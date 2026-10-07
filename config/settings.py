@@ -53,6 +53,12 @@ INSTALLED_APPS = [
     "finance",
     "core",
     "tracking",
+    "notifications",
+    "escalations",
+    "clients",
+    "billing",
+    "payroll",
+    "inventory",
 ]
 
 MIDDLEWARE = [
@@ -79,7 +85,9 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "tracking.context_processors.location_reminder",
+                "notifications.context_processors.bell",
             ],
+            "builtins": ["core.templatetags.ui"],
         },
     },
 ]
@@ -129,6 +137,12 @@ STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# Uploaded files (attachments, receipts, company logo). Never served directly: downloads go
+# through a view that checks the person may see the record the file belongs to.
+MEDIA_ROOT = Path(os.environ.get("DJANGO_MEDIA_ROOT", BASE_DIR / "media"))
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
+DATA_UPLOAD_MAX_MEMORY_SIZE = 6 * 1024 * 1024
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Fast password hashing for the test suite only (never used in real runs).
@@ -139,6 +153,24 @@ if "test" in sys.argv[1:2]:
 
 # Application-specific
 CURRENCY = "KES"
+
+# Email. Without EMAIL_HOST nothing is sent: in development emails are printed to the console,
+# and on a live site (DEBUG off) every send fails with a clear "email is not set up" message, so a
+# client message is never marked as sent when it wasn't. A real provider is set up only after the
+# owner approves one (Gate 7). Tests always use memory.
+if os.environ.get("EMAIL_HOST"):
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = os.environ["EMAIL_HOST"]
+    EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+    EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+    EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", True)
+elif DEBUG:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+else:
+    EMAIL_BACKEND = "core.services.mail.NotConfiguredBackend"
+EMAIL_TIMEOUT = 15
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Resilience BMS <no-reply@localhost>")
 
 # Hardened defaults whenever DEBUG is off.
 if not DEBUG:

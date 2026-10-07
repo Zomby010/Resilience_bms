@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ req.item.name }}{% endblock %}
+{% block content %}
+<div class="simple">
+  <h1>{{ req.qty_requested }} x {{ req.item.name }}</h1>
+  <div class="status-big">{{ req.get_status_display }}</div>
+  <ol class="steps">{% for label, state in steps %}<li class="{{ state }}">{% if state == 'done' %}✓ {% elif state == 'now' %}➜ {% endif %}{{ label }}</li>{% endfor %}</ol>
+
+  {% if req.status == 'ready' %}<div class="info">Go to the Secretary to collect it. Quantity: {{ req.qty_issued }}.</div>{% endif %}
+  {% if req.status == 'issued' and req.item.returnable and req.expected_return_date %}<div class="info">Please return it by <strong>{{ req.expected_return_date|date:"d M Y" }}</strong>.</div>{% endif %}
+  {% if req.status == 'return_claimed' %}<div class="info">Thank you. The Secretary will check the item and then confirm the return. Until then it is still listed as with you.</div>{% endif %}
+  {% if req.reject_reason and req.status == 'rejected' or req.reject_reason and req.status == 'cancelled' %}<div class="warn"><strong>Reason:</strong> {{ req.reject_reason }}</div>{% endif %}
+  {% if req.status == 'returned' or req.status == 'lost' %}<div class="info">Checked by {{ req.return_approved_by }}: {{ req.qty_returned_good }} good{% if req.qty_returned_damaged %}, {{ req.qty_returned_damaged }} damaged{% endif %}{% if req.qty_lost %}, {{ req.qty_lost }} lost{% endif %}.</div>{% endif %}
+
+  {% if req.status == 'issued' and req.item.returnable %}
+    <form method="post" action="{% url 'inventory:mine_returned' req.pk %}">{% csrf_token %}
+      <button class="btn big wide" type="submit" data-confirm="Have you given the item back to the Secretary?">I have returned this item</button>
+    </form>
+    <p class="small muted">Press this only after you have handed the item to the Secretary.</p>
+  {% endif %}
+  {% if req.status == 'pending' or req.status == 'awaiting_manager' %}
+    <form method="post" action="{% url 'inventory:mine_cancel' req.pk %}">{% csrf_token %}
+      <button class="btn danger wide" type="submit" data-confirm="Cancel this request?">Cancel my request</button>
+    </form>
+  {% endif %}
+  <p style="margin-top:1rem"><strong>Why you asked:</strong> {{ req.reason }}</p>
+  <p><a href="{% url 'inventory:mine' %}">Back to my item requests</a></p>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Ask for an item{% endblock %}
+{% block content %}
+<div class="simple">
+  <h1>Ask for an item</h1>
+  <p>Find the item you need and press <strong>Ask for this</strong>. The Secretary will tell you when it is ready.</p>
+  <form method="get" class="stack-form" style="margin-bottom:1rem">
+    <label for="q">Search</label>
+    <div class="inline-form"><input id="q" name="q" value="{{ f.q }}" placeholder="For example: torch"> <button class="btn secondary" type="submit">Search</button></div>
+  </form>
+  <ul class="choice-list">
+  {% for i in items %}
+    <li>
+      <div><div class="name">{{ i.name }}</div><span class="small muted">{{ i.category }}{% if i.returnable %} · must be returned{% endif %}</span><br>
+        {% if i.qty_available %}<span class="avail">Available</span>{% else %}<span class="avail no">Out of stock</span>{% endif %}</div>
+      <a class="btn" href="{% url 'inventory:request_new' i.pk %}">Ask for this</a>
+    </li>
+  {% empty %}<li class="empty">No items found.</li>{% endfor %}
+  </ul>
+  {% include "partials/pagination.html" %}
+  <p style="margin-top:1rem"><a href="{% url 'inventory:mine' %}">See my item requests</a></p>
+</div>
+{% endblock %}

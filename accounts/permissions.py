@@ -19,3 +19,15 @@ class RoleRequiredMixin(LoginRequiredMixin):
         if request.user.role not in self.allowed_roles:
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
+
+
+# Role groups used by the Secretary operations pages.
+def office_roles():
+    from .models import Role
+
+    return (Role.SECRETARY, Role.MANAGER)
+
+
+def is_office(user):
+    """Secretary or Manager: the people who run clients, money, payroll and stock."""
+    return user.is_authenticated and user.role in office_roles()

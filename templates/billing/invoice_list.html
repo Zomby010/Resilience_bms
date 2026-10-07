@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Invoices{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Invoices</h1><p class="muted">Bills sent to clients. An invoice gets its number only when you send it.</p></div>
+  <a class="btn" href="{% url 'billing:create' %}">New invoice</a>
+</div>
+<div class="grid kpis">
+  <div class="kpi"><div class="num">{{ outstanding|kes0 }}</div><div class="lbl">Still to be paid</div></div>
+  <div class="kpi {% if overdue_count %}gold{% else %}green{% endif %}"><div class="num">{{ overdue_count }}</div><div class="lbl">Overdue invoices</div></div>
+  <div class="kpi slate"><div class="num">{{ draft_count }}</div><div class="lbl">Drafts not sent</div></div>
+</div>
+<div class="card">
+  <form method="get" class="filters">
+    <div><label for="q">Search</label><input id="q" name="q" value="{{ f.q }}" placeholder="Number or client"></div>
+    <div><label for="status">Status</label><select id="status" name="status"><option value="">All</option><option value="unpaid" {% if f.status == 'unpaid' %}selected{% endif %}>Not fully paid</option>{% for v, l in statuses %}<option value="{{ v }}" {% if f.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    <div><label for="from">From</label><input id="from" type="date" name="from" value="{{ f.from }}"></div>
+    <div><label for="to">To</label><input id="to" type="date" name="to" value="{{ f.to }}"></div>
+    <button class="btn secondary" type="submit">Filter</button>
+  </form>
+  {% include "billing/_invoice_table.html" %}
+  {% include "partials/pagination.html" %}
+</div>
+{% endblock %}

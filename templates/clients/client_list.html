@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Clients{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Clients</h1><p class="muted">Everyone the company provides security for. Tap a name to see everything about that client.</p></div>
+  <a class="btn" href="{% url 'clients:create' %}">Add a client</a>
+</div>
+<div class="card">
+  <form method="get" class="filters">
+    <div><label for="q">Search</label><input id="q" name="q" value="{{ f.q }}" placeholder="Name, contact, phone, area"></div>
+    <div><label for="status">Show</label>
+      <select id="status" name="status">
+        <option value="active" {% if status == 'active' %}selected{% endif %}>Active clients</option>
+        <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive clients</option>
+        <option value="all" {% if status == 'all' %}selected{% endif %}>All clients</option>
+      </select></div>
+    <div><label for="supervisor">Supervisor</label>
+      <select id="supervisor" name="supervisor"><option value="">Any</option>
+        <option value="none" {% if f.supervisor == 'none' %}selected{% endif %}>No supervisor</option>
+        {% for s in supervisors %}<option value="{{ s.pk }}" {% if f.supervisor == s.pk|stringformat:"s" %}selected{% endif %}>{{ s }}</option>{% endfor %}
+      </select></div>
+    <button class="btn secondary" type="submit">Filter</button>
+  </form>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Client</th><th>Contact</th><th>Area</th><th>Supervisor</th><th class="num">Open issues</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for c in clients %}
+      <tr>
+        <td><a href="{{ c.get_absolute_url }}"><strong>{{ c.name }}</strong></a></td>
+        <td>{{ c.contact_person|default:"-" }}<br><span class="small muted">{{ c.phone }} {{ c.email }}</span></td>
+        <td>{{ c.area|default:"-" }}</td>
+        <td>{% if c.supervisor %}{{ c.supervisor }}{% else %}<span class="badge off">Supervisor needed</span>{% endif %}</td>
+        <td class="num">{{ c.open_issues }}</td>
+        <td>{% if c.is_active %}<span class="badge completed">Active</span>{% else %}<span class="badge role">Inactive</span>{% endif %}</td>
+      </tr>
+    {% empty %}<tr><td colspan="6" class="empty">No clients match. <a href="{% url 'clients:create' %}">Add a client</a>.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% include "partials/pagination.html" %}
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ invoice }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ invoice.number|default:"Draft invoice" }} {% badge invoice %}</h1>
+  <p class="muted">For <a href="{{ invoice.client.get_absolute_url }}?tab=invoices">{{ invoice.client }}</a>{% if invoice.status != 'draft' and invoice.status != 'cancelled' %} · Balance <strong>{{ invoice.balance|kes }}</strong>{% endif %}</p></div>
+  <div class="actions">
+    {% if invoice.status == 'draft' %}
+      <a class="btn secondary" href="{% url 'billing:edit' invoice.pk %}">Edit</a>
+      <form method="post" action="{% url 'billing:send' invoice.pk %}">{% csrf_token %}<button class="btn" type="submit" data-confirm="Send invoice to {{ invoice.client.email|default:'the client' }}? It will get its number and can no longer be changed.">Send to client</button></form>
+      <form method="post" action="{% url 'billing:delete' invoice.pk %}">{% csrf_token %}<button class="btn danger" type="submit" data-confirm="Delete this draft? It was never sent.">Delete draft</button></form>
+    {% else %}
+      {% if invoice.status != 'cancelled' %}<form method="post" action="{% url 'billing:send' invoice.pk %}">{% csrf_token %}<button class="btn secondary" type="submit" data-confirm="Email this invoice again to {{ invoice.client.email }}?">Email again</button></form>{% endif %}
+      {% if invoice.status == 'sent' or invoice.status == 'part_paid' or invoice.status == 'overdue' %}<a class="btn" href="{% url 'billing:payment' invoice.pk %}">Record a payment</a>{% endif %}
+    {% endif %}
+    <a class="btn secondary" href="{% url 'billing:pdf' invoice.pk %}">Download PDF</a>
+    <a class="btn secondary" href="{% url 'billing:print' invoice.pk %}" target="_blank">Print</a>
+  </div>
+</div>
+{% if invoice.status == 'draft' and missing %}<div class="warn">Before sending, the Manager must fill in the company {{ missing|join:" and " }} in Company settings.</div>{% endif %}
+{% if invoice.status == 'draft' and not invoice.client.email %}<div class="warn">This client has no email address. Add one to the client before sending, or print the invoice.</div>{% endif %}
+{% if invoice.status == 'cancelled' %}<div class="danger-box"><strong>Cancelled</strong> by {{ invoice.cancelled_by }} on {{ invoice.cancelled_at|date:"d M Y" }}: {{ invoice.cancel_reason }}</div>{% endif %}
+
+<div class="grid two">
+  <div class="card">{% include "billing/_invoice_sheet.html" %}</div>
+  <div>
+    <div class="card">
+      <h2>Payments</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Date</th><th>Method</th><th>Reference</th><th class="num">KES</th></tr></thead>
+        <tbody>{% for p in payments %}<tr><td>{{ p.paid_on|date:"d M Y" }}</td><td>{{ p.get_method_display }}</td><td>{{ p.reference|default:"-" }}</td><td class="num">{{ p.amount|money }}</td></tr>{% empty %}<tr><td colspan="4" class="empty">No payments recorded.</td></tr>{% endfor %}</tbody>
+      </table></div>
+    </div>
+    {% if emails %}<div class="card"><h2>Emails</h2><ul class="timeline small">{% for m in emails %}<li><a href="{{ m.get_absolute_url }}">{{ m.created_at|date:"d M Y H:i" }}</a> {% badge m %}{% if m.error %} {{ m.error }}{% endif %}</li>{% endfor %}</ul></div>{% endif %}
+    {% if invoice.status == 'sent' or invoice.status == 'overdue' %}{% if not payments %}
+    <details class="card"><summary><strong>Cancel this invoice</strong></summary>
+      <form method="post" action="{% url 'billing:cancel' invoice.pk %}" class="stack-form" style="margin-top:.75rem">{% csrf_token %}
+        <label for="reason">Why is it being cancelled?</label><textarea id="reason" name="reason" rows="2" required></textarea>
+        <div><button class="btn danger" type="submit" data-confirm="Cancel this invoice? Its number is kept and it cannot be used again.">Cancel invoice</button></div>
+      </form>
+    </details>
+    {% endif %}{% endif %}
+    <div class="card"><h2>History</h2><ul class="timeline small">{% for e in history %}<li>{{ e.at|date:"d M Y H:i" }} · {{ e.actor|default:"System" }}: {{ e.summary }}</li>{% empty %}<li class="empty">Nothing yet.</li>{% endfor %}</ul></div>
+  </div>
+</div>
+{% endblock %}

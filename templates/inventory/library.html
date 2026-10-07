@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Item library{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Item library</h1><p class="muted">Everything the company owns that can be given out: radios, torches, uniforms and more. Tap an item to see its stock and history.</p></div>
+  <div class="actions"><a class="btn secondary" href="{% url 'inventory:categories' %}">Categories</a><a class="btn" href="{% url 'inventory:create' %}">Add an item</a></div>
+</div>
+<div class="grid kpis">
+  <a class="kpi {% if low_count %}gold{% else %}green{% endif %}" href="?stock=low" style="text-decoration:none"><div class="num">{{ low_count }}</div><div class="lbl">Low on stock</div></a>
+  <a class="kpi slate" href="{% url 'inventory:request_list' %}" style="text-decoration:none"><div class="num">{{ waiting }}</div><div class="lbl">Requests waiting for you</div></a>
+  <a class="kpi {% if overdue %}{% else %}green{% endif %}" href="{% url 'inventory:overdue' %}" style="text-decoration:none"><div class="num">{{ overdue }}</div><div class="lbl">Overdue returns</div></a>
+</div>
+<div class="card">
+  <form method="get" class="filters">
+    <div><label for="q">Search</label><input id="q" name="q" value="{{ f.q }}" placeholder="Name or code"></div>
+    <div><label for="category">Category</label><select id="category" name="category"><option value="">All</option>{% for c in categories %}<option value="{{ c.pk }}" {% if f.category == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+    <div><label for="stock">Show</label><select id="stock" name="stock"><option value="">All items</option>
+      <option value="low" {% if f.stock == 'low' %}selected{% endif %}>Low on stock</option>
+      <option value="out" {% if f.stock == 'out' %}selected{% endif %}>None in the store</option>
+      <option value="out_with_people" {% if f.stock == 'out_with_people' %}selected{% endif %}>Out with people</option>
+      <option value="damaged" {% if f.stock == 'damaged' %}selected{% endif %}>Has damaged ones</option></select></div>
+    <div><label for="show">Items</label><select id="show" name="show"><option value="">In use</option><option value="retired" {% if f.show == 'retired' %}selected{% endif %}>Retired</option></select></div>
+    <button class="btn secondary" type="submit">Filter</button>
+  </form>
+  <div class="lib">
+  {% for i in items %}
+    <a class="lib-card {% if i.qty_available == 0 %}out{% elif i.is_low and i.min_stock %}low{% endif %}" href="{{ i.get_absolute_url }}">
+      <span class="code">{{ i.code }} · {{ i.category }}</span>
+      <h3>{{ i.name }}</h3>
+      <span class="stock">{{ i.qty_available }} <span class="small muted">in the store</span></span>
+      <span class="small muted">{{ i.qty_issued }} out with people{% if i.qty_reserved %} · {{ i.qty_reserved }} waiting for collection{% endif %}{% if i.qty_damaged %} · {{ i.qty_damaged }} damaged{% endif %}</span>
+      <span>{% if i.returnable %}<span class="badge reviewed">Must be returned</span>{% else %}<span class="badge role">Given to keep</span>{% endif %}
+        {% if i.needs_manager_approval %}<span class="badge pending">Manager approval</span>{% endif %}
+        {% if i.qty_available == 0 %}<span class="badge off">None left</span>{% elif i.is_low and i.min_stock %}<span class="badge pending">Low</span>{% endif %}</span>
+    </a>
+  {% empty %}<p class="empty">No items match. <a href="{% url 'inventory:create' %}">Add an item</a>.</p>{% endfor %}
+  </div>
+  {% include "partials/pagination.html" %}
+</div>
+{% endblock %}
