@@ -34,7 +34,7 @@
       <tr>
         <td>{{ e.date|date:"d M Y" }}</td>
         <td>{{ e.category }}</td>
-        <td><a href="{{ e.get_absolute_url }}">{{ e.description }}</a></td>
+        <td><a href="{{ e.get_absolute_url }}">{{ e.description }}</a>{% if e.status != 'recorded' %} {% badge e %}{% endif %}</td>
         <td>{{ e.reference|default:"-" }}</td>
         <td class="num">{{ e.amount|floatformat:2 }}</td>
         <td>{{ e.recorded_by }}</td>

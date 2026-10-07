@@ -1,9 +1,13 @@
 from django import forms
 
+from core.services.files import AttachmentField
+
 from .models import Expense, ExpenseCategory
 
 
 class ExpenseForm(forms.ModelForm):
+    receipt = AttachmentField(label="Receipt photo or PDF (optional)")
+
     class Meta:
         model = Expense
         fields = ["date", "category", "description", "amount", "reference"]

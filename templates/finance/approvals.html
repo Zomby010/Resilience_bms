@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Expense approvals{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Expenses waiting for your approval</h1><p class="muted">Expenses above the limit you set in Company settings. Open one to approve or reject it. The limit can be switched off there too.</p></div></div>
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Date</th><th>Description</th><th>Category</th><th class="num">Amount (KES)</th><th>Recorded by</th></tr></thead>
+  <tbody>{% for e in expenses %}<tr><td>{{ e.date|date:"d M Y" }}</td><td><a href="{{ e.get_absolute_url }}">{{ e.description }}</a></td><td>{{ e.category }}</td><td class="num">{{ e.amount|money }}</td><td>{{ e.recorded_by }}</td></tr>
+  {% empty %}<tr><td colspan="5" class="empty">Nothing is waiting for you.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

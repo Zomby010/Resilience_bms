@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ esc.subject }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ esc.subject }} {% badge esc %}</h1>
+<p class="muted">{{ esc.get_kind_display }} · sent by {{ esc.raised_by }} on {{ esc.raised_at|date:"d M Y H:i" }}{% if esc.seen_at %} · seen {{ esc.seen_at|date:"d M Y H:i" }}{% endif %}</p></div>
+{% if record_url %}<a class="btn secondary" href="{{ record_url }}">Open the {{ esc.get_kind_display|lower }}</a>{% endif %}</div>
+{% if esc.status == 'resolved' %}<div class="info"><strong>Resolved</strong> by {{ esc.resolved_by }} on {{ esc.resolved_at|date:"d M Y" }}: {{ esc.resolution_note }}</div>{% endif %}
+<div class="grid two">
+  <div>
+    <div class="card"><h2>What the Secretary needs</h2><div class="report-body">{{ esc.note }}</div></div>
+    {% if record %}
+    <div class="card">
+      <h2>The {{ esc.get_kind_display|lower }}</h2>
+      <p><a href="{{ record_url }}"><strong>{{ record }}</strong></a> {% if record.status %}{% badge record %}{% endif %}</p>
+      {% if record.description %}<div class="report-body">{{ record.description }}</div>{% elif record.body %}<div class="report-body">{{ record.body }}</div>{% endif %}
+      {% if record_client %}<p class="small">Client: <a href="{{ record_client.get_absolute_url }}">{{ record_client }}</a>{% if record_client.supervisor %} · supervisor {{ record_client.supervisor }}{% endif %}</p>{% endif %}
+      {% if record_notes %}<h3 class="small">Latest notes</h3><ul class="timeline small">{% for n in record_notes %}<li>{{ n.created_at|date:"d M H:i" }} {{ n.author|default:"System" }}: {{ n.body|default:n.status_to_label }}</li>{% endfor %}</ul>{% endif %}
+      {% if record_files %}<h3 class="small">Files</h3><ul class="attachments">{% for a in record_files %}<li><a href="{% url 'core:file' a.pk %}">{{ a.original_name }}</a></li>{% endfor %}</ul>{% endif %}
+      {% if client_messages %}<h3 class="small">Recent messages to the client</h3><ul class="timeline small">{% for m in client_messages %}<li><a href="{{ m.get_absolute_url }}">{{ m.subject }}</a> · {{ m.created_at|date:"d M Y" }} {% badge m %}</li>{% endfor %}</ul>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+  <div>
+    <div class="card">
+      <h2>Conversation</h2>
+      {% for r in replies %}<div class="reply"><div class="who">{{ r.author }} · {{ r.created_at|date:"d M Y H:i" }}</div><p>{{ r.body|linebreaksbr }}</p></div>{% empty %}<p class="muted">No replies yet.</p>{% endfor %}
+      {% if esc.status != 'resolved' %}
+      <form method="post" class="stack-form">{% csrf_token %}
+        <label for="body">{% if user.role == 'manager' %}Your answer or note{% else %}Your reply{% endif %}</label>
+        <textarea id="body" name="body" rows="3" required></textarea>
+        <div class="actions">
+          <button class="btn" type="submit" formaction="{% url 'escalations:reply' esc.pk %}">Send reply</button>
+          {% if user.role == 'manager' %}
+            {% if esc.status != 'sent_back' %}<button class="btn secondary" type="submit" formaction="{% url 'escalations:send_back' esc.pk %}">Send back to Secretary</button>{% endif %}
+            <button class="btn secondary" type="submit" formaction="{% url 'escalations:resolve' esc.pk %}" data-confirm="Mark this matter as resolved?">Mark resolved</button>
+          {% endif %}
+        </div>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

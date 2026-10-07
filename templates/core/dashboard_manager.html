@@ -11,6 +11,18 @@
   <div class="kpi slate"><div class="num">{{ month_total|floatformat:0 }}</div><div class="lbl">KES spent, {{ month_label }}</div></div>
 </div>
 
+<div class="card">
+  <h2>Waiting for me {% if waiting_total %}<span class="badge off">{{ waiting_total }}</span>{% endif %}</h2>
+  <ul class="timeline">
+    {% for r in payroll_waiting %}<li><span class="badge pending">Payroll</span> <a href="{{ r.get_absolute_url }}">Approve payroll for {{ r.period|date:"F Y" }}</a> <span class="small muted">net KES {{ r.total_net|money }}</span></li>{% endfor %}
+    {% for e in escalations_waiting %}<li><span class="badge pending">From Secretary</span> <a href="{% url 'escalations:detail' e.pk %}">{{ e.subject }}</a> <span class="small muted">{{ e.raised_at|timesince }} ago</span></li>{% endfor %}
+    {% for r in items_waiting %}<li><span class="badge pending">Item</span> <a href="{{ r.get_absolute_url }}">{{ r.requester }} asked for {{ r.qty_requested }} x {{ r.item.name }}</a></li>{% endfor %}
+    {% if expenses_waiting %}<li><span class="badge pending">Expenses</span> <a href="{% url 'finance:approvals' %}">{{ expenses_waiting }} expense{{ expenses_waiting|pluralize }} above the limit</a></li>{% endif %}
+    {% if not waiting_total %}<li class="empty">Nothing is waiting for you.</li>{% endif %}
+  </ul>
+  <p class="small muted"><a href="{% url 'clients:issue_list' %}">{{ open_issue_count }} open client issue{{ open_issue_count|pluralize }}</a> · <a href="{% url 'inventory:flags' %}">Choose items that need my approval</a></p>
+</div>
+
 <div class="grid two">
   <div class="card">
     <h2>Reports: pending vs. completed <span class="muted small">last 6 months</span></h2>

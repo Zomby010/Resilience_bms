@@ -11,6 +11,21 @@
     <a class="btn secondary" href="{% url 'finance:list' %}">Back</a>
   </div>
 </div>
+{% if expense.status == 'awaiting_approval' %}
+<div class="warn"><strong>Waiting for Manager approval.</strong> It is not counted in totals until approved.
+  {% if user.role == 'manager' %}
+  <form method="post" class="stack-form" style="margin-top:.75rem">{% csrf_token %}
+    <label for="note">Note (needed if you reject)</label><textarea id="note" name="note" rows="2"></textarea>
+    <div class="actions"><button class="btn" type="submit" formaction="{% url 'finance:approve' expense.pk %}">Approve</button>
+    <button class="btn danger" type="submit" formaction="{% url 'finance:reject' expense.pk %}">Reject</button></div>
+  </form>
+  {% endif %}
+</div>
+{% elif expense.status == 'rejected' %}
+<div class="danger-box"><strong>Rejected by {{ expense.decided_by }}</strong>{% if expense.decision_note %}: {{ expense.decision_note }}{% endif %}. Not counted in totals. Editing it sends it for approval again.</div>
+{% elif expense.decided_by %}
+<div class="info">Approved by {{ expense.decided_by }} on {{ expense.decided_at|date:"d M Y" }}.</div>
+{% endif %}
 <div class="card">
   <div class="meta">
     <span>Date: <strong>{{ expense.date|date:"d M Y" }}</strong></span>
@@ -19,6 +34,7 @@
     <span>Reference: <strong>{{ expense.reference|default:"-" }}</strong></span>
     <span>Recorded by: <strong>{{ expense.recorded_by }}</strong></span>
   </div>
+  {% if files %}<h3 class="small">Receipts</h3><ul class="attachments">{% for a in files %}<li><a href="{% url 'core:file' a.pk %}">{{ a.original_name }}</a></li>{% endfor %}</ul>{% endif %}
 </div>
 <div class="card">
   <h2>History</h2>

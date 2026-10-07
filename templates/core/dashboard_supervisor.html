@@ -8,6 +8,14 @@
 
 {% if location_state %}{% include "tracking/_location_card.html" %}{% endif %}
 
+<div class="grid two">
+  <div class="card">
+    <h2>My client issues {% if my_urgent_count %}<span class="badge off">{{ my_urgent_count }} urgent</span>{% endif %} <a class="small" href="{% url 'clients:issue_list' %}">View all</a></h2>
+    <ul class="timeline">{% for i in my_issues %}<li><a href="{{ i.get_absolute_url }}"><strong>{{ i.number }}</strong> {{ i.subject }}</a><br><span class="small muted">{{ i.client }}</span> {% badge i "priority" %} {% badge i %}</li>{% empty %}<li class="empty">No open client issues for you.</li>{% endfor %}</ul>
+  </div>
+  {% include "core/_my_items_card.html" %}
+</div>
+
 <div class="grid kpis">
   <div class="kpi gold"><div class="num">{{ to_review_count }}</div><div class="lbl">Awaiting your review</div></div>
   <div class="kpi slate"><div class="num">{{ team|length }}</div><div class="lbl">Staff on your team</div></div>
