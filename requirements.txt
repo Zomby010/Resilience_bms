@@ -2,3 +2,7 @@ asgiref==3.12.1
 Django==6.1.1
 sqlparse==0.6.0
 tzdata==2026.5
+# Invoice and payroll PDFs (approved at Gate 7). pillow and charset-normalizer are its own requirements.
+reportlab==5.0.1
+pillow==12.3.0
+charset-normalizer==3.5.2

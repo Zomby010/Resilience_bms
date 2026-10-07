@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if invoice %}Edit draft invoice{% else %}New invoice{% endif %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% if invoice %}Edit draft invoice{% else %}New invoice{% endif %}</h1>
+<p class="muted">Fill in the lines. The totals are worked out for you. Nothing is sent until you press Send on the next page.</p></div></div>
+<form method="post" id="invoice-form" data-vat-rate="{{ vat_rate }}">{% csrf_token %}
+  <div class="card fields">
+    {% include "partials/form.html" %}
+  </div>
+  <div class="card">
+    <h2>Lines</h2>
+    {{ formset.management_form }}
+    {% if formset.non_form_errors %}<div class="errorlist">{{ formset.non_form_errors }}</div>{% endif %}
+    <div class="table-wrap"><table id="lines">
+      <thead><tr><th>Description</th><th>Quantity</th><th>Unit price (KES)</th><th class="num">Amount</th><th>Remove</th></tr></thead>
+      <tbody>
+      {% for lf in formset %}
+        <tr class="line">
+          <td>{{ lf.id }}{{ lf.description }}{{ lf.description.errors }}</td>
+          <td>{{ lf.quantity }}{{ lf.quantity.errors }}</td>
+          <td>{{ lf.unit_price }}{{ lf.unit_price.errors }}</td>
+          <td class="num amount">-</td>
+          <td>{{ lf.DELETE }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr><td colspan="3" class="right">Subtotal</td><td class="num" id="subtotal">-</td><td></td></tr>
+        {% if vat_rate %}<tr><td colspan="3" class="right">VAT (if ticked above)</td><td class="num" id="vat">-</td><td></td></tr>{% endif %}
+        <tr class="total-row"><td colspan="3" class="right">Total (KES)</td><td class="num" id="total">-</td><td></td></tr>
+      </tfoot>
+    </table></div>
+    <template id="empty-line">
+      <tr class="line"><td>{{ formset.empty_form.id }}{{ formset.empty_form.description }}</td><td>{{ formset.empty_form.quantity }}</td><td>{{ formset.empty_form.unit_price }}</td><td class="num amount">-</td><td>{{ formset.empty_form.DELETE }}</td></tr>
+    </template>
+    <button class="btn secondary" type="button" id="add-line">Add another line</button>
+    <p class="small muted">The amounts shown here are a preview. The saved invoice is always calculated again by the system.</p>
+  </div>
+  <div class="form-actions">
+    <button class="btn" type="submit">Save draft</button>
+    <a class="btn secondary" href="{% if invoice %}{{ invoice.get_absolute_url }}{% else %}{% url 'billing:list' %}{% endif %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/invoice_lines.js' %}" defer></script>{% endblock %}

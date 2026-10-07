@@ -1,0 +1,31 @@
+<div class="invoice-sheet">
+  <div class="inv-head">
+    <div>
+      {% if company.logo %}<img src="{% url 'core:logo' %}" alt="" class="inv-logo">{% endif %}
+      <strong>{{ company.company_name|default:"Resilience Security" }}</strong><br>
+      {% if company.address %}{{ company.address|linebreaksbr }}<br>{% endif %}
+      {{ company.phone }} {{ company.email }}{% if company.kra_pin %}<br>KRA PIN: {{ company.kra_pin }}{% endif %}
+    </div>
+    <div class="right">
+      <div class="inv-title">INVOICE</div>
+      <strong>{{ invoice.number|default:"DRAFT" }}</strong><br>
+      Date: {{ invoice.invoice_date|date:"d M Y" }}<br>Due: {{ invoice.due_date|date:"d M Y" }}
+    </div>
+  </div>
+  <p><span class="small muted">BILL TO</span><br><strong>{{ invoice.bill_to_name|default:invoice.client.name }}</strong><br>
+    {% if invoice.bill_to_address %}{{ invoice.bill_to_address|linebreaksbr }}{% else %}{{ invoice.client.physical_address }}{% endif %}
+    {% if invoice.bill_to_kra_pin or invoice.client.kra_pin %}<br>KRA PIN: {{ invoice.bill_to_kra_pin|default:invoice.client.kra_pin }}{% endif %}</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Amount (KES)</th></tr></thead>
+    <tbody>
+      {% for l in lines %}<tr><td>{{ l.description }}</td><td class="num">{{ l.quantity|floatformat:"-2" }}</td><td class="num">{{ l.unit_price|money }}</td><td class="num">{{ l.amount|money }}</td></tr>{% endfor %}
+      <tr><td colspan="3" class="right">Subtotal</td><td class="num">{{ invoice.subtotal|money }}</td></tr>
+      {% if invoice.vat_enabled %}<tr><td colspan="3" class="right">VAT {{ invoice.vat_rate|floatformat:"-2" }}%</td><td class="num">{{ invoice.vat_amount|money }}</td></tr>{% endif %}
+      <tr class="total-row"><td colspan="3" class="right">TOTAL</td><td class="num">{{ invoice.total|money }}</td></tr>
+      {% if invoice.amount_paid %}<tr><td colspan="3" class="right">Paid</td><td class="num">{{ invoice.amount_paid|money }}</td></tr>
+      <tr class="total-row"><td colspan="3" class="right">Balance due</td><td class="num">{{ invoice.balance|money }}</td></tr>{% endif %}
+    </tbody>
+  </table></div>
+  {% if invoice.payment_instructions %}<p><span class="small muted">HOW TO PAY</span><br>{{ invoice.payment_instructions|linebreaksbr }}</p>{% endif %}
+  {% if invoice.notes %}<p><span class="small muted">NOTES</span><br>{{ invoice.notes|linebreaksbr }}</p>{% endif %}
+</div>

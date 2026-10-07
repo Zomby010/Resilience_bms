@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ invoice }}</title>
+{% load static %}<link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="print-page">
+<p class="no-print"><button class="btn" onclick="window.print()">Print</button> <a class="btn secondary" href="{{ invoice.get_absolute_url }}">Back</a></p>
+{% include "billing/_invoice_sheet.html" %}
+</body></html>

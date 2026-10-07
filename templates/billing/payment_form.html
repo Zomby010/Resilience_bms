@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Record a payment{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Record a payment for {{ invoice.number }}</h1>
+<p class="muted">{{ invoice.client }} · Total {{ invoice.total|kes }} · Already paid {{ invoice.amount_paid|kes }} · <strong>Balance {{ invoice.balance|kes }}</strong></p></div></div>
+<div class="card">
+  <form method="post" class="fields">{% csrf_token %}
+    {% include "partials/form.html" %}
+    <div class="form-actions"><button class="btn" type="submit">Save payment</button><a class="btn secondary" href="{{ invoice.get_absolute_url }}">Cancel</a></div>
+  </form>
+</div>
+{% endblock %}
