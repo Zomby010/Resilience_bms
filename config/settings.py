@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "reports",
     "finance",
     "core",
+    "tracking",
 ]
 
 MIDDLEWARE = [
@@ -61,6 +62,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "tracking.middleware.LastSeenMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
@@ -76,6 +78,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "tracking.context_processors.location_reminder",
             ],
         },
     },

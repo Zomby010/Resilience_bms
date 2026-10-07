@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Dashboard{% endblock %} | RESILIENCE</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% block head %}{% endblock %}
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -22,6 +23,17 @@
         {% if user.role == 'staff' or user.role == 'supervisor' %}
           <a href="{% url 'reports:create' %}" class="{% if request.resolver_match.url_name == 'create' and ns == 'reports' %}active{% endif %}">Submit a report</a>
         {% endif %}
+      {% endif %}
+
+      {% if user.role == 'staff' or user.role == 'supervisor' %}
+        <div class="group">Location</div>
+        <a href="{% url 'tracking:mine' %}" class="{% if ns == 'tracking' %}active{% endif %}">My location</a>
+      {% elif user.role == 'manager' %}
+        <div class="group">GPS Tracker</div>
+        <a href="{% url 'tracking:tracker' %}" class="{% if request.resolver_match.url_name == 'tracker' %}active{% endif %}">Live tracker</a>
+        <a href="{% url 'tracking:sites' %}" class="{% if ns == 'tracking' and request.resolver_match.url_name in 'sites site_create site_edit' %}active{% endif %}">Work sites</a>
+        <a href="{% url 'tracking:people' %}" class="{% if ns == 'tracking' and request.resolver_match.url_name in 'people person_edit' %}active{% endif %}">Assign sites</a>
+        <a href="{% url 'tracking:history' %}" class="{% if ns == 'tracking' and request.resolver_match.url_name == 'history' %}active{% endif %}">Location history</a>
       {% endif %}
 
       {% if user.role == 'secretary' or user.role == 'manager' %}
@@ -53,8 +65,15 @@
     {% if messages %}
       <ul class="messages" role="status">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>
     {% endif %}
+    {% if location_required and not location_state and request.resolver_match.namespace != 'tracking' %}
+      <div class="location-banner" role="alert">
+        <strong>Location tracking is required during your working hours.</strong>
+        <a class="btn big" href="{% url 'tracking:mine' %}">Turn on location</a>
+      </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 </div>
+{% block scripts %}{% endblock %}
 </body>
 </html>

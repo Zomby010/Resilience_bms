@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Location settings for {{ person }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ person }}</h1><p class="muted">{{ person.get_role_display }}. Choose their work site and working hours.</p></div>
+  <a class="btn secondary" href="{% url 'tracking:people' %}">Back</a>
+</div>
+
+<div class="card">
+  <h2>Right now</h2>
+  <div class="meta">
+    <span>Status: {% include "tracking/_status_badge.html" with status=status %}</span>
+    <span>Tracking: <strong>{{ profile.tracking_on|yesno:"ON,OFF" }}</strong></span>
+    <span>Last update: {{ profile.last_ping_at|date:"d M Y, H:i"|default:"never" }}</span>
+    {% if profile.last_distance_m is not None and profile.tracking_on %}<span>{{ profile.last_distance_m|floatformat:0 }} m from site (GPS ±{{ profile.last_accuracy_m|floatformat:0 }} m)</span>{% endif %}
+  </div>
+  <a class="small" href="{% url 'tracking:history' %}?person={{ person.pk }}">See location history</a>
+</div>
+
+<form method="post" novalidate>
+  {% csrf_token %}
+  <div class="card">
+    <h2>Work site</h2>
+    <div class="fields">{% include "partials/form.html" with form=form %}</div>
+  </div>
+  <div class="card" id="own-hours">
+    <h2>Own working hours</h2>
+    <p class="muted small">Only used when "This person has their own working hours" is ticked above.</p>
+    {% include "tracking/_hours_fields.html" %}
+  </div>
+  <div class="form-actions"><button class="btn big" type="submit">Save</button><a class="btn secondary big" href="{% url 'tracking:people' %}">Cancel</a></div>
+</form>
+{% endblock %}

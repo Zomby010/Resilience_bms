@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}My location{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>My location</h1></div></div>
+
+{% include "tracking/_location_card.html" %}
+
+<div class="card">
+  <h2>Your working hours</h2>
+  {% if hours %}
+    <ul class="plain-list">{% for h in hours %}<li><strong>{{ h.get_weekday_display }}</strong>: {{ h.start|time:"H:i" }} to {{ h.end|time:"H:i" }}{% if h.overnight %} (next day){% endif %}</li>{% endfor %}</ul>
+  {% else %}
+    <p class="muted">No working hours have been set for you yet.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>About location tracking</h2>
+  <ul class="plain-list">
+    <li><strong>Why:</strong> to check that you are at your work site.</li>
+    <li><strong>When:</strong> only while you have turned it on and this page is open. It stops when you press Turn off location, close the page, lock your phone or sign out.</li>
+    <li><strong>Who can see it:</strong> only the Manager. Other staff and supervisors cannot see your location.</li>
+    <li><strong>What is kept:</strong> your location readings are kept for {{ history_days }} days and then deleted.</li>
+    <li><strong>During working hours:</strong> you are expected to keep it on. The Manager is told if it is off.</li>
+  </ul>
+</div>
+{% endblock %}

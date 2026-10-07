@@ -6,6 +6,7 @@ from django.views.generic import TemplateView
 from accounts.models import Role
 from finance.models import Expense
 from reports import services
+from tracking import services as tracking
 
 
 class HomeView(LoginRequiredMixin, TemplateView):
@@ -29,11 +30,14 @@ class HomeView(LoginRequiredMixin, TemplateView):
             ctx.update(_finance_glance())
         elif user.role == Role.SUPERVISOR:
             ctx.update(services.supervisor_dashboard(user))
+            ctx["location_state"] = tracking.my_state(user)
         elif user.role == Role.SECRETARY:
             ctx.update(_finance_glance())
             ctx["recent_expenses"] = Expense.objects.select_related("category")[:8]
         else:
             ctx.update(services.staff_dashboard(user))
+            if tracking.is_tracked(user):
+                ctx["location_state"] = tracking.my_state(user)
         return ctx
 
 

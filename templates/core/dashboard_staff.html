@@ -7,6 +7,8 @@
   <a class="btn" href="{% url 'reports:create' %}">Submit a report</a>
 </div>
 
+{% if location_state %}{% include "tracking/_location_card.html" %}{% endif %}
+
 <div class="grid kpis">
   <div class="kpi gold"><div class="num">{{ pending }}</div><div class="lbl">Pending</div></div>
   <div class="kpi slate"><div class="num">{{ reviewed }}</div><div class="lbl">Reviewed</div></div>

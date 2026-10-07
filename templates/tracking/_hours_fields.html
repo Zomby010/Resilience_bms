@@ -1,0 +1,15 @@
+{# A week of working hours (tracking.forms.HoursForm). #}
+{% if hours_form.non_field_errors %}<div class="errorlist">{{ hours_form.non_field_errors }}</div>{% endif %}
+<div class="table-wrap"><table class="hours">
+  <thead><tr><th>Working day</th><th>Start</th><th>End</th></tr></thead>
+  <tbody>
+  {% for label, on, start, end in hours_form.day_rows %}
+    <tr>
+      <td><label class="check-label">{{ on }} {{ label }}</label></td>
+      <td>{{ start }}{{ start.errors }}</td>
+      <td>{{ end }}{{ end.errors }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+<p class="help muted small">If the end time is earlier than the start (for example 18:00 to 06:00), the shift runs past midnight into the next day.</p>

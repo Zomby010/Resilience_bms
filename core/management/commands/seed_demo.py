@@ -7,7 +7,7 @@ For development/demo databases only - do not run against production.
 """
 import random
 import secrets
-from datetime import timedelta
+from datetime import time, timedelta
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand, CommandError
@@ -17,6 +17,7 @@ from django.utils import timezone
 from accounts.models import Role, User
 from finance.models import Expense, ExpenseCategory, ExpenseLog
 from reports.models import Report, Status
+from tracking.models import Site, TrackingProfile, WorkHours
 
 PEOPLE = [
     # username, first, last, role, supervisor username
@@ -92,6 +93,18 @@ class Command(BaseCommand):
                 recorded_by=users["secretary"],
             )
             ExpenseLog.record(expense, ExpenseLog.Action.CREATED, users["secretary"])
+
+        # Two GPS work sites in Kisumu, weekday day shifts, everyone assigned.
+        sites = [
+            Site.objects.create(name="Kondele Site", latitude=Decimal("-0.083300"), longitude=Decimal("34.772500")),
+            Site.objects.create(name="Milimani Site", latitude=Decimal("-0.101500"), longitude=Decimal("34.752800")),
+        ]
+        for site in sites:
+            WorkHours.objects.bulk_create(
+                [WorkHours(site=site, weekday=d, start=time(7), end=time(18)) for d in range(6)]
+            )
+        for i, username in enumerate(["supervisor1", "staff1", "staff2", "supervisor2", "staff3", "staff4"]):
+            TrackingProfile.objects.create(user=users[username], site=sites[0 if i < 3 else 1])
 
         self.stdout.write(self.style.SUCCESS("Demo data created. One-time passwords (note them down now):"))
         for username, _first, _last, role, _sup in PEOPLE:

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Location history{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Location history</h1><p class="muted">Every location received. Kept for {{ history_days }} days.</p></div>
+</div>
+<div class="card">
+  <form method="get" class="filters">
+    <div><label for="{{ filter_form.person.id_for_label }}">Person</label>{{ filter_form.person }}</div>
+    <div><label for="{{ filter_form.site.id_for_label }}">Site</label>{{ filter_form.site }}</div>
+    <div><label for="{{ filter_form.date.id_for_label }}">Date</label>{{ filter_form.date }}</div>
+    <div><label for="{{ filter_form.status.id_for_label }}">Status</label>{{ filter_form.status }}</div>
+    <button class="btn secondary" type="submit">Filter</button>
+    <a class="small" href="{% url 'tracking:history' %}">Clear</a>
+  </form>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Time</th><th>Person</th><th>Site</th><th>Status</th><th class="num">Distance</th><th class="num">GPS accuracy</th><th>Coordinates</th></tr></thead>
+    <tbody>
+    {% for p in pings %}
+      <tr>
+        <td class="small">{{ p.received_at|date:"d M Y, H:i:s" }}</td>
+        <td>{{ p.user }}</td>
+        <td>{{ p.site|default:"-" }}</td>
+        <td>{% if p.status %}{% include "tracking/_status_badge.html" with status=p.status label=p.get_status_display %}{% else %}-{% endif %}
+          {% if p.flag %}<div class="small" style="color:var(--red-dark)">Ignored: {{ p.flag }}</div>{% endif %}</td>
+        <td class="num">{% if p.distance_m is not None %}{{ p.distance_m|floatformat:0 }} m{% else %}-{% endif %}</td>
+        <td class="num">±{{ p.accuracy_m|floatformat:0 }} m</td>
+        <td class="small"><a href="https://www.openstreetmap.org/?mlat={{ p.latitude|stringformat:'.6f' }}&amp;mlon={{ p.longitude|stringformat:'.6f' }}#map=18/{{ p.latitude|stringformat:'.6f' }}/{{ p.longitude|stringformat:'.6f' }}" target="_blank" rel="noopener noreferrer">{{ p.latitude|stringformat:".6f" }}, {{ p.longitude|stringformat:".6f" }}</a></td>
+      </tr>
+    {% empty %}<tr><td colspan="7" class="empty">No location records match.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% include "partials/pagination.html" %}
+</div>
+{% endblock %}
