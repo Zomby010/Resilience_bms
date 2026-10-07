@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if site %}Edit {{ site.name }}{% else %}Add a site{% endif %}{% endblock %}
+{% block head %}<link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}">{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% if site %}Edit {{ site.name }}{% else %}Add a site{% endif %}</h1>
+  <p class="muted">Enter the site's official work location. Staff and supervisors at this site are compared with it.</p></div>
+  <a class="btn secondary" href="{% url 'tracking:sites' %}">Back to sites</a>
+</div>
+<form method="post" novalidate>
+  {% csrf_token %}
+  <div class="grid two">
+    <div class="card">
+      <h2>Location</h2>
+      <div class="fields">{% include "partials/form.html" with form=form %}</div>
+    </div>
+    <div class="card">
+      <h2>Pick on the map</h2>
+      <p class="muted small">Click or tap the map where the site is. The green circle shows "on location", the orange one "near" (50 m).</p>
+      <div id="site-map" class="map" data-lat="{{ form.latitude.value|default:'' }}" data-lng="{{ form.longitude.value|default:'' }}"
+           data-lat-input="{{ form.latitude.id_for_label }}" data-lng-input="{{ form.longitude.id_for_label }}" data-radius-input="{{ form.radius_m.id_for_label }}"></div>
+      <button type="button" class="btn secondary small" id="use-my-location" style="margin-top:.6rem">Use my current location</button>
+      <p class="small" id="map-msg" role="status"></p>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Working hours</h2>
+    <p class="muted small">Staff and supervisors at this site must share their location during these hours. Untick days off.</p>
+    {% include "tracking/_hours_fields.html" %}
+  </div>
+  {% if people %}
+  <div class="card"><h2>People at this site</h2><p>{% for p in people %}{{ p }}{% if not forloop.last %}, {% endif %}{% endfor %}</p></div>
+  {% endif %}
+  <div class="form-actions"><button class="btn big" type="submit">Save site</button><a class="btn secondary big" href="{% url 'tracking:sites' %}">Cancel</a></div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
+<script src="{% static 'js/site_map.js' %}"></script>
+{% endblock %}

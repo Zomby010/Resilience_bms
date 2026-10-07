@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load tracking_tags %}
 {% block title %}{{ report.title }}{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -17,6 +18,7 @@
     <span>From <strong>{{ report.author }}</strong> ({{ report.author.get_role_display }})</span>
     <span>Submitted {{ report.created_at|date:"d M Y, H:i" }}</span>
     {% if report.author.supervisor %}<span>Supervisor: {{ report.author.supervisor }}</span>{% endif %}
+    {% report_location report %}
   </div>
   <div class="report-body">{{ report.body }}</div>
 </div>

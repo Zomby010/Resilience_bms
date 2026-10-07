@@ -6,6 +6,8 @@
   <a class="btn" href="{% url 'reports:create' %}">Submit a report to management</a>
 </div>
 
+{% if location_state %}{% include "tracking/_location_card.html" %}{% endif %}
+
 <div class="grid kpis">
   <div class="kpi gold"><div class="num">{{ to_review_count }}</div><div class="lbl">Awaiting your review</div></div>
   <div class="kpi slate"><div class="num">{{ team|length }}</div><div class="lbl">Staff on your team</div></div>

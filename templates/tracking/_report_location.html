@@ -1,0 +1,9 @@
+{% if show %}
+  {% if ping %}
+    <span>Location when sent: {% include "tracking/_status_badge.html" with status=ping.status label=ping.get_status_display %}
+      {% if ping.distance_m is not None %}{{ ping.distance_m|floatformat:0 }} m from {{ ping.site }}{% endif %}
+      (GPS update {{ ping.received_at|date:"H:i" }}, ±{{ ping.accuracy_m|floatformat:0 }} m)</span>
+  {% else %}
+    <span>Location when sent: not shared</span>
+  {% endif %}
+{% endif %}

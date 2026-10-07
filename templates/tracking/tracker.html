@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}GPS Tracker{% endblock %}
+{% block head %}<link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}">{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>GPS Tracker</h1><p class="muted">See whether staff and supervisors are at their work sites. This page updates by itself.</p></div>
+  <div class="muted small" id="trk-updated" role="status"></div>
+</div>
+
+<div id="tracker" data-url="{% url 'tracking:api_overview' %}" data-person-url="{% url 'tracking:person_edit' 0 %}">
+  <div class="grid kpis">
+    <div class="kpi green"><div class="num" id="c-on">-</div><div class="lbl">On location</div></div>
+    <div class="kpi gold"><div class="num" id="c-near">-</div><div class="lbl">Near location</div></div>
+    <div class="kpi"><div class="num" id="c-off">-</div><div class="lbl">Off location</div></div>
+    <div class="kpi slate"><div class="num" id="c-tracking_off">-</div><div class="lbl">Tracking off</div></div>
+    <div class="kpi slate"><div class="num" id="c-other">-</div><div class="lbl">Other (no signal, weak GPS, no site)</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Alerts</h2>
+    <ul class="alert-list" id="trk-alerts"></ul>
+  </div>
+
+  <div class="card">
+    <h2>Map <span class="muted small">Inner circle: on location. Outer circle: near (50 m).</span></h2>
+    <div id="trk-map" class="map" role="region" aria-label="Map of work sites and people"></div>
+  </div>
+
+  <div class="card">
+    <h2>Staff and supervisors <a class="small" href="{% url 'tracking:people' %}">Assign sites</a></h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Name</th><th>Role</th><th>Site</th><th>Status</th><th>Online</th><th class="num">Distance</th><th>Last update</th></tr></thead>
+      <tbody id="trk-rows"><tr><td colspan="7" class="empty">Loading...</td></tr></tbody>
+    </table></div>
+  </div>
+
+  <details class="card">
+    <summary><strong>What the statuses mean</strong></summary>
+    <ul class="plain-list">{% for label, help in status_help %}<li><strong>{{ label }}:</strong> {{ help }}</li>{% endfor %}</ul>
+  </details>
+</div>
+<noscript><p class="card">This page needs JavaScript to show live locations.</p></noscript>
+{{ overview|json_script:"tracker-data" }}
+{% endblock %}
+{% block scripts %}
+<script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
+<script src="{% static 'js/tracker.js' %}"></script>
+{% endblock %}

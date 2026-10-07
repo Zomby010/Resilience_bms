@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Assign sites{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Assign sites</h1><p class="muted">Choose the work site for each staff member and supervisor.</p></div>
+  <a class="btn secondary" href="{% url 'tracking:sites' %}">Work sites</a>
+</div>
+<div class="card">
+  <form method="get" class="filters">
+    <div><label for="q">Search</label><input id="q" name="q" value="{{ q }}" placeholder="Name or username"></div>
+    <div><label for="role">Role</label>
+      <select id="role" name="role">
+        <option value="">Staff and supervisors</option>
+        <option value="staff" {% if selected_role == 'staff' %}selected{% endif %}>Staff</option>
+        <option value="supervisor" {% if selected_role == 'supervisor' %}selected{% endif %}>Supervisors</option>
+      </select></div>
+    <button class="btn secondary" type="submit">Search</button>
+  </form>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>Role</th><th>Work site</th><th>Hours</th><th>Status</th><th>Last update</th><th></th></tr></thead>
+    <tbody>
+    {% for p in people %}
+      <tr>
+        <td>{{ p.user }}</td>
+        <td><span class="badge role">{{ p.user.get_role_display }}</span></td>
+        <td>{% if p.site %}{{ p.site }}{% else %}<span class="badge off">No site</span>{% endif %}</td>
+        <td class="small">{% if p.own_hours %}Own hours{% else %}Site hours{% endif %}</td>
+        <td>{% include "tracking/_status_badge.html" with status=p.status %}</td>
+        <td class="small">{{ p.last_ping_at|date:"d M, H:i"|default:"never" }}</td>
+        <td class="right"><a class="btn small" href="{% url 'tracking:person_edit' p.user_id %}">Change</a></td>
+      </tr>
+    {% empty %}<tr><td colspan="7" class="empty">No one matches.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

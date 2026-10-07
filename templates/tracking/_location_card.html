@@ -1,0 +1,32 @@
+{% load static %}
+{# Location tracking card for staff and supervisors. Needs `location_state` (services.my_state). #}
+<section class="card location-card" id="location-card"
+         data-start="{% url 'tracking:api_start' %}" data-stop="{% url 'tracking:api_stop' %}"
+         data-update="{% url 'tracking:api_update' %}" data-me="{% url 'tracking:api_me' %}"
+         data-login="{% url 'accounts:login' %}">
+  <h2>Location tracking</h2>
+  <p class="lead">Turn on your location while you are working. It is used to check that you are at your work site.</p>
+
+  <div class="loc-required" id="loc-required"{% if not location_state.tracking_required %} hidden{% endif %} role="alert">
+    Location tracking is required during your working hours. Please turn on your location.
+  </div>
+
+  <div class="loc-status s-{{ location_state.status }}" id="loc-status">
+    <div class="loc-status-label" id="loc-status-label">{{ location_state.status_label }}</div>
+    <div id="loc-status-text">{{ location_state.status_text }}</div>
+    <div class="loc-details" id="loc-details"></div>
+  </div>
+
+  <button type="button" class="btn big wide" id="loc-toggle" data-on="{{ location_state.tracking_on|yesno:'1,0' }}">
+    {% if location_state.tracking_on %}Turn off location{% else %}Turn on location{% endif %}
+  </button>
+  <p class="loc-msg" id="loc-msg" role="status" aria-live="polite"></p>
+
+  <p class="muted small">
+    {% if location_state.site %}Your work site: <strong>{{ location_state.site }}</strong>.{% else %}You have no work site yet. Please tell your manager.{% endif %}
+    Keep this page open with the screen on while you work. Your location stops being sent if you lock the phone, close this page or sign out.
+  </p>
+  <noscript><p class="loc-required">Location tracking needs JavaScript turned on in your browser.</p></noscript>
+</section>
+{{ location_state|json_script:"location-state" }}
+<script src="{% static 'js/location.js' %}" defer></script>
