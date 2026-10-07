@@ -7,8 +7,20 @@ import logging
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
+from django.core.mail.backends.base import BaseEmailBackend
 
 log = logging.getLogger(__name__)
+
+
+class EmailNotConfigured(Exception):
+    pass
+
+
+class NotConfiguredBackend(BaseEmailBackend):
+    """Used on a live site until EMAIL_HOST is set: refuses to pretend an email was sent."""
+
+    def send_messages(self, email_messages):
+        raise EmailNotConfigured("email is not set up yet")
 
 
 def send(to, subject, body, attachments=()):
@@ -20,6 +32,8 @@ def send(to, subject, body, attachments=()):
         msg.attach(name, content, mime)
     try:
         msg.send(fail_silently=False)
+    except EmailNotConfigured:
+        return False, "Email is not set up on this system yet, so nothing was sent. Tell the client by phone, or ask the Manager to set up email."
     except Exception as exc:  # network, login and provider errors all end up here
         log.warning("Email to %s failed: %s", to, exc)
         return False, f"The email could not be sent ({exc.__class__.__name__}). Check the email settings and try again."

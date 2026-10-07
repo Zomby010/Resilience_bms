@@ -2,6 +2,7 @@ from django.core import mail
 from django.test import override_settings
 from django.urls import reverse
 
+from accounts.models import Role
 from core.models import AuditLog
 from core.testing import OpsTestCase
 from core.workflow import TransitionError
@@ -223,3 +224,29 @@ class EmailRateLimitTests(OpsTestCase):
         self.assertFalse(ok)
         self.assertIn("Too many emails", err)
         self.assertTrue(services.send_message(msg, self.manager)[0])  # the limit is per person
+
+
+class EmailNotSetUpTests(OpsTestCase):
+    @override_settings(EMAIL_BACKEND="core.services.mail.NotConfiguredBackend")
+    def test_live_site_without_email_never_marks_a_message_sent(self):
+        msg = Message.objects.create(client=self.client_a, subject="Hello", body="x", created_by=self.secretary)
+        ok, err = services.send_message(msg, self.secretary)
+        self.assertFalse(ok)
+        self.assertIn("not set up", err)
+        msg.refresh_from_db()
+        self.assertNotEqual(msg.status, Message.Status.SENT)
+
+
+class SupervisorDeactivatedTests(OpsTestCase):
+    def test_switching_off_a_supervisor_hands_their_clients_back(self):
+        self.login(self.manager)
+        resp = self.client.post(reverse("accounts:user_edit", args=[self.sup_a.pk]), {
+            "username": self.sup_a.username, "first_name": "", "last_name": "", "email": "", "phone": "",
+            "role": Role.SUPERVISOR, "supervisor": "", "password1": "",
+        })  # is_active left unticked
+        self.assertEqual(resp.status_code, 302)
+        self.sup_a.refresh_from_db()
+        self.assertFalse(self.sup_a.is_active)
+        self.client_a.refresh_from_db()
+        self.assertIsNone(self.client_a.supervisor)
+        self.assertTrue(Notification.objects.filter(recipient=self.secretary, kind="client.supervisor_needed").exists())

@@ -109,7 +109,7 @@ See `.env.example`. Nothing secret is stored in the code.
 | `DJANGO_ALLOWED_HOSTS` | Comma-separated hostnames. |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | e.g. `https://bms.example.com`. |
 | `DB_ENGINE=postgresql` + `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` | Use PostgreSQL instead of the default SQLite. |
-| `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` | Email account for client emails and invoices. **Without `EMAIL_HOST`, emails are only printed in the console and nothing is sent.** |
+| `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` | Email account for client emails and invoices. **Without `EMAIL_HOST` nothing is sent:** in development emails are printed in the console; on a live site every send stops with "Email is not set up" so nothing is wrongly marked as sent. |
 | `DEFAULT_FROM_EMAIL` | Sender shown on client emails, e.g. `Resilience Security <accounts@example.co.ke>`. |
 | `DJANGO_MEDIA_ROOT` | Folder for uploaded files (receipts, issue photos, logo). Defaults to `media/`. Back it up with the database. |
 
