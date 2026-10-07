@@ -50,6 +50,7 @@ h2 { font-size: 1.15rem; }
   padding: 1.25rem 1rem;
   display: flex; flex-direction: column; gap: 1rem;
   position: sticky; top: 0; height: 100vh;
+  overflow-y: auto; /* long menus scroll inside the dark sidebar on short screens */
 }
 .brand { color: #fff; font-weight: 700; letter-spacing: .08em; font-size: 1.1rem; text-decoration: none; }
 .brand span { display: block; font-size: .7rem; font-weight: 500; letter-spacing: .12em; color: var(--silver); }
@@ -196,7 +197,7 @@ details.card summary { cursor: pointer; }
 
 @media (max-width: 860px) {
   .app { grid-template-columns: 1fr; }
-  .sidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .sidebar { position: static; height: auto; overflow: visible; flex-direction: row; flex-wrap: wrap; align-items: center; }
   .nav { flex-direction: row; flex-wrap: wrap; }
   .nav .group { display: none; }
   .userbox { margin: 0 0 0 auto; border: 0; padding: 0; }
