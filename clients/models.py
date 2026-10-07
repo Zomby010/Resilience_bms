@@ -177,6 +177,10 @@ class IssueNote(models.Model):
     def __str__(self):
         return f"Note on {self.issue.number}"
 
+    @property
+    def status_to_label(self):
+        return Issue.Status(self.status_to).label if self.status_to in Issue.Status.values else self.status_to
+
 
 class Feedback(models.Model):
     class Kind(models.TextChoices):
@@ -229,6 +233,9 @@ class Feedback(models.Model):
     def __str__(self):
         return f"{self.get_kind_display()} from {self.client}: {self.subject}"
 
+    def get_absolute_url(self):
+        return reverse("clients:feedback_detail", args=[self.pk])
+
 
 class Message(models.Model):
     """One entry in a client's communication history (usually an email)."""
@@ -273,3 +280,6 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.get_kind_display()} to {self.client}: {self.subject}"
+
+    def get_absolute_url(self):
+        return reverse("clients:message_detail", args=[self.pk])

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ msg.subject }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ msg.subject }}</h1><p class="muted">To <a href="{{ msg.client.get_absolute_url }}?tab=messages">{{ msg.client }}</a> · {% badge msg %}</p></div>
+  <div class="actions">
+  {% if msg.status == 'draft' or msg.status == 'failed' %}
+    <a class="btn secondary" href="{% url 'clients:message_edit' msg.pk %}">Edit</a>
+    {% if msg.client.email %}<form method="post" action="{% url 'clients:message_send' msg.pk %}">{% csrf_token %}<button class="btn" type="submit">{% if msg.status == 'failed' %}Try again{% else %}Send email now{% endif %}</button></form>{% endif %}
+    <form method="post" action="{% url 'clients:message_offline' msg.pk %}">{% csrf_token %}<button class="btn secondary" type="submit" data-confirm="Record that you told the client by phone or in person?">I told them by phone / in person</button></form>
+  {% endif %}
+  </div>
+</div>
+{% if msg.status == 'failed' %}<div class="danger-box"><strong>This email was not sent.</strong> {{ msg.error }}</div>{% endif %}
+<div class="card">
+  <div class="meta"><span>Type: {{ msg.get_kind_display }}</span><span>Priority: {{ msg.get_priority_display }}</span><span>Written by {{ msg.created_by }} on {{ msg.created_at|date:"d M Y H:i" }}</span>{% if msg.sent_at %}<span>Sent {{ msg.sent_at|date:"d M Y H:i" }} by {{ msg.sent_by }}{% if msg.to_email %} to {{ msg.to_email }}{% endif %}</span>{% endif %}</div>
+  <div class="report-body">{{ msg.body }}</div>
+  {% if files %}<h3 class="small" style="margin-top:1rem">Attached</h3><ul class="attachments">{% for a in files %}<li><a href="{% url 'core:file' a.pk %}">{{ a.original_name }}</a></li>{% endfor %}</ul>{% endif %}
+</div>
+{% endblock %}

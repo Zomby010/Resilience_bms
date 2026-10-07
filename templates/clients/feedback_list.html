@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Client feedback{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Client feedback</h1><p class="muted">Compliments, complaints and suggestions from clients. To record new feedback, open the client and choose "Record feedback".</p></div></div>
+<div class="card">
+  <form method="get" class="filters">
+    <div><label for="status">Status</label><select id="status" name="status"><option value="">All</option>{% for v, l in statuses %}<option value="{{ v }}" {% if f.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    <div><label for="kind">Type</label><select id="kind" name="kind"><option value="">All</option>{% for v, l in kinds %}<option value="{{ v }}" {% if f.kind == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    <button class="btn secondary" type="submit">Filter</button>
+  </form>
+  {% include "clients/_feedback_table.html" %}
+  {% include "partials/pagination.html" %}
+</div>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Supervisor for {{ client.name }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Supervisor for {{ client.name }}</h1>
+<p class="muted">The supervisor is the person responsible for this client. New issues go to them automatically, and they are told when this changes.</p></div></div>
+<div class="grid two">
+  <div class="card">
+    <form method="post" class="fields">{% csrf_token %}
+      {% include "partials/form.html" %}
+      {% if open_issues %}<p class="small muted">This client has {{ open_issues }} open issue{{ open_issues|pluralize }}.</p>{% endif %}
+      <div class="form-actions"><button class="btn" type="submit">Save</button><a class="btn secondary" href="{{ client.get_absolute_url }}">Cancel</a></div>
+    </form>
+  </div>
+  <div class="card">
+    <h2>History</h2>
+    <ul class="timeline small">{% for a in assignments %}<li><strong>{{ a.supervisor|default:"No supervisor" }}</strong><br>{{ a.started_at|date:"d M Y H:i" }} to {% if a.ended_at %}{{ a.ended_at|date:"d M Y H:i" }}{% else %}now{% endif %} · set by {{ a.assigned_by }}</li>{% empty %}<li class="empty">No supervisor has been assigned yet.</li>{% endfor %}</ul>
+  </div>
+</div>
+{% endblock %}

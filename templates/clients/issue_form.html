@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Report a client issue{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Report a client issue</h1><p class="muted">Write what the client reported. The issue is sent straight to that client's supervisor, who is notified.</p></div></div>
+<div class="card">
+  <form method="post" enctype="multipart/form-data" class="fields">{% csrf_token %}
+    {% include "partials/form.html" %}
+    <div class="form-actions"><button class="btn" type="submit">Save and send to supervisor</button><a class="btn secondary" href="{% url 'clients:issue_list' %}">Cancel</a></div>
+  </form>
+</div>
+{% endblock %}

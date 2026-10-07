@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{% if object %}Edit {{ object.name }}{% else %}Add a client{% endif %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% if object %}Edit {{ object.name }}{% else %}Add a client{% endif %}</h1>
+  <p class="muted">Fields marked with a name are required. You need at least a phone number or an email.{% if not object %} If you choose a supervisor, new issues for this client go to them automatically.{% endif %}</p></div>
+</div>
+<div class="card">
+  {% if form.duplicates %}
+    <div class="warn"><strong>Possible duplicate.</strong> These clients look similar:
+      <ul class="plain-list">{% for d in form.duplicates %}<li><a href="{{ d.get_absolute_url }}" target="_blank">{{ d.name }}</a> {{ d.phone }} {{ d.email }}{% if not d.is_active %} (inactive){% endif %}</li>{% endfor %}</ul>
+    </div>
+  {% endif %}
+  <form method="post" class="fields">
+    {% csrf_token %}
+    {% include "partials/form.html" %}
+    <div class="form-actions">
+      <button class="btn" type="submit">Save client</button>
+      <a class="btn secondary" href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'clients:list' %}{% endif %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}GPS sites for {{ client.name }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>GPS sites for {{ client.name }}</h1><p class="muted">Link the work sites from the GPS tracker that belong to this client. Sites already linked to another client are not shown.</p></div></div>
+<div class="card">
+  <form method="post" class="fields">{% csrf_token %}
+    {% include "partials/form.html" %}
+    {% if not form.fields.sites.queryset.exists %}<p class="muted">There are no free GPS sites. The Manager adds sites under GPS Tracker, Work sites.</p>{% endif %}
+    <div class="form-actions"><button class="btn" type="submit">Save</button><a class="btn secondary" href="{{ client.get_absolute_url }}">Cancel</a></div>
+  </form>
+</div>
+{% endblock %}

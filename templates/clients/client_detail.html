@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}{{ client.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ client.name }} {% if not client.is_active %}<span class="badge role">Inactive</span>{% endif %}</h1>
+    <p class="muted">Supervisor: {% if client.supervisor %}<strong>{{ client.supervisor }}</strong>{% else %}<span class="badge off">Supervisor needed</span>{% endif %} · {{ open_issues }} open issue{{ open_issues|pluralize }}</p>
+  </div>
+  {% if office %}
+  <div class="actions">
+    {% if client.is_active %}<a class="btn" href="{% url 'clients:issue_create' %}?client={{ client.pk }}">Report an issue</a>{% endif %}
+    <a class="btn secondary" href="{% url 'clients:message_create' client.pk %}">Send a message</a>
+    <a class="btn secondary" href="{% url 'clients:feedback_create' client.pk %}">Record feedback</a>
+    <a class="btn secondary" href="{% url 'billing:create' %}?client={{ client.pk }}">New invoice</a>
+  </div>
+  {% endif %}
+</div>
+
+<div class="tabs">
+  {% for t in tabs %}<a href="?tab={{ t }}" class="{% if t == tab %}on{% endif %}">{{ t|capfirst }}</a>{% endfor %}
+</div>
+
+{% if tab == "overview" %}
+<div class="grid two">
+  <div class="card">
+    <h2>Details {% if office %}<a class="small" href="{% url 'clients:edit' client.pk %}">Edit</a>{% endif %}</h2>
+    <dl class="facts">
+      <dt>Contact person</dt><dd>{{ client.contact_person|default:"-" }}</dd>
+      <dt>Phone</dt><dd>{{ client.phone|default:"-" }}</dd>
+      <dt>Email</dt><dd>{{ client.email|default:"-" }}</dd>
+      <dt>Location / area</dt><dd>{{ client.area|default:"-" }}</dd>
+      <dt>Physical address</dt><dd>{{ client.physical_address|default:"-" }}</dd>
+      {% if office %}
+      <dt>Postal address</dt><dd>{{ client.postal_address|default:"-" }}</dd>
+      <dt>Service provided</dt><dd>{{ client.service_description|default:"-"|linebreaksbr }}</dd>
+      <dt>Contract</dt><dd>{{ client.contract_start|date:"d M Y"|default:"-" }} to {{ client.contract_end|date:"d M Y"|default:"-" }}</dd>
+      <dt>Monthly charge</dt><dd>{% if client.monthly_charge is not None %}{{ client.monthly_charge|kes }}{% else %}-{% endif %}</dd>
+      <dt>KRA PIN</dt><dd>{{ client.kra_pin|default:"-" }}</dd>
+      {% endif %}
+    </dl>
+    {% if office and client.notes %}<h3 class="small" style="margin-top:1rem">Office notes (never sent to the client)</h3><p>{{ client.notes|linebreaksbr }}</p>{% endif %}
+  </div>
+  <div>
+    <div class="card">
+      <h2>Responsible supervisor {% if office %}<a class="small" href="{% url 'clients:supervisor' client.pk %}">Change</a>{% endif %}</h2>
+      <p>{% if client.supervisor %}<strong>{{ client.supervisor }}</strong>{% if client.supervisor.phone %} · {{ client.supervisor.phone }}{% endif %}{% else %}Nobody yet. New issues wait for the office.{% endif %}</p>
+      {% if office and assignments %}
+        <ul class="timeline small">{% for a in assignments %}<li>{{ a.supervisor|default:"No supervisor" }}: {{ a.started_at|date:"d M Y" }} to {% if a.ended_at %}{{ a.ended_at|date:"d M Y" }}{% else %}now{% endif %} <span class="muted">(set by {{ a.assigned_by }})</span></li>{% endfor %}</ul>
+      {% endif %}
+    </div>
+    <div class="card">
+      <h2>GPS work sites {% if office %}<a class="small" href="{% url 'clients:sites' client.pk %}">Change</a>{% endif %}</h2>
+      {% if sites %}<ul class="plain-list">{% for l in sites %}<li>{{ l.site.name }}</li>{% endfor %}</ul>{% else %}<p class="muted">No GPS sites linked.</p>{% endif %}
+    </div>
+    {% if office %}
+    <div class="card">
+      <h2>Client status</h2>
+      {% if client.is_active %}
+        <form method="post" action="{% url 'clients:deactivate' client.pk %}">{% csrf_token %}<button class="btn danger" data-confirm="Make {{ client.name }} inactive? Nothing is deleted." type="submit">Make inactive</button></form>
+        <p class="small muted">Inactive clients are hidden from lists. Nothing is deleted.</p>
+      {% else %}
+        <form method="post" action="{% url 'clients:reactivate' client.pk %}">{% csrf_token %}<button class="btn" type="submit">Make active again</button></form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% elif tab == "issues" %}
+<div class="card">
+  <h2>Issues {% if office and client.is_active %}<a class="small" href="{% url 'clients:issue_create' %}?client={{ client.pk }}">Report an issue</a>{% endif %}</h2>
+  {% include "clients/_issue_table.html" with issues=issues hide_client=True %}
+</div>
+
+{% elif tab == "messages" %}
+<div class="card">
+  <h2>Messages and emails <a class="small" href="{% url 'clients:message_create' client.pk %}">Send a message</a></h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Date</th><th>Subject</th><th>Type</th><th>Status</th><th>By</th></tr></thead>
+    <tbody>
+    {% for m in client_messages %}
+      <tr><td>{{ m.created_at|date:"d M Y H:i" }}</td><td><a href="{{ m.get_absolute_url }}">{{ m.subject }}</a></td><td>{{ m.get_kind_display }}</td><td>{% badge m %}</td><td>{{ m.sent_by|default:m.created_by }}</td></tr>
+    {% empty %}<tr><td colspan="5" class="empty">No messages yet.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+{% elif tab == "feedback" %}
+<div class="card">
+  <h2>Feedback <a class="small" href="{% url 'clients:feedback_create' client.pk %}">Record feedback</a></h2>
+  {% include "clients/_feedback_table.html" with feedback=feedback hide_client=True %}
+</div>
+
+{% elif tab == "invoices" %}
+<div class="card">
+  <h2>Invoices <a class="small" href="{% url 'billing:create' %}?client={{ client.pk }}">New invoice</a></h2>
+  {% include "billing/_invoice_table.html" with invoices=invoices hide_client=True %}
+</div>
+
+{% elif tab == "history" %}
+<div class="card">
+  <h2>Change history</h2>
+  <ul class="timeline">
+  {% for e in history %}<li><strong>{{ e.summary }}</strong><br><span class="small muted">{{ e.at|date:"d M Y H:i" }} by {{ e.actor|default:"System" }}</span>
+    {% if e.changes %}<div class="small">{% for k, v in e.changes.items %}<div>{{ k }}: {{ v|change_text }}</div>{% endfor %}</div>{% endif %}</li>
+  {% empty %}<li class="empty">No changes recorded.</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+{% endblock %}
