@@ -9,8 +9,11 @@
   var msg = document.getElementById("map-msg");
 
   var map = L.map(box).setView([-0.0917, 34.768], 13);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
+    // OpenStreetMap refuses tile requests without a Referer, and Django sends
+    // "Referrer-Policy: same-origin" by default, so allow the site's origin here.
+    referrerPolicy: "strict-origin-when-cross-origin",
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   }).addTo(map);
 
