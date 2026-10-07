@@ -19,6 +19,11 @@ class ExpenseCategory(models.Model):
 
 
 class Expense(models.Model):
+    class Status(models.TextChoices):
+        RECORDED = "recorded", "Recorded"
+        AWAITING_APPROVAL = "awaiting_approval", "Awaiting Manager approval"
+        REJECTED = "rejected", "Rejected"
+
     date = models.DateField(default=timezone.localdate)
     category = models.ForeignKey(ExpenseCategory, on_delete=models.PROTECT, related_name="expenses")
     description = models.CharField(max_length=255)
@@ -27,6 +32,14 @@ class Expense(models.Model):
     recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="expenses")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # Optional Manager approval above a limit (owner decision D9). Off by default, so every
+    # expense is "recorded" exactly as before.
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.RECORDED, db_index=True)
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decision_note = models.TextField(blank=True)
 
     class Meta:
         ordering = ["-date", "-id"]

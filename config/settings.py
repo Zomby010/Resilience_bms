@@ -53,6 +53,12 @@ INSTALLED_APPS = [
     "finance",
     "core",
     "tracking",
+    "notifications",
+    "escalations",
+    "clients",
+    "billing",
+    "payroll",
+    "inventory",
 ]
 
 MIDDLEWARE = [
@@ -128,6 +134,12 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Uploaded files (attachments, receipts, company logo). Never served directly: downloads go
+# through a view that checks the person may see the record the file belongs to.
+MEDIA_ROOT = Path(os.environ.get("DJANGO_MEDIA_ROOT", BASE_DIR / "media"))
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
+DATA_UPLOAD_MAX_MEMORY_SIZE = 6 * 1024 * 1024
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
