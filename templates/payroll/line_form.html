@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Pay for {{ line.employee_name }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ line.employee_name }}: {{ line.run.period|date:"F Y" }}</h1><p class="muted">Enter amounts in KES. Type in deductions (PAYE, SHIF, NSSF, Housing Levy) as amounts; the system does not calculate tax. Gross and net pay are worked out when you save.</p></div></div>
+<div class="card">
+  <form method="post" class="fields">{% csrf_token %}
+    {% include "partials/form.html" %}
+    <div class="form-actions"><button class="btn" type="submit">Save</button><a class="btn secondary" href="{{ line.run.get_absolute_url }}">Cancel</a></div>
+  </form>
+</div>
+{% endblock %}

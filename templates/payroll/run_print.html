@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payroll {{ run.period|date:"F Y" }}</title>
+{% load static %}<link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="print-page">
+<p class="no-print"><button class="btn" onclick="window.print()">Print</button> <a class="btn secondary" href="{{ run.get_absolute_url }}">Back</a></p>
+<h1>Payroll {{ run.period|date:"F Y" }} <small>({{ run.get_status_display }})</small></h1>
+<p class="small">CONFIDENTIAL. Printed {% now "d M Y H:i" %} by {{ user }}.</p>
+<table>
+  <thead><tr><th>No.</th><th>Name</th><th class="num">Gross</th><th class="num">PAYE</th><th class="num">SHIF</th><th class="num">NSSF</th><th class="num">Housing</th><th class="num">Advance</th><th class="num">Other</th><th class="num">Net pay</th><th>Pay to</th><th>Signature</th></tr></thead>
+  <tbody>
+  {% for l in lines %}<tr><td>{{ l.employee_number }}</td><td>{{ l.employee_name }}</td><td class="num">{{ l.gross|money }}</td><td class="num">{{ l.paye|money }}</td><td class="num">{{ l.shif|money }}</td><td class="num">{{ l.nssf|money }}</td><td class="num">{{ l.housing_levy|money }}</td><td class="num">{{ l.advance|money }}</td><td class="num">{{ l.other_deductions|money }}</td><td class="num"><strong>{{ l.net|money }}</strong></td><td>{{ l.get_payment_method_display }} {{ l.payment_detail }}</td><td></td></tr>{% endfor %}
+  <tr class="total-row"><td colspan="2">Total</td><td class="num">{{ run.total_gross|money }}</td><td colspan="6"></td><td class="num">{{ run.total_net|money }}</td><td colspan="2"></td></tr>
+  </tbody>
+</table>
+</body></html>
