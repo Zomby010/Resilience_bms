@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Item categories{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Item categories</h1><p class="muted">Groups for the item library.</p></div><a class="btn secondary" href="{% url 'inventory:library' %}">Back to library</a></div>
+<div class="grid two">
+  <div class="card"><h2>Add a category</h2>
+    <form method="post" class="fields">{% csrf_token %}{% include "partials/form.html" %}<div class="form-actions"><button class="btn" type="submit">Add</button></div></form>
+  </div>
+  <div class="card"><h2>Categories</h2><ul class="plain-list">{% for c in categories %}<li>{{ c.name }} <span class="muted small">({{ c.n }} item{{ c.n|pluralize }})</span></li>{% endfor %}</ul></div>
+</div>
+{% endblock %}

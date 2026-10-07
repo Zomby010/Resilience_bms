@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Item request sent{% endblock %}
+{% block content %}
+<div class="simple">
+  <div class="done-box">
+    <h1>Item request sent</h1>
+    <p>You asked for <strong>{{ req.qty_requested }} x {{ req.item.name }}</strong>.</p>
+    <p>{% if req.status == 'awaiting_manager' %}The Manager must approve this item first. Then the Secretary will prepare it.{% else %}The Secretary will look at it. You will get a notification when it is ready to collect.{% endif %}</p>
+  </div>
+  <p style="margin-top:1rem"><a class="btn big wide" href="{% url 'inventory:mine_detail' req.pk %}">See the progress</a></p>
+  <p><a class="btn secondary wide" href="{% url 'core:home' %}">Back to my dashboard</a></p>
+</div>
+{% endblock %}

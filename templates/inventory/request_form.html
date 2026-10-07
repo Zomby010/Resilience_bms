@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Ask for {{ item.name }}{% endblock %}
+{% block content %}
+<div class="simple">
+  <h1>Ask for: {{ item.name }}</h1>
+  {% if not item.qty_available %}<div class="warn">This item is out of stock right now. You can still ask; the Secretary will tell you when there is one.</div>{% endif %}
+  {% if item.returnable %}<p>You must give this item back when you are told to.</p>{% else %}<p>This item is given to you to keep.</p>{% endif %}
+  <div class="card">
+    <form method="post" class="fields">{% csrf_token %}
+      {% include "partials/form.html" %}
+      <div class="form-actions"><button class="btn big wide" type="submit">Send my request</button></div>
+      <a href="{% url 'inventory:browse' %}">Go back</a>
+    </form>
+  </div>
+</div>
+{% endblock %}
