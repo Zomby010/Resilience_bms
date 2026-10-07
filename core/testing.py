@@ -23,6 +23,12 @@ class CompanyTestCase(TestCase):
         cls.staff_b1 = make("staffb1", Role.STAFF, cls.sup_b)
         cls.secretary = make("secretary", Role.SECRETARY)
 
+    def setUp(self):
+        super().setUp()
+        from django.core.cache import cache
+
+        cache.clear()  # the per-user email rate limit lives in the cache
+
     def login(self, user):
         self.client.force_login(user)
         return self.client
@@ -36,6 +42,8 @@ class OpsTestCase(CompanyTestCase):
         super().setUpTestData()
         from datetime import date, timedelta
         from decimal import Decimal
+
+        from django.utils import timezone
 
         from billing.models import Invoice, InvoiceLine
         from clients import services as client_services
@@ -70,5 +78,5 @@ class OpsTestCase(CompanyTestCase):
         PayProfile.objects.create(user=cls.staff_a1, basic_salary=Decimal("15000"))
         cls.payroll_run = PayrollRun.objects.create(period=date(2026, 2, 1), created_by=cls.secretary)
         cls.escalation = Escalation.objects.create(kind="other", subject="Need advice", note="Please advise", raised_by=cls.secretary)
-        cls.today = date.today()
-        cls.later = date.today() + timedelta(days=7)
+        cls.today = timezone.localdate()  # the company's date (Nairobi), not the server's
+        cls.later = cls.today + timedelta(days=7)

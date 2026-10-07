@@ -76,3 +76,13 @@ def change_text(value):
         old, new = ("-" if v in (None, "") else v for v in value)
         return f"{old} → {new}"
     return "-" if value in (None, "") else value
+
+
+@register.filter
+def kes0(value):
+    """1234.5 -> 'KES 1,235' (whole shillings, for big dashboard numbers)."""
+    try:
+        amount = Decimal(value or 0)
+    except (InvalidOperation, TypeError):
+        return value
+    return f"KES {amount:,.0f}"

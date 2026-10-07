@@ -211,3 +211,15 @@ class MessageAndFeedbackTests(OpsTestCase):
     def test_phone_response_sends_no_email(self):
         services.respond_to_feedback(self.feedback, self.secretary, "Called them.", Feedback.Channel.PHONE)
         self.assertEqual(len(mail.outbox), 0)
+
+
+class EmailRateLimitTests(OpsTestCase):
+    def test_twenty_emails_a_minute_per_person(self):
+        for i in range(services.EMAILS_PER_MINUTE):
+            msg = Message.objects.create(client=self.client_a, subject=f"N{i}", body="x", created_by=self.secretary)
+            self.assertTrue(services.send_message(msg, self.secretary)[0])
+        msg = Message.objects.create(client=self.client_a, subject="One too many", body="x", created_by=self.secretary)
+        ok, err = services.send_message(msg, self.secretary)
+        self.assertFalse(ok)
+        self.assertIn("Too many emails", err)
+        self.assertTrue(services.send_message(msg, self.manager)[0])  # the limit is per person

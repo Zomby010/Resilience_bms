@@ -1,3 +1,4 @@
+import re
 from datetime import timedelta
 
 from django.urls import reverse
@@ -11,6 +12,11 @@ from . import services
 from .models import Item, ItemRequest, StockMovement
 
 R = ItemRequest.Status
+
+
+def strip_tokens(html):
+    """Remove random CSRF tokens so number checks can't match them by chance."""
+    return re.sub(r'name="csrfmiddlewaretoken" value="[^"]*"', "", html)
 
 
 def counts(item):
@@ -186,11 +192,11 @@ class RequestFlowTests(OpsTestCase):
             services.cancel_by_requester(self.req_a1, self.staff_a1)
 
     def test_requester_pages_show_no_stock_counts(self):
-        Item.objects.filter(pk=self.item.pk).update(qty_available=37)
+        Item.objects.filter(pk=self.item.pk).update(qty_available=4817)
         self.login(self.staff_a1)
-        page = self.client.get(reverse("inventory:browse")).content.decode()
+        page = strip_tokens(self.client.get(reverse("inventory:browse")).content.decode())
         self.assertIn("Available", page)
-        self.assertNotIn("37", page)
+        self.assertNotIn("4817", page)
 
 
 class ReturnRuleTests(OpsTestCase):

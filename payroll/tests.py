@@ -1,3 +1,4 @@
+import re
 from datetime import date
 from decimal import Decimal
 
@@ -109,7 +110,7 @@ class PayrollTests(OpsTestCase):
         for user, url in ((self.manager, reverse("accounts:team")), (self.sup_a, reverse("core:home")),
                           (self.staff_a1, reverse("core:home")), (self.staff_a1, reverse("accounts:profile"))):
             self.login(user)
-            page = self.client.get(url).content.decode()
+            page = re.sub(r'name="csrfmiddlewaretoken" value="[^"]*"', "", self.client.get(url).content.decode())
             self.assertNotIn("15,000", page)
             self.assertNotIn("15000", page)
 

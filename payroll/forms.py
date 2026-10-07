@@ -60,3 +60,4 @@ class AddPersonForm(forms.Form):
         if run is not None:
             qs = qs.exclude(pk__in=run.lines.values("employee_id"))
         self.fields["person"].queryset = qs
+        self.fields["person"].empty_label = "Choose a person"
