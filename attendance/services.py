@@ -94,7 +94,7 @@ def sign_in(user, data, now=None):
         lat, lng, accuracy, _ = tracking.parse_update(data, now)
     except tracking.LocationError as exc:
         raise AttendanceError(str(exc))
-    profile = TrackingProfile.objects.select_for_update().select_related("site").get(pk=tracking.profile_for(user).pk)
+    profile = TrackingProfile.objects.select_for_update(of=("self",)).select_related("site").get(pk=tracking.profile_for(user).pk)
     site = profile.site
     if site is None or not site.is_active:
         raise AttendanceError("You have not been given a site yet. Ask the Manager to assign you to a site.")
