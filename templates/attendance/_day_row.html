@@ -1,0 +1,5 @@
+<tr><td><strong>{{ row.person }}</strong> <span class="small muted">{{ row.person.get_role_display }}</span></td><td>{{ row.site|default:"-" }}</td>
+  <td>{% if row.record.signed_in_at %}{{ row.record.signed_in_at|time:"H:i" }}{% if row.record.distance_m is not None %} <span class="small muted">{{ row.record.distance_m|floatformat:0 }} m from site</span>{% endif %}{% elif row.record %}{{ row.record.get_method_display }}{% else %}-{% endif %}</td>
+  <td><span class="badge {{ row.tone }}">{{ row.label }}</span>{% if row.record.note %}<br><span class="small">{{ row.record.note }}</span>{% endif %}</td>
+  <td>{% if row.record %}{% badge row.record %}{% else %}-{% endif %}</td>
+  {% if user.role == 'manager' and not board.completed %}<td>{% with next="day" %}{% include "attendance/_row_actions.html" %}{% endwith %}</td>{% endif %}</tr>

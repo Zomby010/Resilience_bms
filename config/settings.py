@@ -59,6 +59,9 @@ INSTALLED_APPS = [
     "billing",
     "payroll",
     "inventory",
+    "leave",
+    "attendance",
+    "operations",
 ]
 
 MIDDLEWARE = [

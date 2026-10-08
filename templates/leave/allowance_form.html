@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Leave days for {{ person }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Leave days for {{ person }} in {{ year }}</h1>
+  <p class="muted">Enter how many days {{ person }} is allowed for each type of leave this year. They will only see their own days and what is left.</p></div>
+  <a class="btn secondary" href="{% url 'leave:allowances' %}?year={{ year }}">Back to everyone</a></div>
+<div class="grid two">
+  <div class="card">
+    <form method="post" class="fields">{% csrf_token %}
+      <input type="hidden" name="year" value="{{ year }}">
+      {% include "partials/form.html" %}
+      <div class="form-actions"><button class="btn" type="submit">Save leave days</button></div>
+    </form>
+  </div>
+  <div class="card"><h2>What {{ person }} sees now</h2>
+    <ul class="timeline small">{% for b in balances %}<li>{{ b.text }}</li>{% endfor %}</ul></div>
+</div>
+{% endblock %}

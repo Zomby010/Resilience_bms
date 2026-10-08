@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Report sick{% endblock %}
+{% block content %}
+<div class="simple">
+  <h1>Report sick</h1>
+  <p>Sick leave counts straight away. You do not need to wait for approval. Bring or upload the sick sheet as soon as you can.</p>
+  <div class="card">
+    <form method="post" enctype="multipart/form-data" class="fields">{% csrf_token %}
+      {% include "partials/form.html" %}
+      <div class="form-actions"><button class="btn big wide" type="submit">Send</button></div>
+      <a href="{% url 'leave:mine' %}">Go back</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

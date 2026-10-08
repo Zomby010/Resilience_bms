@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Sick leave for {{ sick.user }}{% endblock %}
+{% block content %}
+<div class="simple">
+  <h1>Sick leave: {{ sick.user }}</h1>
+  <div class="status-big">{{ sick.get_status_display }}</div>
+  <div class="card">
+    <dl class="facts">
+      <dt>First day</dt><dd>{{ sick.first_day|date:"l d M Y" }}</dd>
+      <dt>Last day</dt><dd>{{ sick.last_day|date:"l d M Y" }} ({{ sick.days }} day{{ sick.days|pluralize }})</dd>
+      <dt>Reported</dt><dd>{{ sick.created_at|date:"d M Y H:i" }} by {{ sick.reported_by }}</dd>
+      {% if sees_files %}<dt>Sick days this year</dt><dd>{{ sick_balance }}</dd>{% endif %}
+      {% if sees_files and sick.comment %}<dt>Note</dt><dd>{{ sick.comment|linebreaksbr }}</dd>{% endif %}
+      {% if sick.reviewed_by %}<dt>Checked</dt><dd>{{ sick.reviewed_by }}, {{ sick.reviewed_at|date:"d M Y" }}</dd>{% endif %}
+      {% if sick.review_note and sees_files %}<dt>Office note</dt><dd>{{ sick.review_note|linebreaksbr }}</dd>{% endif %}
+    </dl>
+  </div>
+
+  {% if sees_files %}
+  <div class="card">
+    <h2>Sick sheet</h2>
+    <p class="small muted">Private. Only {% if sick.user_id == user.pk %}you{% else %}{{ sick.user }}{% endif %}, the Secretary and the Manager can open it.</p>
+    {% if notes %}<ul class="attachments">{% for n in notes %}<li>{% if n.file %}<a href="{% url 'leave:sheet' n.pk %}" target="_blank" rel="noopener">{{ n.original_name }}</a>{% else %}{{ n.original_name }} <span class="small muted">(file deleted {{ n.removed_at|date:"d M Y" }}, keep period ended)</span>{% endif %} <span class="small muted">{{ n.uploaded_at|date:"d M Y" }}</span></li>{% endfor %}</ul>
+    {% else %}<p>No sick sheet yet.</p>{% endif %}
+    <form method="post" enctype="multipart/form-data" action="{% url 'leave:sick_sheet' sick.pk %}" class="fields">{% csrf_token %}
+      {% with form=sheet_form %}{% include "partials/form.html" %}{% endwith %}
+      <button class="btn big wide" type="submit">Upload sick sheet</button>
+    </form>
+  </div>
+  {% else %}
+  <div class="info">Sick sheet: {% if note_count %}given to the office{% else %}not given yet{% endif %}. Medical papers are private to the person and the office.</div>
+  {% endif %}
+
+  {% if can_change %}
+  <div class="card">
+    <h2>Back at work earlier or later?</h2>
+    <form method="post" action="{% url 'leave:sick_last_day' sick.pk %}" class="fields">{% csrf_token %}
+      {% with form=last_day_form %}{% include "partials/form.html" %}{% endwith %}
+      <button class="btn secondary" type="submit">Change the last day</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if can_review %}
+  <div class="card">
+    <h2>Check the sick sheet</h2>
+    <form method="post" class="stack-form">{% csrf_token %}
+      <label for="note">Note (needed for "not accepted" or "ask again")</label>
+      <textarea id="note" name="note" rows="2"></textarea>
+      <div class="actions">
+        {% if sick.status != 'accepted' %}<button class="btn" type="submit" formaction="{% url 'leave:sick_accept' sick.pk %}">Accept</button>{% endif %}
+        {% if sick.status != 'certificate_needed' %}<button class="btn secondary" type="submit" formaction="{% url 'leave:sick_again' sick.pk %}">Ask for a proper sick sheet</button>{% endif %}
+        {% if sick.status != 'not_accepted' %}<button class="btn secondary" type="submit" formaction="{% url 'leave:sick_reject' sick.pk %}" data-confirm="Mark this sick leave as not accepted?">Not accepted</button>{% endif %}
+      </div>
+    </form>
+  </div>
+  {% endif %}
+  <p><a href="{% if sick.user_id == user.pk %}{% url 'leave:mine' %}{% else %}{% url 'leave:sick_list' %}{% endif %}">Go back</a></p>
+</div>
+{% endblock %}

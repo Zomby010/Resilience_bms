@@ -306,3 +306,24 @@ dl.facts dd { margin: 0; color: var(--black); }
 .print-page { background: #fff; padding: 1.5rem; }
 #lines input[type=text], #lines input[type=number] { width: 100%; padding: .45rem .55rem; border: 1px solid var(--silver); border-radius: 8px; font: inherit; }
 #lines td:first-child { min-width: 220px; }
+
+/* attendance */
+.att-board { padding: 1rem 1.25rem; }
+.att-board-head { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; align-items: center; justify-content: space-between; margin-bottom: .75rem; }
+.att-board-head h2 { margin: 0; text-transform: uppercase; letter-spacing: .05em; font-size: 1.05rem; }
+.att-total { font-size: 1rem; }
+.att-total strong { font-size: 1.5rem; color: var(--green); }
+.off-text { color: var(--red-dark); font-weight: 600; }
+.att-sites { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: .6rem; }
+.att-site { border: 1px solid var(--border); border-radius: 8px; padding: .6rem .75rem; background: #fafbfc; }
+.att-site.short { border-color: var(--red); background: var(--red-bg); }
+.att-site-name { font-weight: 700; color: var(--black); }
+.att-site-count { font-size: .85rem; margin: .2rem 0 .35rem; }
+.att-names { list-style: none; padding: 0; margin: 0; font-size: .85rem; display: grid; gap: .1rem; }
+.att-names .in { color: var(--green); }
+.att-names .out { color: var(--red-dark); }
+.att-names .away, .att-names .later { color: var(--muted); }
+form.inline, details.inline { display: inline-block; margin: 0 .2rem .2rem 0; vertical-align: top; }
+details.inline > summary { list-style: none; cursor: pointer; }
+details.inline > summary::-webkit-details-marker { display: none; }
+details.inline[open] .stack-form { margin-top: .4rem; min-width: 220px; }

@@ -10,18 +10,20 @@ register = template.Library()
 TONES = {
     "completed": {
         "resolved", "closed", "responded", "sent", "paid", "approved", "returned", "recorded",
-        "recorded_offline", "issued_keep",
+        "recorded_offline", "issued_keep", "accepted", "present",
     },
     "reviewed": {
         "assigned", "in_progress", "reviewed", "submitted", "under_review", "ready", "issued", "seen",
-        "part_paid",
+        "part_paid", "certificate_received", "waiting_manager", "late",
     },
     "pending": {
         "new", "waiting_feedback", "draft", "pending", "awaiting_manager", "return_claimed", "open",
-        "awaiting_approval", "revision_required", "sent_back",
+        "awaiting_approval", "revision_required", "sent_back", "waiting", "certificate_needed",
+        "waiting_supervisor", "on_leave", "sick",
     },
     "off": {
-        "supervisor_needed", "failed", "overdue", "cancelled", "rejected", "lost", "escalated", "urgent", "high",
+        "supervisor_needed", "failed", "overdue", "cancelled", "rejected", "lost", "escalated", "urgent", "high", "not_accepted",
+        "absent",
     },
 }
 _TONE_OF = {value: tone for tone, values in TONES.items() for value in values}

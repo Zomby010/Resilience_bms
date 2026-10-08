@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Ask for leave{% endblock %}
+{% block content %}
+<div class="simple">
+  <h1>Ask for leave</h1>
+  <p>Choose the type of leave and the days. {% if user.role == 'staff' %}Your supervisor will answer.{% else %}The Manager will answer.{% endif %}</p>
+  <div class="card">
+    <form method="post" class="fields">{% csrf_token %}
+      {% include "partials/form.html" %}
+      <div class="form-actions"><button class="btn big wide" type="submit">Send</button></div>
+      <a href="{% url 'leave:mine' %}">Go back</a>
+    </form>
+  </div>
+</div>
+{% endblock %}
