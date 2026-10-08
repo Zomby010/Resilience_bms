@@ -15,7 +15,8 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
-MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+MAX_UPLOAD_BYTES = 4 * 1024 * 1024  # Vercel refuses requests over 4.5 MB
+STORED_FILE_MAX_BYTES = 5 * 1024 * 1024  # database limit; older files may be up to 5 MB
 ALLOWED_MIME_TYPES = ("application/pdf", "image/jpeg", "image/png")
 
 
@@ -98,7 +99,7 @@ class Attachment(models.Model):
         indexes = [models.Index(fields=["content_type", "object_id"])]
         constraints = [
             models.CheckConstraint(condition=Q(mime_type__in=ALLOWED_MIME_TYPES), name="attachment_allowed_type"),
-            models.CheckConstraint(condition=Q(size_bytes__lte=MAX_UPLOAD_BYTES), name="attachment_max_size"),
+            models.CheckConstraint(condition=Q(size_bytes__lte=STORED_FILE_MAX_BYTES), name="attachment_max_size"),
         ]
 
     def __str__(self):

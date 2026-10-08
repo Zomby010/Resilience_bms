@@ -71,7 +71,7 @@ class SickForm(PersonChoiceMixin, forms.Form):
 
 
 class SheetForm(forms.Form):
-    sheet = AttachmentField(required=True, label="Sick sheet", help_text="A photo or PDF, up to 5 MB.")
+    sheet = AttachmentField(required=True, label="Sick sheet", help_text="A photo or PDF, up to 4 MB.")
 
 
 class LastDayForm(forms.Form):

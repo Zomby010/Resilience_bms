@@ -1,7 +1,7 @@
 """Permission matrix (Gate 3 §5), uploads, protected downloads, audit log and menus."""
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.forms import ValidationError
-from django.test import override_settings
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from core.models import Attachment, AuditLog
@@ -176,3 +176,19 @@ class CompanySettingsTests(OpsTestCase):
         })
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Enter the amount above which")
+
+
+@override_settings(CRON_SECRET="s3cret")
+class CronDailyViewTests(TestCase):
+    def test_needs_the_secret(self):
+        self.assertEqual(self.client.get("/cron/daily/").status_code, 404)
+        self.assertEqual(self.client.get("/cron/daily/", HTTP_AUTHORIZATION="Bearer wrong").status_code, 404)
+
+    def test_runs_the_checks(self):
+        response = self.client.get("/cron/daily/", HTTP_AUTHORIZATION="Bearer s3cret")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("location_records_deleted", response.json())
+
+    @override_settings(CRON_SECRET="")
+    def test_off_without_a_secret(self):
+        self.assertEqual(self.client.get("/cron/daily/", HTTP_AUTHORIZATION="Bearer ").status_code, 404)

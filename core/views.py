@@ -1,7 +1,10 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q, Sum
-from django.http import FileResponse, Http404
+import secrets
+
+from django.conf import settings
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -158,3 +161,22 @@ class AuditLogView(RoleRequiredMixin, ListView):
         ctx["query_string"] = params.urlencode()
         ctx["f"] = self.request.GET
         return ctx
+
+
+class CronDailyView(View):
+    """Vercel Cron's daily call: the daily checks plus the GPS alert check and clean-up.
+
+    Only answers when the request carries CRON_SECRET, which Vercel sends as a Bearer token.
+    """
+
+    def get(self, request):
+        expected = f"Bearer {settings.CRON_SECRET}"
+        if not settings.CRON_SECRET or not secrets.compare_digest(request.headers.get("Authorization", ""), expected):
+            raise Http404
+        from .checks import run_daily_checks
+
+        result = run_daily_checks() or {"already_ran_today": True}
+        tracking.ensure_profiles()
+        tracking.evaluate_alerts()
+        result["location_records_deleted"] = tracking.purge_history()
+        return JsonResponse(result)

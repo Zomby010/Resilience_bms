@@ -162,6 +162,13 @@ class SickLeave(models.Model):
         return (self.last_day - self.first_day).days + 1
 
 
+def sick_note_storage():
+    """Sick sheets get their own private bucket when files are kept in the cloud."""
+    from django.core.files.storage import default_storage, storages
+
+    return storages["sicksheets"] if "sicksheets" in settings.STORAGES else default_storage
+
+
 def sick_note_path(instance, filename):
     # A separate folder from ordinary attachments, with a random name: nothing about the person or the illness.
     ext = {"application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png"}.get(instance.mime_type, "bin")
@@ -172,7 +179,7 @@ class SickNote(models.Model):
     """A sick sheet. The file is deleted after the keep period; this row stays as a record that one was given."""
 
     sick_leave = models.ForeignKey(SickLeave, on_delete=models.CASCADE, related_name="notes")
-    file = models.FileField(upload_to=sick_note_path, blank=True)
+    file = models.FileField(upload_to=sick_note_path, storage=sick_note_storage, blank=True)
     original_name = models.CharField(max_length=200)
     mime_type = models.CharField(max_length=50)
     size_bytes = models.PositiveIntegerField()

@@ -15,6 +15,12 @@ DARK = colors.HexColor("#140102")
 GREY = colors.HexColor("#64748b")
 
 
+def _logo_bytes(logo):
+    # Read through the storage: in the cloud the logo has no local file path.
+    with logo.open("rb") as fh:
+        return BytesIO(fh.read())
+
+
 def _p(text, style):
     return Paragraph(escape(str(text or "")).replace("\n", "<br/>"), style)
 
@@ -38,7 +44,7 @@ def invoice_pdf(invoice):
     left = []
     if company.logo:
         try:
-            left.append(Image(company.logo.path, width=38 * mm, height=18 * mm, kind="proportional"))
+            left.append(Image(_logo_bytes(company.logo), width=38 * mm, height=18 * mm, kind="proportional"))
         except Exception:  # a missing or unreadable logo never stops the invoice
             pass
     left.append(_p(company.company_name or "Resilience Security", bold))

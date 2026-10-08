@@ -98,9 +98,24 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# SQLite keeps local setup to zero steps. For production set DATABASE_URL-style
-# values below (e.g. PostgreSQL) via the DB_* variables.
-if os.environ.get("DB_ENGINE") == "postgresql":
+# SQLite keeps local setup to zero steps. In production use PostgreSQL, given either as one
+# DATABASE_URL (what Neon and Vercel's Neon integration provide) or as the separate DB_* variables.
+if os.environ.get("DATABASE_URL"):
+    from urllib.parse import parse_qs, urlparse
+
+    _db_url = urlparse(os.environ["DATABASE_URL"])
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": _db_url.path.lstrip("/"),
+            "USER": _db_url.username,
+            "PASSWORD": _db_url.password,
+            "HOST": _db_url.hostname,
+            "PORT": str(_db_url.port or 5432),
+            "OPTIONS": {"sslmode": parse_qs(_db_url.query).get("sslmode", ["require"])[0]},
+        }
+    }
+elif os.environ.get("DB_ENGINE") == "postgresql":
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -109,6 +124,7 @@ if os.environ.get("DB_ENGINE") == "postgresql":
             "PASSWORD": os.environ["DB_PASSWORD"],
             "HOST": os.environ.get("DB_HOST", "localhost"),
             "PORT": os.environ.get("DB_PORT", "5432"),
+            "OPTIONS": {"sslmode": os.environ.get("DB_SSLMODE", "prefer")},
         }
     }
 else:
@@ -118,6 +134,9 @@ else:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+if DATABASES["default"]["ENGINE"].endswith("postgresql"):
+    # Neon's pooled connections (PgBouncer) don't keep server-side cursors between queries.
+    DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
 
 AUTH_USER_MODEL = "accounts.User"
 
@@ -141,11 +160,39 @@ STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# Uploaded files (attachments, receipts, company logo). Never served directly: downloads go
-# through a view that checks the person may see the record the file belongs to.
+# Uploaded files (attachments, receipts, company logo, sick sheets). Never served directly:
+# downloads go through a view that checks the person may see the record the file belongs to.
 MEDIA_ROOT = Path(os.environ.get("DJANGO_MEDIA_ROOT", BASE_DIR / "media"))
-FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
-DATA_UPLOAD_MAX_MEMORY_SIZE = 6 * 1024 * 1024
+# Vercel refuses requests over 4.5 MB, so uploads stay under 4 MB (see core.models.MAX_UPLOAD_BYTES).
+FILE_UPLOAD_MAX_MEMORY_SIZE = 4 * 1024 * 1024
+DATA_UPLOAD_MAX_MEMORY_SIZE = 4 * 1024 * 1024 + 256 * 1024
+
+# Hosted (Vercel has no lasting disk): with AWS_ENDPOINT_URL_S3 set, files go to private Neon buckets,
+# sick sheets in their own bucket. The AWS_* names are the ones `neon env pull` writes.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+if os.environ.get("AWS_ENDPOINT_URL_S3"):
+    def _bucket(name):
+        return {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+                "bucket_name": name,
+                "endpoint_url": os.environ["AWS_ENDPOINT_URL_S3"],
+                "region_name": os.environ.get("AWS_REGION", ""),
+                "addressing_style": "path",
+                "signature_version": "s3v4",
+                "default_acl": None,
+                "file_overwrite": False,
+            },
+        }
+
+    STORAGES["default"] = _bucket(os.environ.get("UPLOADS_BUCKET", "uploads"))
+    STORAGES["sicksheets"] = _bucket(os.environ.get("SICKSHEETS_BUCKET", "sicksheets"))
+
+# Vercel Cron calls /cron/daily/ with this secret; without it the address does not exist.
+CRON_SECRET = os.environ.get("CRON_SECRET", "")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

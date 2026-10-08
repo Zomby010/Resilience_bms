@@ -14,6 +14,12 @@ from core.templatetags.ui import masked
 from .services import payslip_rows
 
 
+def _logo_bytes(logo):
+    # Read through the storage: in the cloud the logo has no local file path.
+    with logo.open("rb") as fh:
+        return BytesIO(fh.read())
+
+
 def payslip_pdf(line):
     company = CompanySettings.load()
     run = line.run
@@ -29,7 +35,7 @@ def payslip_pdf(line):
     left = []
     if company.logo:
         try:
-            left.append(Image(company.logo.path, width=38 * mm, height=18 * mm, kind="proportional"))
+            left.append(Image(_logo_bytes(company.logo), width=38 * mm, height=18 * mm, kind="proportional"))
         except Exception:  # a missing or unreadable logo never stops the payslip
             pass
     left.append(_p(company.company_name or "Resilience Security", bold))

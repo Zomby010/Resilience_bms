@@ -27,7 +27,7 @@ class PhotosField(AttachmentField):
 
 
 class IncidentForm(forms.ModelForm):
-    photos = PhotosField(label="Photos (optional)", help_text=f"Up to {MAX_PHOTOS} photos. JPG, PNG or PDF, up to 5 MB each.")
+    photos = PhotosField(label="Photos (optional)", help_text=f"Up to {MAX_PHOTOS} photos. JPG, PNG or PDF, up to 4 MB each.")
 
     class Meta:
         model = Incident
