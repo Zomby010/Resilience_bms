@@ -163,7 +163,8 @@ class CompanySettingsTests(OpsTestCase):
         self.login(self.manager)
         resp = self.client.post(reverse("core:company_settings"), {
             "company_name": "Resilience Security Ltd", "phone": "0711000000", "email": "a@example.com",
-            "vat_rate": "16", "invoice_due_days": "14",
+            "vat_rate": "16", "invoice_due_days": "14", "late_after_minutes": "15", "sick_note_due_days": "3",
+            "sick_note_keep_days": "365",
         })
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(AuditLog.objects.filter(action="settings.updated").exists())
