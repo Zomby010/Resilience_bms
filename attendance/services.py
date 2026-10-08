@@ -342,7 +342,7 @@ def _state(record, away, shift, profile, now, completed):
             return "off_location"
         return "late" if record.outcome == O.LATE else "on_duty"
     if shift is None:
-        return "absent" if completed else "day_off"
+        return "day_off"
     if now < shift[0]:
         return "not_started"
     return "absent" if completed or now >= shift[1] else "not_signed_in"
