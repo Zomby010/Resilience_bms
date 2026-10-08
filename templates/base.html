@@ -85,6 +85,7 @@
 
       <div class="group">Account</div>
       <a href="{% url 'accounts:profile' %}" class="{% if un == 'profile' %}active{% endif %}">My details</a>
+      <a href="{% url 'payslips:mine' %}" class="{% if ns == 'payslips' %}active{% endif %}">My payslips</a>
       <a href="{% url 'accounts:password_change' %}">Change password</a>
     </nav>
     {% endwith %}

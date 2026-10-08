@@ -30,6 +30,7 @@ urlpatterns = [
     # issues
     path("issues/", views.IssueListView.as_view(), name="issue_list"),
     path("issues/new/", views.IssueCreateView.as_view(), name="issue_create"),
+    path("issues/history/", views.IssueHistoryView.as_view(), name="issue_history"),
     path("issues/<int:pk>/", views.IssueDetailView.as_view(), name="issue_detail"),
     path("issues/<int:pk>/note/", views.IssueNoteView.as_view(), name="issue_note"),
     path("issues/<int:pk>/status/", views.IssueStatusView.as_view(), name="issue_status"),

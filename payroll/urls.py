@@ -20,4 +20,7 @@ urlpatterns = [
     path("<int:pk>/reopen/", views.ManagerAction.as_view(action="reopen"), name="reopen"),
     path("<int:pk>/export.csv", views.ExportCsvView.as_view(), name="export"),
     path("<int:pk>/print/", views.PrintView.as_view(), name="print"),
+    path("<int:pk>/payslips/", views.RunPayslipsView.as_view(), name="payslips"),
+    path("<int:pk>/payslips/<int:line>/", views.OfficePayslipView.as_view(), name="payslip"),
+    path("<int:pk>/payslips/<int:line>/payslip.pdf", views.OfficePayslipView.as_view(), {"pdf": True}, name="payslip_pdf"),
 ]

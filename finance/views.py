@@ -1,18 +1,15 @@
-import csv
-
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q, Sum
-from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
-from django.utils.dateparse import parse_date
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
 from accounts.models import Role
 from accounts.permissions import RoleRequiredMixin
 
-from core.mixins import ActionView
+from core.filters import apply_dates, query_string
+from core.mixins import ActionView, CsvExportMixin, FilterContextMixin, csv_time
 from core.services.files import attachments_for, save_attachment
 
 from . import services
@@ -24,11 +21,13 @@ VIEW_ROLES = (Role.SECRETARY, Role.MANAGER)
 EDIT_ROLES = (Role.SECRETARY,)
 
 
-class ExpenseListView(RoleRequiredMixin, ListView):
+class ExpenseListView(RoleRequiredMixin, CsvExportMixin, ListView):
     allowed_roles = VIEW_ROLES
     template_name = "finance/expense_list.html"
     context_object_name = "expenses"
     paginate_by = 25
+    csv_filename = "expenditure.csv"
+    csv_header = ["Date", "Category", "Description", "Amount (KES)", "Reference", "Status", "Recorded by"]
 
     def get_filtered(self):
         qs = Expense.objects.select_related("category", "recorded_by")
@@ -40,30 +39,14 @@ class ExpenseListView(RoleRequiredMixin, ListView):
             )
         if g.get("category", "").isdigit():
             qs = qs.filter(category_id=int(g["category"]))
-        date_from, date_to = parse_date(g.get("from", "")), parse_date(g.get("to", ""))
-        if date_from:
-            qs = qs.filter(date__gte=date_from)
-        if date_to:
-            qs = qs.filter(date__lte=date_to)
-        return qs
+        return apply_dates(qs, g, "date")
 
     def get_queryset(self):
         return self.get_filtered()
 
-    def render_to_response(self, context, **kwargs):
-        if self.request.GET.get("export") == "csv":
-            response = HttpResponse(content_type="text/csv")
-            response["Content-Disposition"] = 'attachment; filename="expenditure.csv"'
-            writer = csv.writer(response)
-            writer.writerow(["Date", "Category", "Description", "Amount (KES)", "Reference", "Recorded by"])
-            for e in self.get_filtered():
-                # Prefix cells that spreadsheets would treat as formulas (CSV injection).
-                desc = e.description
-                if desc[:1] in ("=", "+", "-", "@"):
-                    desc = "'" + desc
-                writer.writerow([e.date, e.category.name, desc, e.amount, e.reference, e.recorded_by])
-            return response
-        return super().render_to_response(context, **kwargs)
+    def csv_rows(self, qs):
+        for e in qs:
+            yield [e.date, e.category.name, e.description, e.amount, e.reference, e.get_status_display(), e.recorded_by]
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -77,9 +60,7 @@ class ExpenseListView(RoleRequiredMixin, ListView):
         ctx["can_edit"] = self.request.user.role in EDIT_ROLES
         g = self.request.GET
         ctx.update(q=g.get("q", ""), f_category=g.get("category", ""), f_from=g.get("from", ""), f_to=g.get("to", ""))
-        params = g.copy()
-        params.pop("page", None)
-        ctx["query_string"] = params.urlencode()
+        ctx["query_string"] = query_string(self.request)
         return ctx
 
 
@@ -167,16 +148,35 @@ class ExpenseDeleteView(RoleRequiredMixin, DeleteView):
         return response
 
 
-class HistoryView(RoleRequiredMixin, ListView):
+class HistoryView(RoleRequiredMixin, CsvExportMixin, FilterContextMixin, ListView):
     """Full expenditure history, including edits and deletions."""
 
     allowed_roles = VIEW_ROLES
     template_name = "finance/history.html"
     context_object_name = "entries"
     paginate_by = 50
+    csv_filename = "expenditure-history.csv"
+    csv_header = ["When", "Action", "Expense no.", "By", "Details"]
 
     def get_queryset(self):
-        return ExpenseLog.objects.select_related("by")
+        qs = ExpenseLog.objects.select_related("by", "expense")
+        g = self.request.GET
+        if g.get("action") in ExpenseLog.Action.values:
+            qs = qs.filter(action=g["action"])
+        q = (g.get("q") or "").strip().lstrip("#")
+        if q:
+            cond = Q(details__icontains=q)
+            if q.isdigit():
+                cond |= Q(expense_number=int(q))
+            qs = qs.filter(cond)
+        return apply_dates(qs, g, "at")
+
+    def csv_rows(self, qs):
+        for e in qs:
+            yield [csv_time(e.at), e.get_action_display(), e.expense_number, e.by, e.details]
+
+    def get_context_data(self, **kwargs):
+        return {**super().get_context_data(**kwargs), "actions": ExpenseLog.Action.choices}
 
 
 class CategoryView(RoleRequiredMixin, CreateView):

@@ -3,6 +3,14 @@
 {% block content %}
 <div class="page-head"><div><h1>Expenditure history</h1><p class="muted">Every create, edit and delete, kept permanently.</p></div></div>
 <div class="card">
+  <form method="get" class="filters">
+    <div><label for="q">Search</label><input id="q" name="q" value="{{ f.q }}" placeholder="Expense number or words"></div>
+    <div><label for="action">Action</label><select id="action" name="action"><option value="">Any</option>{% for v, l in actions %}<option value="{{ v }}" {% if f.action == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    <div><label for="from">From</label><input id="from" type="date" name="from" value="{{ f.from }}"></div>
+    <div><label for="to">To</label><input id="to" type="date" name="to" value="{{ f.to }}"></div>
+    <button class="btn secondary" type="submit">Filter</button>
+    <a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}export=csv">Download CSV</a>
+  </form>
   <div class="table-wrap">
   <table>
     <thead><tr><th>When</th><th>Action</th><th>Expense</th><th>By</th><th>Details</th></tr></thead>

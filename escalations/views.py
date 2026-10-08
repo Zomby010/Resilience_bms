@@ -1,12 +1,14 @@
 from django import forms
 from django.contrib import messages
+from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import redirect
 from django.views.generic import DetailView, FormView, ListView
 
 from accounts.models import Role
 from core.access import can_view
-from core.mixins import ActionView, FilterContextMixin, OfficeRequiredMixin
+from core.filters import apply_dates
+from core.mixins import ActionView, CsvExportMixin, FilterContextMixin, OfficeRequiredMixin, csv_time
 from core.workflow import TransitionError
 
 from . import services
@@ -59,23 +61,36 @@ class EscalationCreateView(OfficeRequiredMixin, FormView):
         return redirect("escalations:detail", pk=esc.pk)
 
 
-class EscalationListView(OfficeRequiredMixin, FilterContextMixin, ListView):
+class EscalationListView(OfficeRequiredMixin, CsvExportMixin, FilterContextMixin, ListView):
     template_name = "escalations/escalation_list.html"
     context_object_name = "escalations"
     paginate_by = 30
+    csv_filename = "sent-to-manager.csv"
+    csv_header = ["Sent", "Subject", "Type", "Status", "Sent by", "Note", "Answered by", "Answered", "Answer"]
 
     def get_queryset(self):
         qs = Escalation.objects.select_related("raised_by", "resolved_by")
-        status = self.request.GET.get("status", "open")
+        g = self.request.GET
+        status = g.get("status", "open")
         if status == "open":
             qs = qs.exclude(status=Escalation.Status.RESOLVED)
         elif status in Escalation.Status.values:
             qs = qs.filter(status=status)
-        return qs
+        if g.get("kind") in Escalation.Kind.values:
+            qs = qs.filter(kind=g["kind"])
+        q = (g.get("q") or "").strip()
+        if q:
+            qs = qs.filter(Q(subject__icontains=q) | Q(note__icontains=q) | Q(resolution_note__icontains=q))
+        return apply_dates(qs, g, "raised_at")
+
+    def csv_rows(self, qs):
+        for e in qs:
+            yield [csv_time(e.raised_at), e.subject, e.get_kind_display(), e.get_status_display(), e.raised_by, e.note,
+                   e.resolved_by or "", csv_time(e.resolved_at), e.resolution_note]
 
     def get_context_data(self, **kwargs):
         return {**super().get_context_data(**kwargs), "statuses": Escalation.Status.choices,
-                "status": self.request.GET.get("status", "open")}
+                "kinds": Escalation.Kind.choices, "status": self.request.GET.get("status", "open")}
 
 
 class EscalationDetailView(OfficeRequiredMixin, DetailView):

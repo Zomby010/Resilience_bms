@@ -23,4 +23,6 @@ def can_view(user, obj):
         return office or obj.requester_id == user.pk
     if label in ("payroll.payrollrun",):
         return office
+    if label == "payroll.payrollline":  # a payslip: the office, or the person it belongs to once approved
+        return office or (obj.employee_id == user.pk and obj.run.status == "approved")
     return False
