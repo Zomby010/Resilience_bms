@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ incident.number }}</title>
+{% load static %}<link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="print-page">
+<p class="no-print"><button class="btn" onclick="window.print()">Print</button> <a class="btn secondary" href="{{ incident.get_absolute_url }}">Back</a></p>
+<h1>Incident report {{ incident.number }}</h1>
+{% include "incidents/_incident_facts.html" %}
+{% if photos %}<h3>Photos</h3><ul class="attachments">{% for a in photos %}<li>{{ a.original_name }}</li>{% endfor %}</ul>{% endif %}
+{% if notes %}<h3>Notes</h3>
+<ul class="timeline">{% for n in notes %}<li><span class="small muted">{{ n.created_at|date:"d M Y H:i" }} · {{ n.author|default:"System" }}{% if n.status_to and n.status_to != n.status_from %} · {{ n.status_to_label }}{% endif %}</span>{% if n.body %}<br>{{ n.body|linebreaksbr }}{% endif %}</li>{% endfor %}</ul>{% endif %}
+</body></html>

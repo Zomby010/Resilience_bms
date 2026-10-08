@@ -23,4 +23,6 @@ def can_view(user, obj):
         return office or obj.requester_id == user.pk
     if label in ("payroll.payrollrun",):
         return office
+    if label == "incidents.incident":
+        return type(obj).objects.visible_to(user).filter(pk=obj.pk).exists()
     return False

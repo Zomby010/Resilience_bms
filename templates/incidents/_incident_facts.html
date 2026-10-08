@@ -1,0 +1,17 @@
+<dl class="facts">
+  <dt>Site</dt><dd>{{ incident.site }}</dd>
+  <dt>When it happened</dt><dd>{{ incident.occurred_at|date:"d M Y H:i" }}</dd>
+  <dt>Type</dt><dd>{{ incident.get_kind_display }}</dd>
+  <dt>How serious</dt><dd>{% badge incident "severity" %}</dd>
+  <dt>Status</dt><dd>{% badge incident %}</dd>
+  <dt>Police told</dt><dd>{% if incident.police_reported %}Yes, OB number {{ incident.police_ob_number }}{% else %}No{% endif %}</dd>
+  <dt>Client told</dt><dd>{{ incident.client_told|yesno:"Yes,No" }}</dd>
+  <dt>Reported by</dt><dd>{{ incident.reported_by }} on {{ incident.reported_at|date:"d M Y H:i" }}</dd>
+  {% if incident.supervisor_reviewed_at %}<dt>Reviewed by supervisor</dt><dd>{{ incident.supervisor_reviewed_by }} on {{ incident.supervisor_reviewed_at|date:"d M Y H:i" }}</dd>{% endif %}
+  {% if incident.manager_reviewed_at %}<dt>Reviewed by manager</dt><dd>{{ incident.manager_reviewed_by }} on {{ incident.manager_reviewed_at|date:"d M Y H:i" }}</dd>{% endif %}
+  {% if incident.closed_at %}<dt>Closed</dt><dd>{{ incident.closed_by }} on {{ incident.closed_at|date:"d M Y H:i" }}</dd>{% endif %}
+</dl>
+<h3>What happened</h3>
+<div class="report-body">{{ incident.what_happened|linebreaksbr }}</div>
+{% if incident.who_involved %}<h3>Who was involved</h3><div class="report-body">{{ incident.who_involved|linebreaksbr }}</div>{% endif %}
+{% if incident.action_taken %}<h3>Action taken</h3><div class="report-body">{{ incident.action_taken|linebreaksbr }}</div>{% endif %}

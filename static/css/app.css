@@ -114,7 +114,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 form.stack { display: grid; gap: 1rem; max-width: 640px; }
 .field label { display: block; font-weight: 600; font-size: .9rem; margin-bottom: .25rem; color: var(--black); }
 .field input[type=text], .field input[type=email], .field input[type=password], .field input[type=number],
-.field input[type=date], .field select, .field textarea, .filters input, .filters select {
+.field input[type=date], .field input[type=datetime-local], .field select, .field textarea, .filters input, .filters select {
   width: 100%; padding: .6rem .75rem; border: 1px solid var(--silver); border-radius: 8px; font: inherit; background: #fff; color: var(--black);
 }
 .field .help { font-size: .8rem; color: var(--muted); margin-top: .2rem; }

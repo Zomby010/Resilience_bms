@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Report an incident{% endblock %}
+{% block content %}
+<div class="simple">
+  <h1>Report an incident</h1>
+  <p>Tell the office what happened. Write simply. Add photos if you have them.</p>
+  <div class="card">
+    <form method="post" enctype="multipart/form-data" class="fields">{% csrf_token %}
+      {% include "partials/form.html" %}
+      <div class="form-actions"><button class="btn big wide" type="submit">Send my report</button></div>
+      <a href="{% url 'incidents:list' %}">Go back</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ incident.number }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ incident.number }}: {{ incident.get_kind_display }} at {{ incident.site }}</h1>
+    <p class="muted">{% badge incident "severity" %} · {% badge incident %}</p>
+  </div>
+  <div class="actions">
+    <a class="btn secondary" href="{% url 'incidents:print' incident.pk %}">Print</a>
+    <a class="btn secondary" href="{% url 'incidents:list' %}">Back to the list</a>
+  </div>
+</div>
+
+<div class="grid two">
+  <div>
+    <div class="card">
+      <h2>The report</h2>
+      {% include "incidents/_incident_facts.html" %}
+      <h3>Photos</h3>
+      {% if photos %}<ul class="attachments">{% for a in photos %}<li><a href="{% url 'core:file' a.pk %}">{{ a.original_name }}</a> <span class="small muted">({{ a.uploaded_by }}, {{ a.uploaded_at|date:"d M" }})</span></li>{% endfor %}</ul>
+      {% else %}<p class="muted">No photos.</p>{% endif %}
+    </div>
+
+    {% if can.supervisor_review or can.manager_review or can.close or can.reopen %}
+    <div class="card">
+      <h2>What do you want to do?</h2>
+      <form method="post" class="stack-form">{% csrf_token %}
+        <label for="action-note">Note <span class="muted small">{% if can.reopen %}(needed when you reopen){% else %}(optional){% endif %}</span></label>
+        <textarea id="action-note" name="body" rows="2" placeholder="What you checked or decided"></textarea>
+        <div class="actions">
+          {% if can.supervisor_review %}<button class="btn big" type="submit" formaction="{% url 'incidents:supervisor_review' incident.pk %}">I have reviewed this</button>{% endif %}
+          {% if can.manager_review %}<button class="btn big" type="submit" formaction="{% url 'incidents:manager_review' incident.pk %}">I have reviewed this</button>{% endif %}
+          {% if can.close %}<button class="btn secondary big" type="submit" formaction="{% url 'incidents:close' incident.pk %}" data-confirm="Close this incident?">Close incident</button>{% endif %}
+          {% if can.reopen %}<button class="btn secondary big" type="submit" formaction="{% url 'incidents:reopen' incident.pk %}">Reopen incident</button>{% endif %}
+        </div>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Notes</h2>
+    {% if can.note %}
+    <form method="post" action="{% url 'incidents:note' incident.pk %}" class="stack-form" style="margin-bottom:1rem">{% csrf_token %}
+      <label for="note-body">Add a note</label>
+      <textarea id="note-body" name="body" rows="2" required></textarea>
+      <div><button class="btn" type="submit">Add note</button></div>
+    </form>
+    {% endif %}
+    <ul class="timeline">
+    {% for n in notes %}
+      <li>
+        <div class="small muted">{{ n.created_at|date:"d M Y H:i" }} · {{ n.author|default:"System" }}{% if n.status_to and n.status_to != n.status_from %} · status changed to <strong>{{ n.status_to_label }}</strong>{% endif %}</div>
+        {% if n.body %}<div>{{ n.body|linebreaksbr }}</div>{% endif %}
+      </li>
+    {% empty %}<li class="empty">No notes yet.</li>{% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

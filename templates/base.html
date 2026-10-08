@@ -27,6 +27,10 @@
         {% endif %}
       {% endif %}
 
+      <div class="group">Incidents</div>
+      <a href="{% url 'incidents:create' %}" class="{% if ns == 'incidents' and un == 'create' %}active{% endif %}">Report an incident</a>
+      <a href="{% url 'incidents:list' %}" class="{% if ns == 'incidents' and un != 'create' %}active{% endif %}">{% if user.role == 'staff' %}My incidents{% else %}Incidents{% endif %}</a>
+
       {% if user.role == 'staff' or user.role == 'supervisor' %}
         <div class="group">Location</div>
         <a href="{% url 'tracking:mine' %}" class="{% if ns == 'tracking' %}active{% endif %}">My location</a>
