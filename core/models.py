@@ -38,6 +38,19 @@ class CompanySettings(models.Model):
     expense_approval_enabled = models.BooleanField(default=False)
     expense_approval_limit = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     last_checks_at = models.DateTimeField(null=True, blank=True)
+    # Attendance, leave and sick leave.
+    late_after_minutes = models.PositiveSmallIntegerField(
+        "late after (minutes)", default=15,
+        help_text="Someone who signs in more than this many minutes after their shift starts is marked late.",
+    )
+    sick_note_due_days = models.PositiveSmallIntegerField(
+        "sick sheet expected within (days)", default=3,
+        help_text="A reminder goes out if no sick sheet has been uploaded this many days after sick leave starts.",
+    )
+    sick_note_keep_days = models.PositiveSmallIntegerField(
+        "keep sick sheets for (days)", default=365, validators=[MinValueValidator(30)],
+        help_text="Sick sheet files are deleted after this many days. The dates of the sick leave are kept.",
+    )
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
