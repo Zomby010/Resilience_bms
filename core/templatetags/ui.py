@@ -14,14 +14,15 @@ TONES = {
     },
     "reviewed": {
         "assigned", "in_progress", "reviewed", "submitted", "under_review", "ready", "issued", "seen",
-        "part_paid",
+        "part_paid", "supervisor_reviewed", "manager_reviewed",
     },
     "pending": {
         "new", "waiting_feedback", "draft", "pending", "awaiting_manager", "return_claimed", "open",
-        "awaiting_approval", "revision_required", "sent_back",
+        "awaiting_approval", "revision_required", "sent_back", "reported",
     },
     "off": {
         "supervisor_needed", "failed", "overdue", "cancelled", "rejected", "lost", "escalated", "urgent", "high",
+        "critical",
     },
 }
 _TONE_OF = {value: tone for tone, values in TONES.items() for value in values}
