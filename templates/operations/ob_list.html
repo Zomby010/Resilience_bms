@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Occurrence Book{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Occurrence Book (OB)</h1>
+  <p class="muted">Everything that happens at a site, written as it happens. Entries are never changed or deleted: a mistake is put right with a new entry.</p></div>
+  <div class="actions"><a class="btn" href="{% url 'operations:ob_write' %}">Write in the OB</a>
+  <a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}print=1" target="_blank" rel="noopener">Print</a>
+  {% if can_export %}<a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}export=csv">Download (CSV)</a>{% endif %}</div></div>
+{% if quick %}
+<div class="card"><h2>Quick entry for {{ my_site }}</h2>
+  <div class="actions">{% for code, entry in quick.items %}<form method="post" action="{% url 'operations:ob_quick' code %}">{% csrf_token %}<button class="btn big" type="submit">{{ entry.1 }}</button></form>{% endfor %}</div></div>
+{% endif %}
+<div class="card">
+  <form method="get" class="filters">
+    <div><label for="site">Site</label><select id="site" name="site"><option value="">All my sites</option>{% for s in sites %}<option value="{{ s.pk }}" {% if f.site == s.pk|stringformat:"s" %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
+    <div><label for="kind">Kind</label><select id="kind" name="kind"><option value="">Any</option>{% for v, l in kinds %}<option value="{{ v }}" {% if f.kind == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    <div><label for="from">From</label><input id="from" type="date" name="from" value="{{ f.from }}"></div>
+    <div><label for="to">To</label><input id="to" type="date" name="to" value="{{ f.to }}"></div>
+    <div><label for="q">Search</label><input id="q" name="q" value="{{ f.q }}" placeholder="Words or OB number"></div>
+    <button class="btn secondary" type="submit">Filter</button>
+  </form>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Entry</th><th>When</th><th>Site</th><th>Kind</th><th>What happened</th><th>Written by</th><th></th></tr></thead>
+    <tbody>{% for e in entries %}<tr>
+      <td><strong>{{ e.number }}</strong></td><td>{{ e.occurred_at|date:"d M Y H:i" }}</td><td>{{ e.site }}</td><td>{{ e.get_kind_display }}</td>
+      <td>{% if e.corrects %}<span class="badge pending">Corrects {{ e.corrects.number }}</span> {% endif %}{{ e.text|linebreaksbr }}{% if e.incident_id %} <a href="{% url 'incidents:detail' e.incident_id %}">Open incident</a>{% endif %}</td>
+      <td>{{ e.written_by }}<br><span class="small muted">{{ e.written_at|date:"d M H:i" }}</span></td>
+      <td><a class="small" href="{% url 'operations:ob_write' %}?corrects={{ e.pk }}">Correct</a></td></tr>
+    {% empty %}<tr><td colspan="7" class="empty">No OB entries.</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% include "partials/pagination.html" %}
+</div>
+{% endblock %}

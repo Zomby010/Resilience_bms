@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Site visit{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Visit to {{ visit.site }}</h1><p class="muted">{{ visit.visited_at|date:"l d M Y H:i" }} by {{ visit.supervisor }}</p></div>
+  <a class="btn secondary" href="{% url 'operations:visits' %}">All visits</a></div>
+<div class="grid two">
+  <div class="card"><h2>Checks</h2>
+    <ul class="plain-list">{% for label, ok in visit.check_labels %}<li>{% if ok %}✓{% else %}✗{% endif %} {{ label }}</li>{% endfor %}</ul>
+    <p><strong>Welfare check:</strong> {% if visit.welfare_check_done %}done{% else %}not done{% endif %}</p></div>
+  <div class="card"><h2>Guards seen</h2><ul class="plain-list">{% for g in guards %}<li>{{ g }}</li>{% empty %}<li class="muted">None ticked.</li>{% endfor %}</ul>
+    {% if visit.remarks %}<h2>Remarks</h2><div class="report-body">{{ visit.remarks|linebreaksbr }}</div>{% endif %}
+    {% if files %}<h2>Photo</h2><ul class="attachments">{% for a in files %}<li><a href="{% url 'core:file' a.pk %}">{{ a.original_name }}</a></li>{% endfor %}</ul>{% endif %}</div>
+</div>
+{% endblock %}

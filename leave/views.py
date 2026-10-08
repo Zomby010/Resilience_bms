@@ -131,7 +131,7 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
         return ctx
 
 
-class RequestAction(LoginRequiredMixin, ActionView):
+class RequestAction(ActionView):
     allowed_roles = EVERYONE
     action = None
 
@@ -276,7 +276,7 @@ def _sick_balance(person, year):
     return lt, services.balance(person, lt, year)
 
 
-class SickAction(LoginRequiredMixin, ActionView):
+class SickAction(ActionView):
     allowed_roles = EVERYONE
     action = None
 

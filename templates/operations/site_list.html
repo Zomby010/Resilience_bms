@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Sites{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% if user.role == 'staff' %}My site{% else %}Sites{% endif %}</h1>
+  <p class="muted">{% if can_edit %}Site details you edit here are shown to supervisors and staff as read-only.{% else %}Site details are kept by the office. You can read them here.{% endif %}</p></div></div>
+<div class="card">
+  {% if user.role != 'staff' %}
+  <form method="get" class="filters">
+    <div><label for="q">Name or address</label><input id="q" name="q" value="{{ f.q }}"></div>
+    <div><label for="show">Show</label><select id="show" name="show"><option value="">Active sites</option><option value="all" {% if f.show == 'all' %}selected{% endif %}>All sites</option></select></div>
+    <button class="btn secondary" type="submit">Filter</button>
+  </form>
+  {% endif %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Site</th><th>Supervisor</th><th>Guards posted / needed</th><th></th></tr></thead>
+    <tbody>{% for s in sites %}<tr>
+      <td><a href="{{ s.get_absolute_url }}"><strong>{{ s.name }}</strong></a>{% if not s.is_active %} <span class="badge role">Not active</span>{% endif %}<br><span class="small muted">{{ s.address }}</span></td>
+      <td>{{ s.supervisor|default:"-" }}</td>
+      <td>{{ s.posted }} / {{ s.guards_needed }}{% if s.posted < s.guards_needed %} <span class="badge off">Short</span>{% endif %}</td>
+      <td>{% if can_edit %}<a class="btn small secondary" href="{% url 'operations:site_edit' s.pk %}">Edit details</a>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="4" class="empty">{% if user.role == 'staff' %}You have not been given a site yet.{% else %}No sites.{% endif %}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% endblock %}

@@ -25,4 +25,6 @@ def can_view(user, obj):
         return office
     if label == "incidents.incident":
         return type(obj).objects.visible_to(user).filter(pk=obj.pk).exists()
+    if label == "operations.sitevisit":
+        return office or obj.supervisor_id == user.pk
     return False

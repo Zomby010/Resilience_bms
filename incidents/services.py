@@ -9,6 +9,8 @@ from core.services.files import save_attachment
 from core.workflow import TransitionError, require
 from notifications.models import Notification
 from notifications.services import notify
+from operations.models import OBEntry
+from operations.services import write_ob
 
 from .models import Incident, IncidentNote
 
@@ -16,6 +18,8 @@ S = Incident.Status
 REPORTERS = (Role.STAFF, Role.SUPERVISOR, Role.SECRETARY, Role.MANAGER)
 OFFICE = (Role.SECRETARY, Role.MANAGER)
 MAX_PHOTOS = 5
+
+OBKind = OBEntry.Kind
 
 
 def link(incident):
@@ -50,6 +54,9 @@ def create_incident(incident, user, photos=()):
     for upload in photos:
         save_attachment(incident, upload, user)
     _note(incident, user, "Incident reported.", status_to=S.REPORTED)
+    write_ob(incident.site, user, OBKind.INCIDENT, f"{incident.number}: {incident.get_kind_display()} "
+             f"({incident.get_severity_display().lower()}). {incident.what_happened[:300]}",
+             occurred_at=incident.occurred_at, incident=incident, check=False)
     audit.record(user, "incident.reported", incident,
                  f"Reported {incident.number}: {incident.get_kind_display()} at {incident.site} ({incident.get_severity_display()})")
     priority = Notification.Priority.HIGH if incident.serious else Notification.Priority.NORMAL

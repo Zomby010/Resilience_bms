@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ site.name }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ site.name }}{% if not site.is_active %} <span class="badge role">Not active</span>{% endif %}</h1>
+  <p class="muted">{% if site.details_updated_at %}Details last updated {{ site.details_updated_at|date:"d M Y" }} by {{ site.details_updated_by }}.{% endif %}{% if not can_edit %} Read only: the office keeps these details.{% endif %}</p></div>
+  <div class="actions">{% if can_edit %}<a class="btn" href="{% url 'operations:site_edit' site.pk %}">Edit details</a>{% endif %}
+  {% if can_write_ob %}<a class="btn secondary" href="{% url 'operations:ob_write' %}">Write in the OB</a>{% endif %}
+  <a class="btn secondary" href="{% url 'operations:ob' %}?site={{ site.pk }}">Open the OB</a></div></div>
+<div class="grid two">
+  <div>
+    <div class="card"><h2>Site details</h2>
+      <dl class="facts">
+        <dt>Address</dt><dd>{{ site.address|default:"Not written yet" }}</dd>
+        <dt>Supervisor</dt><dd>{{ site.supervisor|default:"Not set" }}{% if site.supervisor.phone %} · {{ site.supervisor.phone }}{% endif %}</dd>
+        <dt>Guards needed</dt><dd>{{ site.guards_needed }} per shift ({{ people|length }} posted)</dd>
+        <dt>Working hours</dt><dd>{% for h in hours %}{{ h }}{% if not forloop.last %}<br>{% endif %}{% empty %}Not set{% endfor %}</dd>
+      </dl></div>
+    <div class="card"><h2>Site instructions</h2>{% if site.instructions %}<div class="report-body">{{ site.instructions|linebreaksbr }}</div>{% else %}<p class="muted">No instructions written yet.</p>{% endif %}</div>
+    <div class="card"><h2>Emergency contacts</h2>{% if contacts %}<ul class="plain-list">{% for c in contacts %}<li>{{ c }}</li>{% endfor %}</ul>{% else %}<p class="muted">None written yet.</p>{% endif %}</div>
+  </div>
+  <div>
+    <div class="card"><h2>Guards posted here</h2><ul class="plain-list">{% for p in people %}<li>{{ p }} <span class="small muted">{{ p.get_role_display }}</span></li>{% empty %}<li class="muted">Nobody yet.</li>{% endfor %}</ul></div>
+    <div class="card"><h2>Latest OB entries</h2>
+      <ul class="timeline small">{% for e in ob %}<li><strong>{{ e.occurred_at|date:"d M H:i" }}</strong> {{ e.get_kind_display }}: {{ e.text|truncatechars:120 }} <span class="muted">({{ e.written_by }})</span></li>{% empty %}<li class="muted">No entries yet.</li>{% endfor %}</ul></div>
+    {% if incidents %}<div class="card"><h2>Recent incidents</h2><ul class="timeline small">{% for i in incidents %}<li><a href="{{ i.get_absolute_url }}">{{ i.number }}</a> {{ i.get_kind_display }} · {{ i.occurred_at|date:"d M Y" }} {% badge i "severity" %}</li>{% endfor %}</ul></div>{% endif %}
+    {% if visits %}<div class="card"><h2>Recent supervisor visits</h2><ul class="timeline small">{% for v in visits %}<li><a href="{{ v.get_absolute_url }}">{{ v.visited_at|date:"d M Y H:i" }}</a> by {{ v.supervisor }}{% if v.welfare_check_done %} · welfare check done{% endif %}</li>{% endfor %}</ul></div>{% endif %}
+    {% if postings %}<div class="card"><h2>Who was posted here</h2><ul class="timeline small">{% for p in postings %}<li>{{ p.user }}: {{ p.started_at|date:"d M Y" }} to {% if p.ended_at %}{{ p.ended_at|date:"d M Y" }}{% else %}now{% endif %}</li>{% endfor %}</ul></div>{% endif %}
+  </div>
+</div>
+{% endblock %}
