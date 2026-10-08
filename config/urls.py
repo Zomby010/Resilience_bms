@@ -10,6 +10,7 @@ urlpatterns = [
     path("notifications/", include("notifications.urls")),
     path("invoices/", include("billing.urls")),
     path("payroll/", include("payroll.urls")),
+    path("payslips/", include("payroll.urls_payslips")),
     path("escalations/", include("escalations.urls")),
     path("incidents/", include("incidents.urls")),
     path("leave/", include("leave.urls")),

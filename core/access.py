@@ -27,4 +27,6 @@ def can_view(user, obj):
         return type(obj).objects.visible_to(user).filter(pk=obj.pk).exists()
     if label == "operations.sitevisit":
         return office or obj.supervisor_id == user.pk
+    if label == "payroll.payrollline":  # a payslip: the office, or the person it belongs to once approved
+        return office or (obj.employee_id == user.pk and obj.run.status == "approved")
     return False

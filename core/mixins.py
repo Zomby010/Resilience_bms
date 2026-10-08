@@ -1,12 +1,14 @@
 """Small view helpers shared by the Secretary operations apps."""
 from django.contrib import messages
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import get_object_or_404, redirect
+from django.utils import timezone
 from django.views import View
 
 from accounts.models import Role
 from accounts.permissions import RoleRequiredMixin
 
+from .filters import csv_response, query_string
 from .workflow import TransitionError
 
 OFFICE = (Role.SECRETARY, Role.MANAGER)
@@ -23,11 +25,34 @@ class FilterContextMixin:
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        params = self.request.GET.copy()
-        params.pop("page", None)
-        ctx["query_string"] = params.urlencode()
+        ctx["query_string"] = query_string(self.request)
         ctx["f"] = self.request.GET
         return ctx
+
+
+def csv_time(value):
+    """A date and time for a CSV cell, in company time ('' when empty)."""
+    return timezone.localtime(value).strftime("%Y-%m-%d %H:%M") if value else ""
+
+
+class CsvExportMixin:
+    """`?export=csv` downloads the filtered list as a spreadsheet file. Secretary and Manager only.
+
+    Subclasses set `csv_filename` and `csv_header` and implement `csv_rows(queryset)`.
+    """
+
+    csv_filename = "list.csv"
+    csv_header = ()
+
+    def csv_rows(self, qs):  # pragma: no cover - always overridden
+        raise NotImplementedError
+
+    def get(self, request, *args, **kwargs):
+        if request.GET.get("export") == "csv":
+            if request.user.role not in OFFICE:
+                raise PermissionDenied
+            return csv_response(self.csv_filename, self.csv_header, self.csv_rows(self.get_queryset()))
+        return super().get(request, *args, **kwargs)
 
 
 class ActionView(RoleRequiredMixin, View):

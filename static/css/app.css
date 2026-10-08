@@ -304,6 +304,24 @@ dl.facts dd { margin: 0; color: var(--black); }
 .inv-title { font-size: 1.8rem; font-weight: 800; color: var(--red); letter-spacing: .05em; }
 .inv-logo { max-height: 60px; max-width: 160px; display: block; margin-bottom: .4rem; }
 .print-page { background: #fff; padding: 1.5rem; }
+
+/* payslips */
+.payslip { max-width: 720px; }
+.payslip dl.facts { margin-bottom: 1rem; }
+.payslip table { width: 100%; }
+.payslip tr.net-pay td { font-size: 1.15rem; color: var(--red); }
+.payslip-page { padding-bottom: 2rem; margin-bottom: 2rem; border-bottom: 1px dashed var(--silver); }
+@media print {
+  .payslip-page { page-break-after: always; break-after: page; border: 0; margin: 0; padding: 0; }
+  .payslip-page:last-child { page-break-after: auto; break-after: auto; }
+}
+
+/* status count chips above a list */
+.chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
+.chips a { display: inline-flex; gap: .35rem; align-items: center; padding: .3rem .75rem; border: 1px solid var(--silver); border-radius: 99px; text-decoration: none; color: var(--charcoal); font-size: .88rem; font-weight: 600; background: #fff; }
+.chips a .n { background: #eef0f4; border-radius: 99px; padding: 0 .45rem; font-size: .78rem; }
+.chips a.on { background: var(--red); border-color: var(--red); color: #fff; }
+.chips a.on .n { background: rgba(255,255,255,.25); }
 #lines input[type=text], #lines input[type=number] { width: 100%; padding: .45rem .55rem; border: 1px solid var(--silver); border-radius: 8px; font: inherit; }
 #lines td:first-child { min-width: 220px; }
 

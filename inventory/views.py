@@ -4,12 +4,12 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.dateparse import parse_date
 from django.views.generic import CreateView, DetailView, FormView, ListView, TemplateView, UpdateView
 
 from accounts.models import Role, User
 from accounts.permissions import RoleRequiredMixin
-from core.mixins import OFFICE, ActionView, FilterContextMixin, OfficeRequiredMixin
+from core.filters import apply_dates
+from core.mixins import OFFICE, ActionView, CsvExportMixin, FilterContextMixin, OfficeRequiredMixin, csv_time
 from core.models import AuditLog
 from core.services import audit
 from core.workflow import TransitionError
@@ -263,10 +263,13 @@ class MyReturnedView(MyRequestAction):
 
 # --- item requests (office) --------------------------------------------------------
 
-class RequestListView(OfficeRequiredMixin, FilterContextMixin, ListView):
+class RequestListView(OfficeRequiredMixin, CsvExportMixin, FilterContextMixin, ListView):
     template_name = "inventory/request_list.html"
     context_object_name = "reqs"
     paginate_by = 30
+    csv_filename = "item-requests.csv"
+    csv_header = ["Asked", "Person", "Role", "Item code", "Item", "Qty asked", "Qty given", "Reason", "Status",
+                  "Return by", "Returned good", "Returned damaged", "Lost"]
 
     def get_queryset(self):
         qs = ItemRequest.objects.select_related("item", "requester")
@@ -282,12 +285,18 @@ class RequestListView(OfficeRequiredMixin, FilterContextMixin, ListView):
             qs = qs.filter(requester_id=int(g["requester"]))
         if g.get("item", "").isdigit():
             qs = qs.filter(item_id=int(g["item"]))
-        date_from, date_to = parse_date(g.get("from", "")), parse_date(g.get("to", ""))
-        if date_from:
-            qs = qs.filter(created_at__date__gte=date_from)
-        if date_to:
-            qs = qs.filter(created_at__date__lte=date_to)
-        return qs
+        q = (g.get("q") or "").strip()
+        if q:
+            qs = qs.filter(Q(item__name__icontains=q) | Q(item__code__icontains=q) | Q(reason__icontains=q)
+                           | Q(requester__first_name__icontains=q) | Q(requester__last_name__icontains=q)
+                           | Q(requester__username__icontains=q))
+        return apply_dates(qs, g, "created_at")
+
+    def csv_rows(self, qs):
+        for r in qs:
+            yield [csv_time(r.created_at), r.requester, r.requester_role, r.item.code, r.item.name, r.qty_requested,
+                   r.qty_issued or "", r.reason, r.get_status_display(), r.expected_return_date or "",
+                   r.qty_returned_good, r.qty_returned_damaged, r.qty_lost]
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)

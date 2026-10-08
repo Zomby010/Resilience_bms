@@ -7,9 +7,16 @@
 </div>
 <div class="card">
   <div class="tabs">
-    <a href="{% url 'notifications:inbox' %}" class="{% if f.unread != '1' %}on{% endif %}">All</a>
-    <a href="?unread=1" class="{% if f.unread == '1' %}on{% endif %}">Unread{% if unread_notifications %} ({{ unread_notifications }}){% endif %}</a>
+    <a href="{% url 'notifications:inbox' %}{% if date_query %}?{{ date_query }}{% endif %}" class="{% if f.unread != '1' %}on{% endif %}">All</a>
+    <a href="?unread=1{% if date_query %}&amp;{{ date_query }}{% endif %}" class="{% if f.unread == '1' %}on{% endif %}">Unread{% if unread_notifications %} ({{ unread_notifications }}){% endif %}</a>
   </div>
+  <form method="get" class="filters">
+    {% if f.unread == '1' %}<input type="hidden" name="unread" value="1">{% endif %}
+    <div><label for="from">From</label><input id="from" type="date" name="from" value="{{ f.from }}"></div>
+    <div><label for="to">To</label><input id="to" type="date" name="to" value="{{ f.to }}"></div>
+    <button class="btn secondary" type="submit">Filter</button>
+    {% if f.from or f.to %}<a class="btn secondary" href="{% url 'notifications:inbox' %}{% if f.unread == '1' %}?unread=1{% endif %}">Clear dates</a>{% endif %}
+  </form>
   <ul class="note-list">
   {% for n in notes %}
     <li class="{% if not n.is_read %}unread{% endif %} {% if n.priority == 'high' %}high{% endif %}">

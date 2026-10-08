@@ -1,0 +1,35 @@
+<div class="payslip">
+  <div class="inv-head">
+    <div>
+      {% if company.logo %}<img src="{% url 'core:logo' %}" alt="" class="inv-logo">{% endif %}
+      <strong>{{ company.company_name|default:"Resilience Security" }}</strong><br>
+      {% if company.address %}{{ company.address|linebreaksbr }}<br>{% endif %}
+      {{ company.phone }} {{ company.email }}
+    </div>
+    <div class="right">
+      <div class="inv-title">PAYSLIP</div>
+      <strong>{{ line.run.period|date:"F Y" }}</strong>
+    </div>
+  </div>
+  <dl class="facts">
+    <dt>Name</dt><dd><strong>{{ line.employee_name }}</strong></dd>
+    <dt>Employee no.</dt><dd>{{ line.employee_number }}</dd>
+    <dt>Role</dt><dd>{{ line.role|title }}</dd>
+    <dt>Pay period</dt><dd>{{ line.run.period|date:"F Y" }}</dd>
+  </dl>
+  <table>
+    <thead><tr><th>Earnings</th><th class="num">KES</th></tr></thead>
+    <tbody>
+      {% for label, amount in earnings %}<tr><td>{{ label }}</td><td class="num">{{ amount|money }}</td></tr>{% endfor %}
+      <tr class="total-row"><td>Gross pay</td><td class="num">{{ line.gross|money }}</td></tr>
+    </tbody>
+    <thead><tr><th>Deductions</th><th class="num">KES</th></tr></thead>
+    <tbody>
+      {% for label, amount in deductions %}<tr><td>{{ label }}</td><td class="num">{{ amount|money }}</td></tr>{% endfor %}
+      <tr class="total-row"><td>Total deductions</td><td class="num">{{ line.total_deductions|money }}</td></tr>
+      <tr class="total-row net-pay"><td>NET PAY</td><td class="num">{{ line.net|money }}</td></tr>
+    </tbody>
+  </table>
+  <p>Paid by: <strong>{{ line.get_payment_method_display|default:"-" }}</strong>{% if line.payment_detail %} {{ line.payment_detail|masked }}{% endif %}</p>
+  <p class="small muted">CONFIDENTIAL. This payslip is for the named employee only.</p>
+</div>
