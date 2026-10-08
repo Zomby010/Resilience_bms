@@ -345,3 +345,12 @@ form.inline, details.inline { display: inline-block; margin: 0 .2rem .2rem 0; ve
 details.inline > summary { list-style: none; cursor: pointer; }
 details.inline > summary::-webkit-details-marker { display: none; }
 details.inline[open] .stack-form { margin-top: .4rem; min-width: 220px; }
+
+/* manager dashboard */
+a.kpi { text-decoration: none; color: inherit; display: block; }
+a.kpi:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.spend-tabs { display: flex; gap: .25rem; margin: .3rem 0; flex-wrap: wrap; }
+.spend-tabs button { border: 1px solid var(--border); background: #fff; border-radius: 6px; padding: .15rem .5rem; font-size: .78rem; cursor: pointer; }
+.spend-tabs button[aria-selected="true"] { background: var(--black); color: #fff; border-color: var(--black); }
+.timeline.received li { position: relative; }
+.timeline.received form.inline { margin-left: .5rem; }

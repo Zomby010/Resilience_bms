@@ -18,18 +18,40 @@
       <a href="{% url 'core:home' %}" class="{% if ns == 'core' and un == 'home' %}active{% endif %}">Dashboard</a>
       <a href="{% url 'notifications:inbox' %}" class="bell {% if ns == 'notifications' %}active{% endif %}">Notifications{% if unread_notifications %} <span class="count" aria-label="{{ unread_notifications }} unread">{{ unread_notifications }}</span>{% endif %}</a>
 
-      {% if user.role != 'secretary' %}
-        <div class="group">Reporting</div>
-        <a href="{% url 'reports:list' %}" class="{% if ns == 'reports' and un != 'create' %}active{% endif %}">
-          {% if user.role == 'staff' %}My reports{% else %}Reports{% endif %}</a>
-        {% if user.role == 'staff' or user.role == 'supervisor' %}
-          <a href="{% url 'reports:create' %}" class="{% if un == 'create' and ns == 'reports' %}active{% endif %}">Submit a report</a>
-        {% endif %}
+      <div class="group">Reporting</div>
+      <a href="{% url 'reports:list' %}" class="{% if ns == 'reports' and un != 'create' %}active{% endif %}">
+        {% if user.role == 'staff' or user.role == 'secretary' %}My reports{% else %}Reports{% endif %}</a>
+      {% if user.role != 'manager' %}
+        <a href="{% url 'reports:create' %}" class="{% if un == 'create' and ns == 'reports' %}active{% endif %}">{% if user.role == 'secretary' %}Send a report to the Manager{% else %}Submit a report{% endif %}</a>
       {% endif %}
 
       <div class="group">Incidents</div>
       <a href="{% url 'incidents:create' %}" class="{% if ns == 'incidents' and un == 'create' %}active{% endif %}">Report an incident</a>
       <a href="{% url 'incidents:list' %}" class="{% if ns == 'incidents' and un != 'create' %}active{% endif %}">{% if user.role == 'staff' %}My incidents{% else %}Incidents{% endif %}</a>
+
+      <div class="group">Attendance &amp; leave</div>
+      {% if user.role == 'staff' or user.role == 'supervisor' %}
+        <a href="{% url 'attendance:mine' %}" class="{% if ns == 'attendance' and un == 'mine' %}active{% endif %}">My attendance</a>
+      {% endif %}
+      {% if user.role == 'supervisor' %}
+        <a href="{% url 'attendance:team' %}" class="{% if ns == 'attendance' and un == 'team' %}active{% endif %}">Team attendance</a>
+      {% elif user.role == 'manager' or user.role == 'secretary' %}
+        <a href="{% url 'attendance:day' %}" class="{% if ns == 'attendance' and un == 'day' %}active{% endif %}">Attendance day sheet</a>
+      {% endif %}
+      {% if user.role != 'staff' %}<a href="{% url 'attendance:records' %}" class="{% if ns == 'attendance' and un == 'records' %}active{% endif %}">Attendance records</a>{% endif %}
+      <a href="{% url 'leave:mine' %}" class="{% if ns == 'leave' and un in 'mine ask' %}active{% endif %}">My leave</a>
+      {% if user.role != 'staff' %}<a href="{% url 'leave:request_list' %}" class="{% if ns == 'leave' and 'request' in un %}active{% endif %}">Leave requests</a>{% endif %}
+      <a href="{% url 'leave:sick_list' %}" class="{% if ns == 'leave' and 'sick' in un %}active{% endif %}">{% if user.role == 'staff' %}My sick leave{% else %}Sick leave{% endif %}</a>
+      {% if user.role == 'manager' or user.role == 'secretary' %}<a href="{% url 'leave:allowances' %}" class="{% if ns == 'leave' and 'allowance' in un %}active{% endif %}">Leave days per person</a>{% endif %}
+
+      <div class="group">Sites</div>
+      <a href="{% url 'operations:sites' %}" class="{% if ns == 'operations' and 'site' in un %}active{% endif %}">{% if user.role == 'staff' %}My site{% else %}Sites{% endif %}</a>
+      {% if user.role != 'staff' %}<a href="{% url 'operations:team_today' %}" class="{% if ns == 'operations' and un == 'team_today' %}active{% endif %}">{% if user.role == 'supervisor' %}My team today{% else %}Guards today{% endif %}</a>{% endif %}
+      <a href="{% url 'operations:ob' %}" class="{% if ns == 'operations' and 'ob' in un %}active{% endif %}">Occurrence Book</a>
+      {% if user.role != 'staff' %}
+        <a href="{% url 'operations:visits' %}" class="{% if ns == 'operations' and 'visit' in un %}active{% endif %}">Site visits</a>
+        <a href="{% url 'operations:equipment' %}" class="{% if ns == 'operations' and un == 'equipment' %}active{% endif %}">Equipment per guard</a>
+      {% endif %}
 
       {% if user.role == 'staff' or user.role == 'supervisor' %}
         <div class="group">Location</div>

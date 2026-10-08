@@ -15,6 +15,7 @@ from reports import services
 from tracking import services as tracking
 
 from . import dashboards
+from .filters import PERIODS, clean_period, period_start
 from .access import can_view
 from .forms import CompanySettingsForm
 from .models import Attachment, AuditLog, CompanySettings
@@ -38,9 +39,10 @@ class HomeView(LoginRequiredMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
         if user.role == Role.MANAGER:
-            ctx.update(services.manager_dashboard())
+            ctx.update(services.manager_dashboard(clean_period(self.request.GET.get("period"))))
             ctx.update(_finance_glance())
             ctx.update(dashboards.manager_extra(user))
+            ctx["periods"] = PERIODS
         elif user.role == Role.SUPERVISOR:
             ctx.update(services.supervisor_dashboard(user))
             ctx["location_state"] = tracking.my_state(user)
@@ -62,10 +64,18 @@ def _finance_glance():
     month = Expense.objects.filter(
         date__year=today.year, date__month=today.month, status=Expense.Status.RECORDED
     )
+    recorded = Expense.objects.filter(status=Expense.Status.RECORDED)
+
+    def spent(period):
+        return recorded.filter(date__gte=period_start(period, today), date__lte=today).aggregate(t=Sum("amount"))["t"] or 0
+
     return {
         "month_total": month.aggregate(t=Sum("amount"))["t"] or 0,
         "month_count": month.count(),
         "month_label": today.strftime("%B %Y"),
+        "spend": [("Today", spent("day"), "day"), ("This week", spent("week"), "week"), ("This month", spent("month"), "month")],
+        "today": today,
+        "week_start": period_start("week", today),
     }
 
 

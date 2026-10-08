@@ -3,12 +3,29 @@
 {% block content %}
 <div class="page-head"><div><h1>Manager dashboard</h1><p class="muted">Company activity at a glance.</p></div></div>
 
+{% include "attendance/_board.html" %}
+
+<div class="grid kpis ops-kpis">
+  <a class="kpi green" href="{% url 'operations:team_today' %}"><div class="num">{{ ops.on_duty }}</div><div class="lbl">On duty now</div>{% if ops.late or ops.off_location %}<div class="muted small">{{ ops.late }} late · {{ ops.off_location }} off location</div>{% endif %}</a>
+  <a class="kpi" href="{% url 'operations:team_today' %}?state=not_signed_in"><div class="num">{{ ops.absent }}</div><div class="lbl">Absent or not signed in</div></a>
+  <a class="kpi slate" href="{% url 'leave:request_list' %}"><div class="num">{{ ops.on_leave }}</div><div class="lbl">On leave today</div></a>
+  <a class="kpi slate" href="{% url 'leave:sick_list' %}?now=1"><div class="num">{{ ops.sick }}</div><div class="lbl">Off sick today</div>{% if sick_to_check %}<div class="muted small">{{ sick_to_check }} sick sheet{{ sick_to_check|pluralize }} to check</div>{% endif %}</a>
+  <a class="kpi {% if ops.short_sites %}{% else %}green{% endif %}" href="{% url 'attendance:day' %}"><div class="num">{{ ops.short_sites }}</div><div class="lbl">Short-staffed sites</div></a>
+  <a class="kpi {% if ops.serious_incidents %}{% else %}green{% endif %}" href="{% url 'incidents:list' %}?severity=high"><div class="num">{{ ops.serious_incidents }}</div><div class="lbl">Open high or critical incidents</div></a>
+</div>
+
 <div class="grid kpis">
-  <div class="kpi gold"><div class="num">{{ open_count }}</div><div class="lbl">Pending reports</div><div class="muted small">{{ awaiting_supervisor }} awaiting first review</div></div>
-  <div class="kpi green"><div class="num">{{ completed_count }}</div><div class="lbl">Completed reports</div></div>
+  <a class="kpi gold" href="{% url 'reports:list' %}?status=pending"><div class="num">{{ unchecked_count }}</div><div class="lbl">Reports from staff not yet checked</div><div class="muted small">{{ open_count }} not yet resolved in total</div></a>
+  <a class="kpi green" href="{% url 'reports:list' %}?resolved_by=supervisor"><div class="num">{{ resolved_by_supervisors }}</div><div class="lbl">Reports resolved by supervisors</div></a>
+  <a class="kpi green" href="{% url 'reports:list' %}?resolved_by=manager"><div class="num">{{ resolved_by_manager }}</div><div class="lbl">Reports resolved by manager</div></a>
   <div class="kpi slate"><div class="num">{{ active_supervisors }}</div><div class="lbl">Active supervisors</div></div>
   <div class="kpi"><div class="num">{{ feedback_sent }}</div><div class="lbl">Feedback sent</div></div>
-  <div class="kpi slate"><div class="num">{{ month_total|floatformat:0 }}</div><div class="lbl">KES spent, {{ month_label }}</div></div>
+  <div class="kpi slate spend">
+    <div class="lbl">KES spent</div>
+    <div class="spend-tabs" role="tablist">{% for label, amount, key in spend %}<button type="button" role="tab" data-spend="{{ key }}" aria-selected="{% if key == 'month' %}true{% else %}false{% endif %}">{{ label }}</button>{% endfor %}</div>
+    {% for label, amount, key in spend %}<div class="num" data-spend-value="{{ key }}" {% if key != 'month' %}hidden{% endif %}>{{ amount|floatformat:0 }}</div>{% endfor %}
+    <div class="muted small"><a href="{% url 'finance:list' %}?from={{ week_start|date:'Y-m-d' }}">See expenses</a></div>
+  </div>
 </div>
 
 <div class="card">
@@ -17,6 +34,8 @@
     {% for r in payroll_waiting %}<li><span class="badge pending">Payroll</span> <a href="{{ r.get_absolute_url }}">Approve payroll for {{ r.period|date:"F Y" }}</a> <span class="small muted">net KES {{ r.total_net|money }}</span></li>{% endfor %}
     {% for e in escalations_waiting %}<li><span class="badge pending">From Secretary</span> <a href="{% url 'escalations:detail' e.pk %}">{{ e.subject }}</a> <span class="small muted">{{ e.raised_at|timesince }} ago</span></li>{% endfor %}
     {% for r in items_waiting %}<li><span class="badge pending">Item</span> <a href="{{ r.get_absolute_url }}">{{ r.requester }} asked for {{ r.qty_requested }} x {{ r.item.name }}</a></li>{% endfor %}
+    {% if leave_waiting %}<li><span class="badge pending">Leave</span> <a href="{% url 'leave:request_list' %}?show=decide">{{ leave_waiting }} leave request{{ leave_waiting|pluralize }} to decide</a></li>{% endif %}
+    {% if attendance_waiting %}<li><span class="badge pending">Attendance</span> <a href="{% url 'attendance:day' %}">{{ attendance_waiting }} sign-in{{ attendance_waiting|pluralize }} approved by supervisors; complete the day</a></li>{% endif %}
     {% if expenses_waiting %}<li><span class="badge pending">Expenses</span> <a href="{% url 'finance:approvals' %}">{{ expenses_waiting }} expense{{ expenses_waiting|pluralize }} above the limit</a></li>{% endif %}
     {% if not waiting_total %}<li class="empty">Nothing is waiting for you.</li>{% endif %}
   </ul>
@@ -25,17 +44,20 @@
 
 <div class="grid two">
   <div class="card">
-    <h2>Reports: pending vs. completed <span class="muted small">last 6 months</span></h2>
-    <div class="chart" role="img" aria-label="Bar chart of pending and completed reports per month">
-      {% for m in chart %}
-        <div class="col"><div class="bars">
-          <div class="bar open" style="height: {{ m.open_pct }}%" title="{{ m.open }} pending"></div>
-          <div class="bar done" style="height: {{ m.completed_pct }}%" title="{{ m.completed }} completed"></div>
-        </div></div>
-      {% endfor %}
-    </div>
-    <div class="chart-labels">{% for m in chart %}<span>{{ m.label }}<br>{{ m.open }} / {{ m.completed }}</span>{% endfor %}</div>
-    <div class="legend"><span><i style="background:var(--gold)"></i>Pending</span><span><i style="background:var(--green)"></i>Completed</span></div>
+    <div class="page-head" style="margin-bottom:.5rem"><h2>Reports received</h2>
+      <div class="tabs" style="margin:0">{% for key, label in periods %}<a href="?period={{ key }}#received" class="{% if received_period == key %}on{% endif %}">{{ label }}</a>{% endfor %}</div></div>
+    <p class="small muted" id="received">Since {{ received_since|date:"D d M Y" }}. Resolve a report here, or open it to reply.</p>
+    {% for g in received_groups %}
+      <h3 class="small">{{ g.label }} <span class="muted">· {{ g.total }} received, {{ g.open }} open, {{ g.resolved }} resolved</span>
+        <a class="small" href="{% url 'reports:list' %}?from_role={{ g.role }}&amp;from={{ received_since|date:'Y-m-d' }}">All</a></h3>
+      <ul class="timeline received">
+        {% for r in g.reports %}<li>
+          <a href="{{ r.get_absolute_url }}"><strong>{{ r.title }}</strong></a> {% include "partials/status.html" with status=r.status label=r.get_status_display %}
+          <br><span class="small muted">{{ r.author }} · {{ r.created_at|date:"d M H:i" }}{% if r.completed_by %} · resolved by {{ r.completed_by }}{% endif %}</span>
+          {% if r.status != 'completed' %}<form method="post" action="{% url 'reports:resolve' r.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn small" type="submit" data-confirm="Mark this report as resolved?">Resolve</button></form>{% endif %}
+        </li>{% empty %}<li class="muted small">Nothing received.</li>{% endfor %}
+      </ul>
+    {% endfor %}
   </div>
 
   <div class="card">
@@ -82,3 +104,15 @@
   </ul>
 </div>
 {% endblock %}
+{% block scripts %}<script>
+(function () {
+  document.querySelectorAll(".kpi.spend").forEach(function (card) {
+    card.querySelectorAll("[data-spend]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        card.querySelectorAll("[data-spend]").forEach(function (b) { b.setAttribute("aria-selected", b === btn ? "true" : "false"); });
+        card.querySelectorAll("[data-spend-value]").forEach(function (v) { v.hidden = v.dataset.spendValue !== btn.dataset.spend; });
+      });
+    });
+  });
+})();
+</script>{% endblock %}

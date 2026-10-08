@@ -13,7 +13,8 @@ def remember_active(sender, instance, **kwargs):
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def items_to_collect(sender, instance, created, raw=False, **kwargs):
     """Turning an account off tells the Secretary which items to collect from that person."""
-    if raw or created or not (getattr(instance, "_was_active", None) and not instance.is_active):
+    was_active = getattr(instance, "_was_active", None)
+    instance._was_active = instance.is_active
+    if raw or created or not (was_active and not instance.is_active):
         return
-    instance._was_active = False
     services.remind_items_on_leaving(instance)

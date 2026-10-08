@@ -6,6 +6,18 @@
   <a class="btn" href="{% url 'reports:create' %}">Submit a report to management</a>
 </div>
 
+{% include "attendance/_team_card.html" %}
+{% if team_leave_waiting %}<div class="warn"><strong>{{ team_leave_waiting }} leave request{{ team_leave_waiting|pluralize }} from your team waiting for your answer.</strong> <a href="{% url 'leave:request_list' %}?show=decide">Open them</a></div>{% endif %}
+<div class="grid two">
+  {% include "attendance/_my_card.html" %}
+  <div class="card"><h2>Quick links</h2><div class="actions">
+    <a class="btn secondary" href="{% url 'operations:team_today' %}">My team today</a>
+    <a class="btn secondary" href="{% url 'operations:visit_create' %}">Record a site visit</a>
+    <a class="btn secondary" href="{% url 'operations:ob' %}">Occurrence Book</a>
+    <a class="btn secondary" href="{% url 'incidents:create' %}">Report an incident</a>
+    <a class="btn secondary" href="{% url 'leave:mine' %}">My leave</a></div></div>
+</div>
+
 {% if location_state %}{% include "tracking/_location_card.html" %}{% endif %}
 
 <div class="grid two">

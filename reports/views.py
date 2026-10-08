@@ -2,19 +2,21 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from accounts.models import Role
 from accounts.permissions import RoleRequiredMixin
+from core.filters import apply_dates, query_string
+from notifications.services import notify, notify_role
 
 from .forms import ReplyForm, ReportForm
 from .models import Report, Status
 
-# Roles that take part in the reporting workflow at all. The Secretary is
-# deliberately excluded: finance is kept separate from operational reporting.
-REPORT_ROLES = (Role.MANAGER, Role.SUPERVISOR, Role.STAFF)
-AUTHOR_ROLES = (Role.SUPERVISOR, Role.STAFF)
+# Everyone takes part. The Secretary only sends reports to the Manager and sees their own.
+REPORT_ROLES = (Role.MANAGER, Role.SUPERVISOR, Role.STAFF, Role.SECRETARY)
+AUTHOR_ROLES = (Role.SUPERVISOR, Role.STAFF, Role.SECRETARY)
 
 
 class ReportListView(RoleRequiredMixin, ListView):
@@ -34,6 +36,14 @@ class ReportListView(RoleRequiredMixin, ListView):
         status = self.request.GET.get("status")
         if status in Status.values:
             qs = qs.filter(status=status)
+        if self.request.GET.get("from_role") in Role.values:
+            qs = qs.filter(author__role=self.request.GET["from_role"])
+        resolver = self.request.GET.get("resolved_by")
+        if resolver == "manager":
+            qs = qs.filter(status=Status.COMPLETED, completed_by__role=Role.MANAGER)
+        elif resolver == "supervisor":
+            qs = qs.filter(status=Status.COMPLETED, completed_by__role=Role.SUPERVISOR)
+        qs = apply_dates(qs, self.request.GET, "created_at")
         q = (self.request.GET.get("q") or "").strip()
         if q:
             qs = qs.filter(
@@ -52,9 +62,9 @@ class ReportListView(RoleRequiredMixin, ListView):
         ctx["f_scope"] = self.request.GET.get("scope", "")
         ctx["q"] = self.request.GET.get("q", "")
         ctx["can_submit"] = self.request.user.role in AUTHOR_ROLES
-        params = self.request.GET.copy()
-        params.pop("page", None)
-        ctx["query_string"] = params.urlencode()
+        ctx["query_string"] = query_string(self.request)
+        ctx["f"] = self.request.GET
+        ctx["roles"] = [(Role.SECRETARY, "Secretary"), (Role.SUPERVISOR, "Supervisors"), (Role.STAFF, "Guards")]
         return ctx
 
 
@@ -64,13 +74,19 @@ class ReportCreateView(RoleRequiredMixin, CreateView):
     template_name = "reports/report_form.html"
 
     def form_valid(self, form):
-        form.instance.author = self.request.user
-        messages.success(self.request, "Report submitted.")
-        return super().form_valid(form)
+        user = form.instance.author = self.request.user
+        response = super().form_valid(form)
+        title, link = f"New report from {user}", self.object.get_absolute_url()
+        if user.role == Role.STAFF and user.supervisor_id:
+            notify(user.supervisor, "report.new", title, self.object.title, link, entity=self.object)
+        else:
+            notify_role(Role.MANAGER, "report.new", title, self.object.title, link, entity=self.object)
+        messages.success(self.request, "Report sent to the Manager." if user.role == Role.SECRETARY else "Report submitted.")
+        return response
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["title"] = "Submit a report"
+        ctx["title"] = "Send a report to the Manager" if self.request.user.role == Role.SECRETARY else "Submit a report"
         return ctx
 
 
@@ -91,7 +107,7 @@ class ReportDetailView(RoleRequiredMixin, DetailView):
         ctx["replies"] = report.replies.select_related("author")
         ctx["can_edit"] = report.can_edit(user)
         if report.can_reply(user):
-            ctx["reply_form"] = ReplyForm(can_complete=user.role == Role.MANAGER)
+            ctx["reply_form"] = ReplyForm(can_complete=report.can_complete(user))
         return ctx
 
 
@@ -129,10 +145,30 @@ class ReplyCreateView(RoleRequiredMixin, View):
         report = get_object_or_404(Report.objects.visible_to(request.user).select_related("author"), pk=pk)
         if not report.can_reply(request.user):
             raise PermissionDenied
-        form = ReplyForm(request.POST, can_complete=request.user.role == Role.MANAGER)
+        form = ReplyForm(request.POST, can_complete=report.can_complete(request.user))
         if form.is_valid():
             report.add_reply(request.user, form.cleaned_data["body"], complete=form.cleaned_data.get("complete", False))
             messages.success(request, "Reply sent.")
         else:
             messages.error(request, "Please write a reply before sending.")
         return redirect(report)
+
+
+class ResolveView(RoleRequiredMixin, View):
+    """One button on the Manager dashboard: mark a report resolved, with an optional note."""
+
+    http_method_names = ["post"]
+    allowed_roles = (Role.MANAGER, Role.SUPERVISOR)
+
+    def post(self, request, pk):
+        report = get_object_or_404(Report.objects.visible_to(request.user).select_related("author"), pk=pk)
+        if not report.can_complete(request.user):
+            messages.error(request, "This report is already resolved." if report.status == Status.COMPLETED
+                           else "You cannot resolve this report.")
+        else:
+            note = (request.POST.get("note") or "").strip() or "Resolved."
+            report.add_reply(request.user, note, complete=True)
+            messages.success(request, f'Report "{report.title}" resolved.')
+        nxt = request.POST.get("next", "")
+        safe = url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure())
+        return redirect(nxt if nxt and safe else report.get_absolute_url())

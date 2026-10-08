@@ -71,9 +71,41 @@ def manager_extra(user):
         "expenses_waiting": Expense.objects.filter(status=Expense.Status.AWAITING_APPROVAL).count(),
         "open_issue_count": _open_issues().count(),
     }
+    waiting.update(_operations_glance())
     waiting["waiting_total"] = (payroll.count() + len(waiting["escalations_waiting"]) + len(waiting["items_waiting"])
-                                + waiting["expenses_waiting"])
+                                + waiting["expenses_waiting"] + waiting["leave_waiting"] + waiting["attendance_waiting"])
     return waiting
+
+
+def _operations_glance():
+    """The attendance strip and the operations numbers at the top of the Manager dashboard."""
+    from attendance.services import board
+    from incidents.services import open_serious_count
+    from leave.models import LeaveRequest, SickLeave
+
+    today_board = board()
+    states = {}
+    for box in today_board["boxes"]:
+        for group in ("in", "absent", "away", "later"):
+            for row in box[group]:
+                states[row["state"]] = states.get(row["state"], 0) + 1
+    return {
+        "board": today_board,
+        "today_date": today_board["day"],
+        "ops": {
+            "on_duty": states.get("on_duty", 0) + states.get("late", 0) + states.get("off_location", 0),
+            "late": states.get("late", 0),
+            "off_location": states.get("off_location", 0),
+            "on_leave": states.get("on_leave", 0),
+            "sick": states.get("sick", 0),
+            "absent": states.get("not_signed_in", 0) + states.get("absent", 0) + states.get("rejected", 0),
+            "short_sites": sum(1 for b in today_board["boxes"] if b.get("short") and b["site"]),
+            "serious_incidents": open_serious_count(),
+        },
+        "leave_waiting": LeaveRequest.objects.filter(status=LeaveRequest.Status.WAITING, approver__isnull=True).count(),
+        "sick_to_check": SickLeave.objects.filter(status=SickLeave.Status.CERTIFICATE_RECEIVED).count(),
+        "attendance_waiting": today_board["waiting_manager"] if not today_board["completed"] else 0,
+    }
 
 
 def supervisor_extra(user):
@@ -81,8 +113,14 @@ def supervisor_extra(user):
 
     from inventory.models import ItemRequest
 
+    from attendance.services import my_today, team_today
+    from leave.models import LeaveRequest
+
     mine = _open_issues().filter(supervisor=user).select_related("client")
     return {
+        "att": my_today(user),
+        "team_att": team_today(user),
+        "team_leave_waiting": LeaveRequest.objects.filter(status=LeaveRequest.Status.WAITING, approver=user).count(),
         "my_issues": mine[:8],
         "my_issue_count": mine.count(),
         "my_urgent_count": mine.filter(priority__in=(Issue.Priority.HIGH, Issue.Priority.URGENT)).count(),
@@ -91,9 +129,12 @@ def supervisor_extra(user):
 
 
 def staff_extra(user):
+    from attendance.services import my_today
     from inventory.models import ItemRequest
+    from operations.services import QUICK_ENTRIES, my_site
 
-    return _my_items(user, ItemRequest)
+    site = my_site(user)
+    return {**_my_items(user, ItemRequest), "att": my_today(user), "my_site": site, "quick": QUICK_ENTRIES if site else None}
 
 
 def _my_items(user, ItemRequest):

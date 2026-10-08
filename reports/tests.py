@@ -27,8 +27,10 @@ class ReportVisibilityTests(CompanyTestCase):
     def test_manager_sees_everything(self):
         self.assertEqual(len(self.ids(self.manager)), 4)
 
-    def test_secretary_sees_nothing(self):
+    def test_secretary_sees_only_own(self):
         self.assertEqual(self.ids(self.secretary), set())
+        own = Report.objects.create(author=self.secretary, title="Office", body="x")
+        self.assertEqual(self.ids(self.secretary), {own.pk})
 
     def test_detail_of_out_of_scope_report_is_404(self):
         self.login(self.staff_a1)
@@ -36,10 +38,10 @@ class ReportVisibilityTests(CompanyTestCase):
         self.login(self.sup_a)
         self.assertEqual(self.client.get(self.r_b1.get_absolute_url()).status_code, 404)
 
-    def test_secretary_is_forbidden_from_reports(self):
+    def test_secretary_cannot_open_staff_reports(self):
         self.login(self.secretary)
-        self.assertEqual(self.client.get(reverse("reports:list")).status_code, 403)
-        self.assertEqual(self.client.get(self.r_a1.get_absolute_url()).status_code, 403)
+        self.assertEqual(self.client.get(reverse("reports:list")).status_code, 200)
+        self.assertEqual(self.client.get(self.r_a1.get_absolute_url()).status_code, 404)
 
     def test_anonymous_is_redirected_to_login(self):
         response = self.client.get(reverse("reports:list"))
@@ -94,10 +96,16 @@ class ReportWorkflowTests(CompanyTestCase):
         self.report.refresh_from_db()
         self.assertEqual(self.report.status, Status.REVIEWED)
 
-    def test_supervisor_cannot_complete_even_if_flag_is_sent(self):
+    def test_supervisor_can_resolve_own_team_report(self):
         self.post_reply(self.sup_a, complete="on")
         self.report.refresh_from_db()
-        self.assertEqual(self.report.status, Status.REVIEWED)
+        self.assertEqual(self.report.status, Status.COMPLETED)
+        self.assertEqual(self.report.completed_by, self.sup_a)
+
+    def test_other_supervisor_cannot_resolve(self):
+        self.assertEqual(self.post_reply(self.sup_b, complete="on").status_code, 404)
+        self.report.refresh_from_db()
+        self.assertEqual(self.report.status, Status.PENDING)
 
     def test_manager_replies_to_supervisor_report(self):
         upward = Report.objects.create(author=self.sup_a, title="Consolidated", body="x")
@@ -129,10 +137,17 @@ class ReportSubmitEditTests(CompanyTestCase):
         self.client.post(reverse("reports:create"), {"title": "T", "body": "B", "author": self.manager.pk})
         self.assertEqual(Report.objects.get().author, self.staff_a1)
 
-    def test_manager_and_secretary_cannot_submit(self):
-        for user in (self.manager, self.secretary):
-            self.login(user)
-            self.assertEqual(self.client.get(reverse("reports:create")).status_code, 403)
+    def test_manager_cannot_submit(self):
+        self.login(self.manager)
+        self.assertEqual(self.client.get(reverse("reports:create")).status_code, 403)
+
+    def test_secretary_report_goes_to_manager(self):
+        self.login(self.secretary)
+        self.client.post(reverse("reports:create"), {"title": "Fuel costs", "body": "Up 10%"})
+        report = Report.objects.get(title="Fuel costs")
+        self.assertEqual(report.author, self.secretary)
+        self.assertTrue(self.manager.notifications.filter(kind="report.new").exists())
+        self.assertFalse(report.can_reply(self.sup_a))
 
     def test_author_can_edit_only_while_pending(self):
         report = Report.objects.create(author=self.staff_a1, title="Old", body="x")
@@ -172,8 +187,13 @@ class DashboardTests(CompanyTestCase):
         self.assertEqual(ctx["completed_count"], 1)
         self.assertEqual(ctx["active_supervisors"], 2)
         self.assertEqual(ctx["feedback_sent"], 1)
-        self.assertEqual(len(ctx["chart"]), 6)
-        self.assertEqual(sum(m["completed"] for m in ctx["chart"]), 1)
+        self.assertEqual(ctx["unchecked_count"], 1)
+        self.assertEqual(ctx["resolved_by_manager"], 1)
+        self.assertEqual(ctx["resolved_by_supervisors"], 0)
+        self.assertNotIn("chart", ctx)
+        groups = {g["role"]: g for g in ctx["received_groups"]}
+        self.assertEqual(groups["staff"]["total"], 2)
+        self.assertEqual(groups["staff"]["resolved"], 1)
 
     def test_home_requires_login(self):
         self.assertEqual(self.client.get(reverse("core:home")).status_code, 302)
