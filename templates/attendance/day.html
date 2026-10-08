@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Attendance day sheet{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Attendance: {{ day|date:"l d M Y" }}</h1>
+  <p class="muted">Sign-ins approved by supervisors wait here. Completing the day makes every record final and records who was absent, on leave or sick.</p></div>
+  <form method="get" class="filters"><div><label for="date">Day</label><input id="date" type="date" name="date" value="{{ day|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}"></div><button class="btn secondary" type="submit">Show</button></form></div>
+{% with today_date=today %}{% include "attendance/_board.html" %}{% endwith %}
+{% if user.role == 'manager' %}
+<div class="card">
+  {% if board.completed %}
+    <p><strong>Completed</strong> by {{ board.completed.completed_by }} on {{ board.completed.completed_at|date:"d M Y H:i" }}:
+      {{ board.completed.present }} present, {{ board.completed.late }} late, {{ board.completed.absent }} absent, {{ board.completed.on_leave }} on leave, {{ board.completed.sick }} sick.</p>
+    <form method="post" action="{% url 'attendance:reopen' %}">{% csrf_token %}<input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}"><input type="hidden" name="next" value="day">
+      <button class="btn secondary" type="submit" data-confirm="Reopen this day so it can be changed?">Reopen this day</button></form>
+  {% else %}
+    <div class="actions">
+      {% if board.waiting_supervisor %}<form method="post" action="{% url 'attendance:approve_all' %}">{% csrf_token %}<input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}"><input type="hidden" name="next" value="day"><button class="btn secondary" type="submit">Approve the {{ board.waiting_supervisor }} still waiting for supervisors</button></form>{% endif %}
+      <form method="post" action="{% url 'attendance:complete' %}">{% csrf_token %}<input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}"><input type="hidden" name="next" value="day">
+        <button class="btn" type="submit" data-confirm="Complete attendance for {{ day|date:'d M Y' }}? Anyone who has not signed in will be recorded as absent.">Complete the day</button></form>
+    </div>
+  {% endif %}
+</div>
+{% endif %}
+<div class="card">
+  <h2>Everyone</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Person</th><th>Site</th><th>Signed in</th><th>Today</th><th>Status</th>{% if user.role == 'manager' and not board.completed %}<th></th>{% endif %}</tr></thead>
+    {% for b in board.boxes %}{% for row in b.in %}{% include "attendance/_day_row.html" %}{% endfor %}{% for row in b.absent %}{% include "attendance/_day_row.html" %}{% endfor %}{% for row in b.away %}{% include "attendance/_day_row.html" %}{% endfor %}{% for row in b.later %}{% include "attendance/_day_row.html" %}{% endfor %}{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+<div class="card"><h2>Recently completed days</h2>
+  <ul class="timeline small">{% for d in recent_days %}<li><a href="?date={{ d.date|date:'Y-m-d' }}">{{ d.date|date:"D d M Y" }}</a>: {{ d.present|add:d.late }} in, {{ d.absent }} absent, {{ d.on_leave }} on leave, {{ d.sick }} sick · by {{ d.completed_by }}</li>{% empty %}<li>None yet.</li>{% endfor %}</ul>
+  <p><a href="{% url 'attendance:records' %}">All attendance records</a></p></div>
+{% endblock %}

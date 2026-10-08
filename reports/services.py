@@ -1,45 +1,10 @@
 """Read-only queries that power the role dashboards."""
 from django.db.models import Count, Q
-from django.utils import timezone
 
 from accounts.models import Role, User
+from core.filters import period_start
 
 from .models import Reply, Report, Status
-
-
-def _last_months(n=6):
-    """First day (local time) of each of the last `n` months, oldest first."""
-    now = timezone.localtime()
-    year, month = now.year, now.month
-    months = []
-    for _ in range(n):
-        months.append(now.replace(year=year, month=month, day=1, hour=0, minute=0, second=0, microsecond=0))
-        month -= 1
-        if month == 0:
-            month, year = 12, year - 1
-    return list(reversed(months))
-
-
-def monthly_pending_vs_completed(reports, n=6):
-    """One row per month with open/completed counts and bar heights (%)."""
-    starts = _last_months(n)
-    rows = []
-    for i, start in enumerate(starts):
-        in_month = reports.filter(created_at__gte=start)
-        if i + 1 < len(starts):
-            in_month = in_month.filter(created_at__lt=starts[i + 1])
-        rows.append(
-            {
-                "label": start.strftime("%b"),
-                "completed": in_month.filter(status=Status.COMPLETED).count(),
-                "open": in_month.exclude(status=Status.COMPLETED).count(),
-            }
-        )
-    peak = max([r["completed"] for r in rows] + [r["open"] for r in rows] + [1])
-    for r in rows:
-        r["completed_pct"] = round(r["completed"] / peak * 100)
-        r["open_pct"] = round(r["open"] / peak * 100)
-    return rows
 
 
 def recent_activity(reports, limit=10):
@@ -56,8 +21,31 @@ def recent_activity(reports, limit=10):
     return sorted(events, key=lambda e: e["when"], reverse=True)[:limit]
 
 
-def manager_dashboard():
+RECEIVED_GROUPS = (
+    (Role.SECRETARY, "From the Secretary"),
+    (Role.SUPERVISOR, "From supervisors"),
+    (Role.STAFF, "From guards"),
+)
+
+
+def reports_received(period="week", today=None):
+    """The Manager's Reports Received section: one group per sender role, for today, this week or this month."""
+    start = period_start(period, today)
+    since = Report.objects.filter(created_at__date__gte=start).select_related("author", "completed_by")
+    groups = []
+    for role, label in RECEIVED_GROUPS:
+        qs = since.filter(author__role=role)
+        groups.append({
+            "role": role, "label": label, "reports": qs.order_by("status", "-created_at")[:15],
+            "total": qs.count(), "open": qs.exclude(status=Status.COMPLETED).count(),
+            "resolved": qs.filter(status=Status.COMPLETED).count(),
+        })
+    return {"received_groups": groups, "received_period": period, "received_since": start}
+
+
+def manager_dashboard(period="week"):
     reports = Report.objects.all()
+    completed = reports.filter(status=Status.COMPLETED)
     supervisors = (
         User.objects.filter(role=Role.SUPERVISOR, is_active=True)
         .annotate(
@@ -72,15 +60,18 @@ def manager_dashboard():
     )
     return {
         "open_count": reports.open().count(),
+        "unchecked_count": reports.filter(status=Status.PENDING).count(),
         "awaiting_supervisor": reports.filter(status=Status.PENDING).count(),
-        "completed_count": reports.filter(status=Status.COMPLETED).count(),
+        "completed_count": completed.count(),
+        "resolved_by_supervisors": completed.filter(completed_by__role=Role.SUPERVISOR).count(),
+        "resolved_by_manager": completed.filter(completed_by__role=Role.MANAGER).count(),
         "active_supervisors": supervisors.count(),
         "feedback_sent": Reply.objects.count(),
-        "chart": monthly_pending_vs_completed(reports),
         "supervisors": supervisors,
         "recent_reports": reports.select_related("author")[:8],
         "activity": recent_activity(reports),
         "feedback_history": Reply.objects.select_related("author", "report").order_by("-created_at")[:8],
+        **reports_received(period),
     }
 
 

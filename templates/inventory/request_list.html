@@ -5,6 +5,7 @@
 <a class="btn secondary" href="{% url 'inventory:overdue' %}">Overdue items</a></div>
 <div class="card">
   <form method="get" class="filters">
+    <div><label for="q">Search</label><input id="q" name="q" value="{{ f.q }}" placeholder="Item, person or reason"></div>
     <div><label for="status">Show</label><select id="status" name="status">
       <option value="todo" {% if status == 'todo' %}selected{% endif %}>Needs action</option>
       <option value="out" {% if status == 'out' %}selected{% endif %}>Out with people (must return)</option>
@@ -14,6 +15,7 @@
     <div><label for="from">From</label><input id="from" type="date" name="from" value="{{ f.from }}"></div>
     <div><label for="to">To</label><input id="to" type="date" name="to" value="{{ f.to }}"></div>
     <button class="btn secondary" type="submit">Filter</button>
+    <a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}export=csv">Download CSV</a>
   </form>
   {% include "inventory/_request_table.html" %}
   {% include "partials/pagination.html" %}

@@ -110,6 +110,7 @@ class Command(BaseCommand):
             TrackingProfile.objects.create(user=users[username], site=sites[0 if i < 3 else 1])
 
         _seed_operations(users, sites, rng)
+        _seed_site_operations(users, sites)
 
         self.stdout.write(self.style.SUCCESS("Demo data created. One-time passwords (note them down now):"))
         for username, _first, _last, role, _sup in PEOPLE:
@@ -185,3 +186,69 @@ def _seed_operations(users, sites, rng):
             PayProfile.objects.create(user=u, basic_salary=Decimal(rng.choice([15000, 18000, 22000, 30000])),
                                       payment_method="mpesa", mpesa_number=f"07{rng.randint(10000000, 99999999)}")
     payroll.create_run(today.replace(day=1), sec)
+
+
+def _seed_site_operations(users, sites):
+    """Site details, attendance, leave, sick leave, the OB, a site visit and an incident."""
+    from datetime import datetime
+
+    from attendance import services as attendance
+    from attendance.models import AttendanceRecord
+    from incidents.models import Incident
+    from incidents.services import create_incident
+    from leave import services as leave
+    from leave.models import LeaveType
+    from operations import services as ops
+    from operations.models import OBEntry
+
+    sec, mgr = users["secretary"], users["manager"]
+    details = [
+        ("Off Kisumu-Kakamega Road, behind Kondele Market", users["supervisor1"], 3,
+         "Check the back gate every hour. Write every vehicle in the OB.", "Kondele Police Post 0712000100"),
+        ("Milimani estate, Lakeside Apartments gate", users["supervisor2"], 2,
+         "No visitors after 10 pm without a call from the tenant.", "Central Police Station 0712000200"),
+    ]
+    for site, (address, sup, needed, rules, contacts) in zip(sites, details):
+        site.address, site.supervisor, site.guards_needed = address, sup, needed
+        site.instructions, site.emergency_contacts = rules, contacts
+        site.save()
+
+    today = timezone.localdate()
+    yesterday = today - timedelta(days=1)
+
+    def at(day, hh, mm):
+        return timezone.make_aware(datetime.combine(day, time(hh, mm)))
+
+    for username, day, hh, mm in (("staff1", yesterday, 6, 55), ("staff3", yesterday, 7, 30), ("supervisor1", yesterday, 6, 50)):
+        user = users[username]
+        late = max(0, (hh * 60 + mm) - (7 * 60 + 15))
+        AttendanceRecord.objects.create(
+            user=user, date=day, site=user.tracking.site, supervisor=attendance.approver_for(user),
+            outcome="late" if late else "present", status="waiting_manager", method="gps", signed_in_at=at(day, hh, mm),
+            shift_start=at(day, 7, 0), late_minutes=late + 15 if late else 0, distance_m=12, location_status="on",
+        )
+    if yesterday.weekday() < 6:
+        attendance.complete_day(yesterday, mgr)
+    if today.weekday() < 6:
+        for username, status in (("staff1", "waiting_supervisor"), ("supervisor2", "waiting_manager")):
+            user = users[username]
+            AttendanceRecord.objects.create(
+                user=user, date=today, site=user.tracking.site, supervisor=attendance.approver_for(user), outcome="present",
+                status=status, method="gps", signed_in_at=at(today, 6, 50), shift_start=at(today, 7, 0),
+                distance_m=9, location_status="on",
+            )
+
+    annual = LeaveType.objects.get(code="annual")
+    leave.ask_for_leave(users["staff2"], annual, today + timedelta(days=14), today + timedelta(days=18), "Family visit", users["staff2"])
+    leave.ask_for_leave(users["staff4"], annual, today, today + timedelta(days=2), "Wedding", users["supervisor2"])
+    leave.report_sick(users["staff3"], today, today + timedelta(days=1), "", users["supervisor2"])
+
+    ops.write_ob(sites[0], users["staff1"], OBEntry.Kind.SHIFT_START, "Shift started. All in order.", at(today, 7, 0))
+    ops.write_ob(sites[0], users["staff1"], OBEntry.Kind.VISITOR, "Water bowser KCA 123B delivered water.", at(today, 9, 20))
+    ops.record_visit(sites[0], users["supervisor1"], at(today, 10, 0), ["guards_at_post", "uniform", "ob_up_to_date"],
+                     [users["staff1"]], True, "All fine. Asked for a new torch battery.")
+    create_incident(Incident(site=sites[1], occurred_at=at(yesterday, 23, 40), kind="trespass", severity="medium",
+                             what_happened="Two people climbed the back fence and ran off when challenged.",
+                             who_involved="Two unknown men", action_taken="Raised the alarm, called the supervisor.",
+                             police_reported=True, police_ob_number="OB 12/08/2026", client_told=True), users["staff4"])
+    Report.objects.create(author=sec, title="Fuel prices went up this month", body="The generator fuel bill is 12% higher.")

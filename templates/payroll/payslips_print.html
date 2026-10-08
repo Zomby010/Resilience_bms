@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payslips {{ run.period|date:"F Y" }}</title>
+{% load static %}<link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="print-page">
+<p class="no-print"><button class="btn" onclick="window.print()">Print all payslips</button> <a class="btn secondary" href="{{ run.get_absolute_url }}">Back</a>
+  <span class="muted small">{{ slips|length }} payslip{{ slips|length|pluralize }}. Each one prints on its own page.</span></p>
+{% for s in slips %}
+<div class="payslip-page">{% with line=s.line earnings=s.earnings deductions=s.deductions %}{% include "payroll/_payslip.html" %}{% endwith %}</div>
+{% empty %}<p class="empty">Nobody on this payroll.</p>{% endfor %}
+</body></html>

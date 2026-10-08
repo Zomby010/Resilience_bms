@@ -1,4 +1,4 @@
-"""Safe file uploads: PDF, JPG and PNG only, checked by their first bytes, at most 5 MB."""
+"""Safe file uploads: PDF, JPG and PNG only, checked by their first bytes, at most 4 MB."""
 from django import forms
 from django.contrib.contenttypes.models import ContentType
 
@@ -14,7 +14,7 @@ SIGNATURES = (
 def detect_type(upload):
     """Return the real MIME type of an upload, or raise ValidationError with a plain message."""
     if upload.size > MAX_UPLOAD_BYTES:
-        raise forms.ValidationError("That file is too big. Files can be up to 5 MB.")
+        raise forms.ValidationError("That file is too big. Files can be up to 4 MB.")
     name = (upload.name or "").lower()
     upload.seek(0)
     head = upload.read(16)
@@ -33,7 +33,7 @@ class AttachmentField(forms.FileField):
     def __init__(self, **kwargs):
         kwargs.setdefault("required", False)
         kwargs.setdefault("label", "Attach a file (optional)")
-        kwargs.setdefault("help_text", "PDF, JPG or PNG, up to 5 MB.")
+        kwargs.setdefault("help_text", "PDF, JPG or PNG, up to 4 MB.")
         super().__init__(**kwargs)
 
     def clean(self, data, initial=None):

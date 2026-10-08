@@ -15,7 +15,8 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
-MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+MAX_UPLOAD_BYTES = 4 * 1024 * 1024  # Vercel refuses requests over 4.5 MB
+STORED_FILE_MAX_BYTES = 5 * 1024 * 1024  # database limit; older files may be up to 5 MB
 ALLOWED_MIME_TYPES = ("application/pdf", "image/jpeg", "image/png")
 
 
@@ -38,6 +39,19 @@ class CompanySettings(models.Model):
     expense_approval_enabled = models.BooleanField(default=False)
     expense_approval_limit = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     last_checks_at = models.DateTimeField(null=True, blank=True)
+    # Attendance, leave and sick leave.
+    late_after_minutes = models.PositiveSmallIntegerField(
+        "late after (minutes)", default=15,
+        help_text="Someone who signs in more than this many minutes after their shift starts is marked late.",
+    )
+    sick_note_due_days = models.PositiveSmallIntegerField(
+        "sick sheet expected within (days)", default=3,
+        help_text="A reminder goes out if no sick sheet has been uploaded this many days after sick leave starts.",
+    )
+    sick_note_keep_days = models.PositiveSmallIntegerField(
+        "keep sick sheets for (days)", default=365, validators=[MinValueValidator(30)],
+        help_text="Sick sheet files are deleted after this many days. The dates of the sick leave are kept.",
+    )
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
@@ -85,7 +99,7 @@ class Attachment(models.Model):
         indexes = [models.Index(fields=["content_type", "object_id"])]
         constraints = [
             models.CheckConstraint(condition=Q(mime_type__in=ALLOWED_MIME_TYPES), name="attachment_allowed_type"),
-            models.CheckConstraint(condition=Q(size_bytes__lte=MAX_UPLOAD_BYTES), name="attachment_max_size"),
+            models.CheckConstraint(condition=Q(size_bytes__lte=STORED_FILE_MAX_BYTES), name="attachment_max_size"),
         ]
 
     def __str__(self):

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Leave days{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Leave days for {{ year }}</h1>
+  <p class="muted">Days left for each person. {% if user.role == 'manager' %}Open a person to set their days.{% else %}Only the Manager can change these numbers.{% endif %} Each person only sees their own days.</p></div></div>
+<div class="card">
+  <form method="get" class="filters">
+    <div><label for="year">Year</label><input id="year" type="number" name="year" value="{{ year }}" min="2000" max="2100"></div>
+    <div><label for="q">Name</label><input id="q" name="q" value="{{ q }}"></div>
+    <div><label for="role">Role</label><select id="role" name="role"><option value="">Any</option>{% for v, l in roles %}{% if v != 'manager' %}<option value="{{ v }}" {% if f.role == v %}selected{% endif %}>{{ l }}</option>{% endif %}{% endfor %}</select></div>
+    <button class="btn secondary" type="submit">Show</button>
+  </form>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Person</th>{% for t in types %}<th>{{ t.name }}<br><span class="small muted">left of allowed</span></th>{% endfor %}</tr></thead>
+    <tbody>{% for row in rows %}<tr>
+      <td>{% if user.role == 'manager' %}<a href="{% url 'leave:allowance_edit' row.person.pk %}?year={{ year }}"><strong>{{ row.person }}</strong></a>{% else %}<strong>{{ row.person }}</strong>{% endif %}<br><span class="small muted">{{ row.person.get_role_display }}</span></td>
+      {% for c in row.cells %}<td>{{ c.left|floatformat:"-1" }} / {{ c.allowed|floatformat:"-1" }}{% if c.waiting %}<br><span class="small muted">{{ c.waiting|floatformat:"-1" }} waiting</span>{% endif %}</td>{% endfor %}</tr>
+    {% empty %}<tr><td colspan="{{ types|length|add:1 }}" class="empty">Nobody found.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% endblock %}

@@ -47,6 +47,23 @@ class Site(models.Model):
         help_text=f"How close counts as ON LOCATION. Between 5 and {NEAR_LIMIT_M} metres. 30 suits most sites.",
     )
     is_active = models.BooleanField(default=True)
+    # Site details: edited by the Manager and Secretary, read-only for supervisors and staff.
+    address = models.CharField("address / directions", max_length=255, blank=True)
+    supervisor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="supervised_sites",
+        limit_choices_to={"role": "supervisor"}, help_text="The supervisor who looks after this site.",
+    )
+    guards_needed = models.PositiveSmallIntegerField(
+        "guards needed per shift", default=1, help_text="Fewer guards available than this shows the site as SHORT-STAFFED.",
+    )
+    instructions = models.TextField("site instructions", blank=True, help_text="What guards must do at this site.")
+    emergency_contacts = models.TextField(
+        blank=True, help_text="One per line, for example: Kondele Police Post 0712 000 000.",
+    )
+    details_updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    details_updated_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -55,6 +72,11 @@ class Site(models.Model):
 
     def __str__(self):
         return self.name
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse("operations:site_detail", args=[self.pk])
 
 
 class TrackingProfile(models.Model):
@@ -175,6 +197,24 @@ class Alert(models.Model):
 
     def __str__(self):
         return self.message
+
+
+class SitePosting(models.Model):
+    """History of who was posted to which site, and when. Written whenever a person's site changes."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="postings")
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name="postings")
+    started_at = models.DateTimeField()
+    ended_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-started_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(fields=["user"], condition=Q(ended_at__isnull=True), name="one_current_posting_per_person")
+        ]
+
+    def __str__(self):
+        return f"{self.user} at {self.site}"
 
 
 class AuditEntry(models.Model):

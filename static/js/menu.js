@@ -10,6 +10,30 @@
   });
 })();
 
+// Keep the sidebar menu where it was after clicking a link (it scrolls on its own on short screens),
+// instead of jumping back to the top on every page. Only the menu; the page itself is not touched.
+(function () {
+  var sidebar = document.querySelector(".sidebar");
+  if (!sidebar) return;
+  var KEY = "sidebarScroll";
+  function save() {
+    try { sessionStorage.setItem(KEY, String(sidebar.scrollTop)); } catch (e) { /* storage blocked */ }
+  }
+  var saved = null;
+  try { saved = sessionStorage.getItem(KEY); } catch (e) { /* storage blocked */ }
+  if (saved !== null && !isNaN(parseInt(saved, 10))) sidebar.scrollTop = parseInt(saved, 10);
+  // If the current page's link is still out of view, bring it just into view.
+  var active = sidebar.querySelector(".nav a.active");
+  if (active && sidebar.scrollHeight > sidebar.clientHeight) {
+    var box = sidebar.getBoundingClientRect(), link = active.getBoundingClientRect();
+    if (link.top < box.top || link.bottom > box.bottom) active.scrollIntoView({ block: "nearest" });
+  }
+  sidebar.addEventListener("click", function (e) {
+    if (e.target.closest && e.target.closest(".nav a")) save();
+  });
+  window.addEventListener("pagehide", save);
+})();
+
 // Buttons marked data-confirm ask "Are you sure?" before the form is sent.
 document.addEventListener("submit", function (e) {
   var btn = e.submitter;

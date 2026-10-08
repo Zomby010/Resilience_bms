@@ -1,13 +1,15 @@
 import csv
 
 from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
-from django.views.generic import DetailView, FormView, ListView, UpdateView
+from django.views.generic import DetailView, FormView, ListView, TemplateView, UpdateView
 
 from accounts.models import Role
-from core.mixins import ActionView, FilterContextMixin, OfficeRequiredMixin
-from core.models import AuditLog
+from core.filters import apply_dates
+from core.mixins import ActionView, CsvExportMixin, FilterContextMixin, OfficeRequiredMixin
+from core.models import AuditLog, CompanySettings
 from core.services import audit
 from core.workflow import TransitionError
 from escalations.services import open_escalation
@@ -15,20 +17,30 @@ from escalations.services import open_escalation
 from . import services
 from .forms import AddPersonForm, LineForm, NewRunForm, PayProfileForm
 from .models import PayProfile, PayrollLine, PayrollRun
+from .pdf import payslip_pdf
 
 S = PayrollRun.Status
 
 
-class RunListView(OfficeRequiredMixin, FilterContextMixin, ListView):
+class RunListView(OfficeRequiredMixin, CsvExportMixin, FilterContextMixin, ListView):
     template_name = "payroll/run_list.html"
     context_object_name = "runs"
     paginate_by = 24
+    csv_filename = "payroll-months.csv"
+    csv_header = ["Month", "Status", "Gross (KES)", "Deductions (KES)", "Net pay (KES)", "Prepared by", "Decided by"]
 
     def get_queryset(self):
         qs = PayrollRun.objects.select_related("created_by", "submitted_by", "decided_by")
         if self.request.GET.get("status") in S.values:
             qs = qs.filter(status=self.request.GET["status"])
-        return qs
+        return apply_dates(qs, self.request.GET, "period")
+
+    def csv_rows(self, qs):
+        audit.record(self.request.user, "payroll.list_exported", None, "Downloaded the list of payroll months",
+                     confidential=True)
+        for r in qs:
+            yield [f"{r.period:%B %Y}", r.get_status_display(), r.total_gross, r.total_deductions, r.total_net,
+                   r.created_by, r.decided_by or ""]
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -205,3 +217,71 @@ class PrintView(OfficeRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         services.exported(self.object, self.request.user, "print")
         return {**super().get_context_data(**kwargs), "lines": self.object.lines.all()}
+
+
+# --- payslips -------------------------------------------------------------------
+
+class PayslipMixin:
+    """Shared by a person's own payslip and the office copy. Subclasses define get_line()."""
+
+    template_name = "payroll/payslip.html"
+
+    def get(self, request, *args, **kwargs):
+        self.line = self.get_line()
+        if kwargs.get("pdf"):
+            services.payslip_seen(self.line, request.user, "downloaded")
+            response = HttpResponse(payslip_pdf(self.line), content_type="application/pdf")
+            response["Content-Disposition"] = f'attachment; filename="payslip-{self.line.run.period:%Y-%m}.pdf"'
+            return response
+        services.payslip_seen(self.line, request.user)
+        return super().get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        earnings, deductions = services.payslip_rows(self.line)
+        ctx.update(line=self.line, run=self.line.run, earnings=earnings, deductions=deductions,
+                   company=CompanySettings.load())
+        return ctx
+
+
+class MyPayslipListView(LoginRequiredMixin, ListView):
+    """Everyone: their own payslips from approved payrolls."""
+
+    template_name = "payroll/my_payslips.html"
+    context_object_name = "lines"
+    paginate_by = 24
+
+    def get_queryset(self):
+        return services.my_payslips(self.request.user)
+
+
+class MyPayslipView(LoginRequiredMixin, PayslipMixin, TemplateView):
+    def get_line(self):
+        return get_object_or_404(services.my_payslips(self.request.user), pk=self.kwargs["line"])
+
+
+class OfficePayslipView(OfficeRequiredMixin, PayslipMixin, TemplateView):
+    def get_line(self):
+        return get_object_or_404(PayrollLine.objects.select_related("run"), pk=self.kwargs["line"],
+                                 run_id=self.kwargs["pk"], run__status=S.APPROVED)
+
+    def get_context_data(self, **kwargs):
+        return {**super().get_context_data(**kwargs), "office": True}
+
+
+class RunPayslipsView(OfficeRequiredMixin, DetailView):
+    """Every payslip of an approved payroll, one per printed page."""
+
+    template_name = "payroll/payslips_print.html"
+    context_object_name = "run"
+
+    def get_queryset(self):
+        return PayrollRun.objects.filter(status=S.APPROVED)
+
+    def get_context_data(self, **kwargs):
+        services.exported(self.object, self.request.user, "payslips")
+        slips = []
+        for line in self.object.lines.all():
+            earnings, deductions = services.payslip_rows(line)
+            slips.append({"line": line, "earnings": earnings, "deductions": deductions})
+        return {**super().get_context_data(**kwargs), "slips": slips, "company": CompanySettings.load()}

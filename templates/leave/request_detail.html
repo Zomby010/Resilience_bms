@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Leave for {{ req.user }}{% endblock %}
+{% block content %}
+<div class="simple">
+  <h1>{{ req.leave_type }} for {{ req.user }}</h1>
+  <div class="status-big">{{ req.get_status_display }}</div>
+  <div class="card">
+    <dl class="facts">
+      <dt>First day off</dt><dd>{{ req.start_date|date:"l d M Y" }}</dd>
+      <dt>Last day off</dt><dd>{{ req.end_date|date:"l d M Y" }}</dd>
+      <dt>Days counted</dt><dd>{{ req.days|floatformat:"-1" }}</dd>
+      <dt>Days left</dt><dd>{{ balance }}</dd>
+      {% if req.reason %}<dt>Reason</dt><dd>{{ req.reason|linebreaksbr }}</dd>{% endif %}
+      <dt>Asked</dt><dd>{{ req.created_at|date:"d M Y H:i" }}{% if req.entered_by_id != req.user_id %} by {{ req.entered_by }} on their behalf{% endif %}</dd>
+      <dt>Decides</dt><dd>{{ req.approver|default:"The Manager" }}</dd>
+      {% if req.decided_by %}<dt>Decided</dt><dd>{{ req.decided_by }}, {{ req.decided_at|date:"d M Y H:i" }}</dd>{% endif %}
+      {% if req.decision_note %}<dt>Note</dt><dd>{{ req.decision_note|linebreaksbr }}</dd>{% endif %}
+    </dl>
+  </div>
+  {% if can_decide %}
+  <div class="card">
+    <h2>Your answer</h2>
+    <form method="post" class="stack-form">{% csrf_token %}
+      <label for="note">Note (needed if you say no)</label>
+      <textarea id="note" name="note" rows="2"></textarea>
+      <div class="actions">
+        <button class="btn big" type="submit" formaction="{% url 'leave:approve' req.pk %}">Approve</button>
+        <button class="btn big secondary" type="submit" formaction="{% url 'leave:reject' req.pk %}">Say no</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+  {% if can_cancel %}
+  <form method="post" action="{% url 'leave:cancel' req.pk %}">{% csrf_token %}
+    <button class="btn danger wide" type="submit" data-confirm="Cancel this leave?">Cancel this leave</button>
+  </form>
+  {% endif %}
+  <p><a href="{% if req.user_id == user.pk %}{% url 'leave:mine' %}{% else %}{% url 'leave:request_list' %}{% endif %}">Go back</a></p>
+</div>
+{% endblock %}

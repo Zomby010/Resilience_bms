@@ -6,3 +6,7 @@ tzdata==2026.5
 reportlab==5.0.1
 pillow==12.3.0
 charset-normalizer==3.5.2
+# Hosting on Vercel with Neon: the PostgreSQL driver and S3-compatible file storage (Neon buckets).
+psycopg[binary]==3.3.6
+django-storages[s3]==1.14.6
+boto3==1.43.109

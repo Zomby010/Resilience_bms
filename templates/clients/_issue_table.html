@@ -1,5 +1,5 @@
 <div class="table-wrap"><table>
-  <thead><tr><th>Issue</th>{% if not hide_client %}<th>Client</th>{% endif %}<th>Priority</th><th>Status</th><th>Supervisor</th><th>Reported</th></tr></thead>
+  <thead><tr><th>Issue</th>{% if not hide_client %}<th>Client</th>{% endif %}<th>Priority</th><th>Status</th><th>Supervisor</th><th>Reported</th><th>Last update</th></tr></thead>
   <tbody>
   {% for i in issues %}
     <tr>
@@ -9,7 +9,8 @@
       <td>{% badge i %}</td>
       <td>{{ i.supervisor|default:"-" }}</td>
       <td>{{ i.created_at|date:"d M Y" }}</td>
+      <td>{{ i.last_update|default:i.updated_at|date:"d M Y H:i" }}</td>
     </tr>
-  {% empty %}<tr><td colspan="6" class="empty">No issues.</td></tr>{% endfor %}
+  {% empty %}<tr><td colspan="7" class="empty">No issues.</td></tr>{% endfor %}
   </tbody>
 </table></div>

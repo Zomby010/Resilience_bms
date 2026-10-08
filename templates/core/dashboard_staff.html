@@ -7,6 +7,14 @@
   <a class="btn" href="{% url 'reports:create' %}">Submit a report</a>
 </div>
 
+{% include "attendance/_my_card.html" %}
+{% if quick %}
+<div class="card"><h2>Occurrence Book: {{ my_site }}</h2>
+  <div class="actions">{% for code, entry in quick.items %}<form method="post" action="{% url 'operations:ob_quick' code %}">{% csrf_token %}<input type="hidden" name="next" value="home"><button class="btn big secondary" type="submit">{{ entry.1 }}</button></form>{% endfor %}
+  <a class="btn big secondary" href="{% url 'operations:ob_write' %}">Write something else</a></div></div>
+{% endif %}
+<div class="actions" style="margin-bottom:1rem"><a class="btn big secondary" href="{% url 'leave:mine' %}">My leave</a><a class="btn big secondary" href="{% url 'leave:sick_report' %}">Report sick</a><a class="btn big secondary" href="{% url 'incidents:create' %}">Report an incident</a></div>
+
 {% if location_state %}{% include "tracking/_location_card.html" %}{% endif %}
 
 {% include "core/_my_items_card.html" %}

@@ -1,7 +1,10 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q, Sum
-from django.http import FileResponse, Http404
+import secrets
+
+from django.conf import settings
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -15,6 +18,7 @@ from reports import services
 from tracking import services as tracking
 
 from . import dashboards
+from .filters import PERIODS, clean_period, period_start
 from .access import can_view
 from .forms import CompanySettingsForm
 from .models import Attachment, AuditLog, CompanySettings
@@ -38,9 +42,10 @@ class HomeView(LoginRequiredMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
         if user.role == Role.MANAGER:
-            ctx.update(services.manager_dashboard())
+            ctx.update(services.manager_dashboard(clean_period(self.request.GET.get("period"))))
             ctx.update(_finance_glance())
             ctx.update(dashboards.manager_extra(user))
+            ctx["periods"] = PERIODS
         elif user.role == Role.SUPERVISOR:
             ctx.update(services.supervisor_dashboard(user))
             ctx["location_state"] = tracking.my_state(user)
@@ -62,10 +67,18 @@ def _finance_glance():
     month = Expense.objects.filter(
         date__year=today.year, date__month=today.month, status=Expense.Status.RECORDED
     )
+    recorded = Expense.objects.filter(status=Expense.Status.RECORDED)
+
+    def spent(period):
+        return recorded.filter(date__gte=period_start(period, today), date__lte=today).aggregate(t=Sum("amount"))["t"] or 0
+
     return {
         "month_total": month.aggregate(t=Sum("amount"))["t"] or 0,
         "month_count": month.count(),
         "month_label": today.strftime("%B %Y"),
+        "spend": [("Today", spent("day"), "day"), ("This week", spent("week"), "week"), ("This month", spent("month"), "month")],
+        "today": today,
+        "week_start": period_start("week", today),
     }
 
 
@@ -148,3 +161,22 @@ class AuditLogView(RoleRequiredMixin, ListView):
         ctx["query_string"] = params.urlencode()
         ctx["f"] = self.request.GET
         return ctx
+
+
+class CronDailyView(View):
+    """Vercel Cron's daily call: the daily checks plus the GPS alert check and clean-up.
+
+    Only answers when the request carries CRON_SECRET, which Vercel sends as a Bearer token.
+    """
+
+    def get(self, request):
+        expected = f"Bearer {settings.CRON_SECRET}"
+        if not settings.CRON_SECRET or not secrets.compare_digest(request.headers.get("Authorization", ""), expected):
+            raise Http404
+        from .checks import run_daily_checks
+
+        result = run_daily_checks() or {"already_ran_today": True}
+        tracking.ensure_profiles()
+        tracking.evaluate_alerts()
+        result["location_records_deleted"] = tracking.purge_history()
+        return JsonResponse(result)

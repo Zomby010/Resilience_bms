@@ -15,5 +15,6 @@ class Command(BaseCommand):
             self.stdout.write("Checks already ran today. Use --force to run again.")
             return
         self.stdout.write(self.style.SUCCESS(
-            f"Done. {result['overdue_invoices']} invoice(s) marked overdue, {result['item_reminders']} item reminder(s) sent."
+            f"Done. {result['overdue_invoices']} invoice(s) marked overdue, {result['item_reminders']} item reminder(s) sent, "
+            f"{result['sick_reminders']} sick sheet reminder(s) sent, {result['sick_sheets_removed']} old sick sheet file(s) deleted."
         ))

@@ -1,0 +1,10 @@
+{% load static %}<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Occurrence Book</title>
+<style>body{font:12px/1.4 Arial,sans-serif;color:#111;margin:1.5cm}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:4px 6px;text-align:left;vertical-align:top}th{background:#eee}h1{font-size:18px;margin:0 0 4px}.muted{color:#555}@media print{.noprint{display:none}}</style></head>
+<body>
+<p class="noprint"><button onclick="window.print()">Print</button></p>
+<h1>Occurrence Book</h1>
+<p class="muted">Printed {% now "d M Y H:i" %} by {{ user }}{% if f.from or f.to %} · {{ f.from|default:"start" }} to {{ f.to|default:"today" }}{% endif %}</p>
+<table><thead><tr><th>Entry</th><th>When</th><th>Site</th><th>Kind</th><th>What happened</th><th>Written by</th></tr></thead>
+<tbody>{% for e in entries %}<tr><td>{{ e.number }}</td><td>{{ e.occurred_at|date:"d M Y H:i" }}</td><td>{{ e.site }}</td><td>{{ e.get_kind_display }}</td><td>{% if e.corrects %}(Corrects {{ e.corrects.number }}) {% endif %}{{ e.text|linebreaksbr }}</td><td>{{ e.written_by }}</td></tr>{% empty %}<tr><td colspan="6">No entries.</td></tr>{% endfor %}</tbody></table>
+</body></html>

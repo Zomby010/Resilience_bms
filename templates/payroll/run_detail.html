@@ -7,6 +7,7 @@
   <div class="actions">
     <a class="btn secondary" href="{% url 'payroll:export' run.pk %}">Download payment file (CSV)</a>
     <a class="btn secondary" href="{% url 'payroll:print' run.pk %}" target="_blank">Print</a>
+    {% if run.status == 'approved' %}<a class="btn" href="{% url 'payroll:payslips' run.pk %}" target="_blank">Payslips</a>{% endif %}
     {% if user.role == 'secretary' %}{% if escalation %}<a class="btn secondary" href="{% url 'escalations:detail' escalation.pk %}">Question sent to Manager</a>{% else %}<a class="btn secondary" href="{% url 'escalations:create' %}?type=payroll&amp;id={{ run.pk }}">Ask the Manager a question</a>{% endif %}{% endif %}
   </div>
 </div>
@@ -23,7 +24,7 @@
 <div class="card">
   <h2>Pay sheet</h2>
   <div class="table-wrap"><table>
-    <thead><tr><th>Name</th><th class="num">Basic</th><th class="num">Allow.</th><th class="num">Overtime</th><th class="num">Bonus</th><th class="num">Gross</th><th class="num">Deductions</th><th class="num">Net pay</th><th>Pay to</th>{% if editable %}<th></th>{% endif %}</tr></thead>
+    <thead><tr><th>Name</th><th class="num">Basic</th><th class="num">Allow.</th><th class="num">Overtime</th><th class="num">Bonus</th><th class="num">Gross</th><th class="num">Deductions</th><th class="num">Net pay</th><th>Pay to</th>{% if editable or run.status == 'approved' %}<th></th>{% endif %}</tr></thead>
     <tbody>
     {% for l in lines %}
       <tr>
@@ -35,7 +36,7 @@
         {% if editable %}<td class="actions">
           <a class="btn small secondary" href="{% url 'payroll:line_edit' run.pk l.pk %}">Edit</a>
           <form method="post" action="{% url 'payroll:line_remove' run.pk l.pk %}">{% csrf_token %}<button class="btn small danger" type="submit" data-confirm="Remove {{ l.employee_name }} from this month's payroll?">Remove</button></form>
-        </td>{% endif %}
+        </td>{% elif run.status == 'approved' %}<td><a class="btn small secondary" href="{% url 'payroll:payslip' run.pk l.pk %}">Payslip</a></td>{% endif %}
       </tr>
     {% empty %}<tr><td colspan="10" class="empty">Nobody on this payroll.</td></tr>{% endfor %}
     <tr class="total-row"><td>Total</td><td colspan="4"></td><td class="num">{{ run.total_gross|money }}</td><td class="num">{{ run.total_deductions|money }}</td><td class="num">{{ run.total_net|money }}</td><td colspan="2"></td></tr>

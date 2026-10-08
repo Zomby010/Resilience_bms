@@ -1,0 +1,15 @@
+{# Approve / not accept / mark buttons for one person row. Needs row, day, next, outcomes. #}
+{% if row.record and row.record.status == 'waiting_supervisor' %}
+  <form method="post" action="{% url 'attendance:approve' row.record.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="next" value="{{ next }}"><button class="btn small" type="submit">Approve</button></form>
+  <details class="inline"><summary class="btn small secondary">Not accept</summary>
+    <form method="post" action="{% url 'attendance:reject' row.record.pk %}" class="stack-form">{% csrf_token %}<input type="hidden" name="next" value="{{ next }}">
+      <label>Why?<input name="note" required maxlength="255"></label><button class="btn small" type="submit">Send</button></form></details>
+{% endif %}
+{% if not row.record or row.record.status != 'completed' %}
+  <details class="inline"><summary class="btn small secondary">Mark</summary>
+    <form method="post" action="{% url 'attendance:mark' row.person.pk %}" class="stack-form">{% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}"><input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}">
+      <label>Attendance<select name="outcome">{% for v, l in outcomes %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></label>
+      <label>Why are you marking this?<input name="note" required maxlength="255" placeholder="For example: phone broken"></label>
+      <button class="btn small" type="submit">Save</button></form></details>
+{% endif %}

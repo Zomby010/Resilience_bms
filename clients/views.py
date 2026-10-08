@@ -1,12 +1,15 @@
+import re
+
 from django.contrib import messages
-from django.db.models import Count, Q
+from django.db.models import Count, F, Max, Q
+from django.db.models.functions import Coalesce, Greatest
 from django.shortcuts import get_object_or_404, redirect
-from django.utils.dateparse import parse_date
 from django.views.generic import CreateView, DetailView, FormView, ListView, UpdateView
 
-from accounts.models import Role
+from accounts.models import Role, User
 from accounts.permissions import RoleRequiredMixin
-from core.mixins import OFFICE, ActionView, FilterContextMixin, OfficeRequiredMixin
+from core.filters import apply_dates
+from core.mixins import OFFICE, ActionView, CsvExportMixin, FilterContextMixin, OfficeRequiredMixin, csv_time
 from core.models import AuditLog
 from core.services import audit
 from core.services.files import attachments_for, save_attachment
@@ -17,7 +20,7 @@ from .forms import (
     AssignIssueForm, AssignSupervisorForm, ClientForm, ClientSitesForm, FeedbackForm, FeedbackResponseForm,
     IssueForm, IssueNoteForm, IssueStatusForm, MessageForm,
 )
-from .models import Client, Feedback, Issue, Message
+from .models import Client, Feedback, Issue, IssueNote, Message
 
 
 # --- clients ------------------------------------------------------------------
@@ -275,10 +278,12 @@ class MessageOfflineView(OfficeRequiredMixin, ActionView):
 
 # --- feedback -------------------------------------------------------------------
 
-class FeedbackListView(OfficeRequiredMixin, FilterContextMixin, ListView):
+class FeedbackListView(OfficeRequiredMixin, CsvExportMixin, FilterContextMixin, ListView):
     template_name = "clients/feedback_list.html"
     context_object_name = "feedback"
     paginate_by = 25
+    csv_filename = "client-feedback.csv"
+    csv_header = ["Received", "Client", "Type", "Received by", "Subject", "Feedback", "Status", "Recorded by", "Response"]
 
     def get_queryset(self):
         qs = Feedback.objects.select_related("client", "recorded_by")
@@ -289,11 +294,19 @@ class FeedbackListView(OfficeRequiredMixin, FilterContextMixin, ListView):
             qs = qs.filter(kind=g["kind"])
         if g.get("client", "").isdigit():
             qs = qs.filter(client_id=int(g["client"]))
-        return qs
+        q = (g.get("q") or "").strip()
+        if q:
+            qs = qs.filter(Q(subject__icontains=q) | Q(body__icontains=q) | Q(client__name__icontains=q))
+        return apply_dates(qs, g, "recorded_at")
+
+    def csv_rows(self, qs):
+        for fb in qs:
+            yield [csv_time(fb.recorded_at), fb.client, fb.get_kind_display(),
+                   fb.get_channel_display(), fb.subject, fb.body, fb.get_status_display(), fb.recorded_by, fb.response]
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx.update(statuses=Feedback.Status.choices, kinds=Feedback.Kind.choices)
+        ctx.update(statuses=Feedback.Status.choices, kinds=Feedback.Kind.choices, clients=Client.objects.order_by("name"))
         return ctx
 
 
@@ -376,20 +389,40 @@ class FeedbackMakeIssueView(OfficeRequiredMixin, ActionView):
 
 # --- issues ---------------------------------------------------------------------
 
-class IssueListView(RoleRequiredMixin, FilterContextMixin, ListView):
+def _issue_search(q, prefix=""):
+    """Match an issue number (ISS-0002, 0002 or 2), subject or description."""
+    cond = Q(**{f"{prefix}subject__icontains": q}) | Q(**{f"{prefix}description__icontains": q})
+    m = re.fullmatch(r"(?:ISS-?)?0*(\d+)", q, re.IGNORECASE)
+    if m:
+        cond |= Q(**{f"{prefix}pk": int(m.group(1))})
+    return cond
+
+
+def _issue_clients(user):
+    """Clients for the filter list: all for the office, a supervisor's own (incl. clients of their issues)."""
+    if user.role in OFFICE:
+        return Client.objects.order_by("name")
+    return Client.objects.filter(Q(supervisor=user) | Q(issues__supervisor=user)).distinct().order_by("name")
+
+
+class IssueListView(RoleRequiredMixin, CsvExportMixin, FilterContextMixin, ListView):
+    """All issues by default (an 'open only' default hid resolved ones and looked empty), with counts per status."""
+
     allowed_roles = OFFICE + (Role.SUPERVISOR,)
     template_name = "clients/issue_list.html"
     context_object_name = "issues"
     paginate_by = 25
+    csv_filename = "client-issues.csv"
+    csv_header = ["Number", "Client", "Subject", "Priority", "Status", "Supervisor", "Reported", "Reported by",
+                  "Last update", "Resolved", "Resolution note"]
 
-    def get_queryset(self):
+    def filtered(self):
+        """Every filter except status, so the status chips can count within the other filters."""
         qs = services.issues_visible_to(self.request.user)
         g = self.request.GET
-        status = g.get("status", "open")
-        if status == "open":
-            qs = qs.filter(status__in=services.OPEN_ISSUE_STATUSES)
-        elif status in Issue.Status.values:
-            qs = qs.filter(status=status)
+        q = (g.get("q") or "").strip()
+        if q:
+            qs = qs.filter(_issue_search(q))
         if g.get("priority") in Issue.Priority.values:
             qs = qs.filter(priority=g["priority"])
         if g.get("client", "").isdigit():
@@ -400,19 +433,89 @@ class IssueListView(RoleRequiredMixin, FilterContextMixin, ListView):
                 qs = qs.filter(supervisor__isnull=True)
             elif sup.isdigit():
                 qs = qs.filter(supervisor_id=int(sup))
-        date_from, date_to = parse_date(g.get("from", "")), parse_date(g.get("to", ""))
-        if date_from:
-            qs = qs.filter(created_at__date__gte=date_from)
-        if date_to:
-            qs = qs.filter(created_at__date__lte=date_to)
+        return apply_dates(qs, g, "created_at")
+
+    def get_queryset(self):
+        qs = self.filtered().annotate(
+            last_update=Greatest(Coalesce(Max("notes__created_at"), F("updated_at")), F("updated_at"))
+        ).order_by("-created_at", "-id")  # Meta.ordering is dropped once there is a Max()
+        status = self.request.GET.get("status", "all")
+        if status == "open":
+            qs = qs.filter(status__in=services.OPEN_ISSUE_STATUSES)
+        elif status in Issue.Status.values:
+            qs = qs.filter(status=status)
         return qs
+
+    def csv_rows(self, qs):
+        for i in qs.select_related("created_by"):
+            yield [i.number, i.client, i.subject, i.get_priority_display(), i.get_status_display(), i.supervisor or "",
+                   csv_time(i.created_at), i.created_by, csv_time(i.last_update), csv_time(i.resolved_at),
+                   i.resolution_note]
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        g = self.request.GET
+        status = g.get("status", "all")
+        counts = dict(self.filtered().order_by().values_list("status").annotate(n=Count("id")))
+        params = g.copy()
+        for key in ("page", "export", "status"):
+            params.pop(key, None)
+        chips = [("all", "All", sum(counts.values()))]
+        chips.append(("open", "Not finished", sum(counts.get(s, 0) for s in services.OPEN_ISSUE_STATUSES)))
+        chips += [(v, label, counts.get(v, 0)) for v, label in Issue.Status.choices if counts.get(v) or status == v]
+        office = self.request.user.role in OFFICE
         ctx.update(
             statuses=Issue.Status.choices, priorities=Issue.Priority.choices,
-            supervisors=services.active_supervisors(), office=self.request.user.role in OFFICE,
-            status=self.request.GET.get("status", "open"),
+            supervisors=services.active_supervisors(), office=office, status=status, chips=chips,
+            chip_query=params.urlencode(),
+            clients=_issue_clients(self.request.user),
+        )
+        return ctx
+
+
+class IssueHistoryView(RoleRequiredMixin, CsvExportMixin, FilterContextMixin, ListView):
+    """Every note and status change across issues. A supervisor sees only their own issues' history."""
+
+    allowed_roles = OFFICE + (Role.SUPERVISOR,)
+    template_name = "clients/issue_history.html"
+    context_object_name = "entries"
+    paginate_by = 50
+    csv_filename = "client-issue-history.csv"
+    csv_header = ["When", "Issue", "Client", "Subject", "Type", "Status from", "Status to", "By", "Note"]
+
+    def visible(self):
+        return IssueNote.objects.filter(issue__in=services.issues_visible_to(self.request.user))
+
+    def get_queryset(self):
+        qs = self.visible().select_related("issue", "issue__client", "author")
+        g = self.request.GET
+        if g.get("client", "").isdigit():
+            qs = qs.filter(issue__client_id=int(g["client"]))
+        kind = g.get("kind", "")
+        if kind == "status":
+            qs = qs.exclude(status_to="")
+        elif kind == "note":
+            qs = qs.filter(status_to="")
+        if g.get("author", "").isdigit():
+            qs = qs.filter(author_id=int(g["author"]))
+        q = (g.get("q") or "").strip()
+        if q:
+            qs = qs.filter(Q(body__icontains=q) | _issue_search(q, "issue__"))
+        return apply_dates(qs, g, "created_at")
+
+    def csv_rows(self, qs):
+        for n in qs:
+            yield [csv_time(n.created_at), n.issue.number, n.issue.client,
+                   n.issue.subject, "Status change" if n.status_to else "Note",
+                   Issue.Status(n.status_from).label if n.status_from in Issue.Status.values else n.status_from,
+                   n.status_to_label, n.author or "System", n.body]
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        author_ids = self.visible().exclude(author__isnull=True).values("author_id")
+        ctx.update(
+            office=self.request.user.role in OFFICE, clients=_issue_clients(self.request.user),
+            authors=User.objects.filter(pk__in=author_ids).order_by("first_name", "username"),
         )
         return ctx
 

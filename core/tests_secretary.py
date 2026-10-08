@@ -1,7 +1,7 @@
 """Permission matrix (Gate 3 §5), uploads, protected downloads, audit log and menus."""
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.forms import ValidationError
-from django.test import override_settings
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from core.models import Attachment, AuditLog
@@ -163,7 +163,8 @@ class CompanySettingsTests(OpsTestCase):
         self.login(self.manager)
         resp = self.client.post(reverse("core:company_settings"), {
             "company_name": "Resilience Security Ltd", "phone": "0711000000", "email": "a@example.com",
-            "vat_rate": "16", "invoice_due_days": "14",
+            "vat_rate": "16", "invoice_due_days": "14", "late_after_minutes": "15", "sick_note_due_days": "3",
+            "sick_note_keep_days": "365",
         })
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(AuditLog.objects.filter(action="settings.updated").exists())
@@ -175,3 +176,19 @@ class CompanySettingsTests(OpsTestCase):
         })
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Enter the amount above which")
+
+
+@override_settings(CRON_SECRET="s3cret")
+class CronDailyViewTests(TestCase):
+    def test_needs_the_secret(self):
+        self.assertEqual(self.client.get("/cron/daily/").status_code, 404)
+        self.assertEqual(self.client.get("/cron/daily/", HTTP_AUTHORIZATION="Bearer wrong").status_code, 404)
+
+    def test_runs_the_checks(self):
+        response = self.client.get("/cron/daily/", HTTP_AUTHORIZATION="Bearer s3cret")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("location_records_deleted", response.json())
+
+    @override_settings(CRON_SECRET="")
+    def test_off_without_a_secret(self):
+        self.assertEqual(self.client.get("/cron/daily/", HTTP_AUTHORIZATION="Bearer ").status_code, 404)

@@ -10,6 +10,7 @@ class CompanySettingsForm(forms.ModelForm):
         fields = [
             "company_name", "address", "phone", "email", "kra_pin", "logo", "payment_instructions",
             "vat_registered", "vat_rate", "invoice_due_days", "expense_approval_enabled", "expense_approval_limit",
+            "late_after_minutes", "sick_note_due_days", "sick_note_keep_days",
         ]
         widgets = {"address": forms.Textarea(attrs={"rows": 3}), "payment_instructions": forms.Textarea(attrs={"rows": 3})}
         help_texts = {

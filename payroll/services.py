@@ -192,8 +192,14 @@ def _decide(run, user, to_status, note, needs_note, verb, from_statuses=DECIDABL
         notify_role(Role.SECRETARY, f"payroll.{to_status}", title, note.strip()[:200], link(run), entity=run)
 
 
+@transaction.atomic
 def approve(run, user, note=""):
     _decide(run, user, S.APPROVED, note, False, "Approved")
+    # Tell each person their payslip is ready. No amounts in the message: it is confidential.
+    for line in run.lines.select_related("employee"):
+        notify(line.employee, "payroll.payslip_ready", f"Your payslip for {run.period:%B %Y} is ready",
+               "Open it to see, print or download your payslip.", reverse("payslips:detail", args=[line.pk]),
+               entity=line)
 
 
 def request_changes(run, user, note):
@@ -210,3 +216,31 @@ def reopen(run, user, note):
 
 def exported(run, user, kind):
     _log(user, "payroll.exported", run, f"Exported payroll {run.period:%B %Y} as {kind}")
+
+
+# --- payslips -------------------------------------------------------------------
+
+def my_payslips(user):
+    """The person's own pay lines from approved payrolls, newest month first."""
+    return PayrollLine.objects.filter(employee=user, run__status=S.APPROVED).select_related("run").order_by("-run__period")
+
+
+def payslip_rows(line):
+    """(earnings, deductions) as [(label, amount)]. Optional items are left out when they are zero."""
+    earnings = [("Basic pay", line.basic), ("Allowances", line.allowances)]
+    if line.overtime:
+        earnings.append(("Overtime", line.overtime))
+    if line.bonus:
+        earnings.append(("Bonus", line.bonus))
+    deductions = [("PAYE (tax)", line.paye), ("NSSF", line.nssf), ("SHIF", line.shif), ("Housing levy", line.housing_levy)]
+    if line.advance:
+        deductions.append(("Salary advance", line.advance))
+    if line.other_deductions:
+        deductions.append(("Other" + (f" ({line.other_note})" if line.other_note else ""), line.other_deductions))
+    return earnings, deductions
+
+
+def payslip_seen(line, user, kind="viewed"):
+    who = "own" if line.employee_id == user.pk else f"{line.employee_name}'s"
+    audit.record(user, f"payroll.payslip_{kind}", line, f"{kind.title()} {who} payslip for {line.run.period:%B %Y}",
+                 confidential=True)

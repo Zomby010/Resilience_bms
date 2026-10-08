@@ -114,7 +114,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 form.stack { display: grid; gap: 1rem; max-width: 640px; }
 .field label { display: block; font-weight: 600; font-size: .9rem; margin-bottom: .25rem; color: var(--black); }
 .field input[type=text], .field input[type=email], .field input[type=password], .field input[type=number],
-.field input[type=date], .field select, .field textarea, .filters input, .filters select {
+.field input[type=date], .field input[type=datetime-local], .field select, .field textarea, .filters input, .filters select {
   width: 100%; padding: .6rem .75rem; border: 1px solid var(--silver); border-radius: 8px; font: inherit; background: #fff; color: var(--black);
 }
 .field .help { font-size: .8rem; color: var(--muted); margin-top: .2rem; }
@@ -304,5 +304,53 @@ dl.facts dd { margin: 0; color: var(--black); }
 .inv-title { font-size: 1.8rem; font-weight: 800; color: var(--red); letter-spacing: .05em; }
 .inv-logo { max-height: 60px; max-width: 160px; display: block; margin-bottom: .4rem; }
 .print-page { background: #fff; padding: 1.5rem; }
+
+/* payslips */
+.payslip { max-width: 720px; }
+.payslip dl.facts { margin-bottom: 1rem; }
+.payslip table { width: 100%; }
+.payslip tr.net-pay td { font-size: 1.15rem; color: var(--red); }
+.payslip-page { padding-bottom: 2rem; margin-bottom: 2rem; border-bottom: 1px dashed var(--silver); }
+@media print {
+  .payslip-page { page-break-after: always; break-after: page; border: 0; margin: 0; padding: 0; }
+  .payslip-page:last-child { page-break-after: auto; break-after: auto; }
+}
+
+/* status count chips above a list */
+.chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
+.chips a { display: inline-flex; gap: .35rem; align-items: center; padding: .3rem .75rem; border: 1px solid var(--silver); border-radius: 99px; text-decoration: none; color: var(--charcoal); font-size: .88rem; font-weight: 600; background: #fff; }
+.chips a .n { background: #eef0f4; border-radius: 99px; padding: 0 .45rem; font-size: .78rem; }
+.chips a.on { background: var(--red); border-color: var(--red); color: #fff; }
+.chips a.on .n { background: rgba(255,255,255,.25); }
 #lines input[type=text], #lines input[type=number] { width: 100%; padding: .45rem .55rem; border: 1px solid var(--silver); border-radius: 8px; font: inherit; }
 #lines td:first-child { min-width: 220px; }
+
+/* attendance */
+.att-board { padding: 1rem 1.25rem; }
+.att-board-head { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; align-items: center; justify-content: space-between; margin-bottom: .75rem; }
+.att-board-head h2 { margin: 0; text-transform: uppercase; letter-spacing: .05em; font-size: 1.05rem; }
+.att-total { font-size: 1rem; }
+.att-total strong { font-size: 1.5rem; color: var(--green); }
+.off-text { color: var(--red-dark); font-weight: 600; }
+.att-sites { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: .6rem; }
+.att-site { border: 1px solid var(--border); border-radius: 8px; padding: .6rem .75rem; background: #fafbfc; }
+.att-site.short { border-color: var(--red); background: var(--red-bg); }
+.att-site-name { font-weight: 700; color: var(--black); }
+.att-site-count { font-size: .85rem; margin: .2rem 0 .35rem; }
+.att-names { list-style: none; padding: 0; margin: 0; font-size: .85rem; display: grid; gap: .1rem; }
+.att-names .in { color: var(--green); }
+.att-names .out { color: var(--red-dark); }
+.att-names .away, .att-names .later { color: var(--muted); }
+form.inline, details.inline { display: inline-block; margin: 0 .2rem .2rem 0; vertical-align: top; }
+details.inline > summary { list-style: none; cursor: pointer; }
+details.inline > summary::-webkit-details-marker { display: none; }
+details.inline[open] .stack-form { margin-top: .4rem; min-width: 220px; }
+
+/* manager dashboard */
+a.kpi { text-decoration: none; color: inherit; display: block; }
+a.kpi:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.spend-tabs { display: flex; gap: .25rem; margin: .3rem 0; flex-wrap: wrap; }
+.spend-tabs button { border: 1px solid var(--border); background: #fff; border-radius: 6px; padding: .15rem .5rem; font-size: .78rem; cursor: pointer; }
+.spend-tabs button[aria-selected="true"] { background: var(--black); color: #fff; border-color: var(--black); }
+.timeline.received li { position: relative; }
+.timeline.received form.inline { margin-left: .5rem; }

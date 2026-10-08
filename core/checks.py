@@ -1,4 +1,4 @@
-"""Daily checks: overdue invoices and overdue items. Run by `manage.py run_daily_checks` (e.g. from
+"""Daily checks: overdue invoices, overdue items, missing sick sheets and old sick sheet files. Run by `manage.py run_daily_checks` (e.g. from
 Windows Task Scheduler) and also automatically, at most once a day, when the office opens the dashboard.
 """
 import logging
@@ -14,6 +14,7 @@ def run_daily_checks(force=False):
     """Returns a summary dict, or None if the checks already ran today (and force is False)."""
     from billing.services import mark_overdue
     from inventory.services import daily_item_checks
+    from leave.services import daily_sick_checks
 
     settings = CompanySettings.load()
     now = timezone.now()
@@ -25,7 +26,7 @@ def run_daily_checks(force=False):
             return None
     else:
         CompanySettings.objects.filter(pk=settings.pk).update(last_checks_at=now)
-    return {"overdue_invoices": mark_overdue(), "item_reminders": daily_item_checks()}
+    return {"overdue_invoices": mark_overdue(), "item_reminders": daily_item_checks(), **daily_sick_checks()}
 
 
 def run_if_due():

@@ -3,10 +3,10 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <h1>{% if user.role == 'staff' %}My reports{% else %}Reports{% endif %}</h1>
+    <h1>{% if user.role == 'staff' or user.role == 'secretary' %}My reports{% else %}Reports{% endif %}</h1>
     <p class="muted">{{ paginator.count }} report{{ paginator.count|pluralize }}</p>
   </div>
-  {% if can_submit %}<a class="btn" href="{% url 'reports:create' %}">Submit a report</a>{% endif %}
+  {% if can_submit %}<a class="btn" href="{% url 'reports:create' %}">{% if user.role == 'secretary' %}Send a report to the Manager{% else %}Submit a report{% endif %}</a>{% endif %}
 </div>
 <div class="card">
   <form method="get" class="filters">
@@ -15,7 +15,13 @@
       <select id="status" name="status"><option value="">Any status</option>
         {% for value, label in statuses %}<option value="{{ value }}" {% if value == f_status %}selected{% endif %}>{{ label }}</option>{% endfor %}
       </select></div>
-    {% if user.role != 'staff' %}
+    {% if user.role == 'manager' %}
+    <div><label for="from_role">From</label><select id="from_role" name="from_role"><option value="">Anyone</option>{% for v, l in roles %}<option value="{{ v }}" {% if f.from_role == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    <div><label for="resolved_by">Resolved by</label><select id="resolved_by" name="resolved_by"><option value="">Anyone</option><option value="supervisor" {% if f.resolved_by == 'supervisor' %}selected{% endif %}>Supervisors</option><option value="manager" {% if f.resolved_by == 'manager' %}selected{% endif %}>Manager</option></select></div>
+    {% endif %}
+    <div><label for="from">Sent from</label><input id="from" type="date" name="from" value="{{ f.from }}"></div>
+    <div><label for="to">Sent up to</label><input id="to" type="date" name="to" value="{{ f.to }}"></div>
+    {% if user.role == 'manager' or user.role == 'supervisor' %}
     <div><label for="scope">Show</label>
       <select id="scope" name="scope">
         <option value="">All I can see</option>

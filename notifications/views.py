@@ -6,6 +6,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.generic import ListView
 
+from core.filters import apply_dates
 from core.mixins import FilterContextMixin
 
 from .models import Notification
@@ -20,7 +21,15 @@ class InboxView(LoginRequiredMixin, FilterContextMixin, ListView):
         qs = Notification.objects.filter(recipient=self.request.user)
         if self.request.GET.get("unread") == "1":
             qs = qs.filter(read_at__isnull=True)
-        return qs
+        return apply_dates(qs, self.request.GET, "created_at")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        params = self.request.GET.copy()
+        for key in ("page", "unread"):
+            params.pop(key, None)
+        ctx["date_query"] = params.urlencode()  # keeps the dates when switching All / Unread
+        return ctx
 
 
 class OpenView(LoginRequiredMixin, View):

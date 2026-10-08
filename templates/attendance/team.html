@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Team attendance{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Team attendance: {{ day|date:"l d M Y" }}</h1>
+  <p class="muted">Approve each sign-in, or mark someone who could not sign in. Approved sign-ins go to the Manager, who completes the day.</p></div>
+  <form method="get" class="filters"><div><label for="date">Day</label><input id="date" type="date" name="date" value="{{ day|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}"></div><button class="btn secondary" type="submit">Show</button></form></div>
+{% if completed %}<div class="info">The Manager has completed this day. It can no longer be changed.</div>{% endif %}
+<div class="card">
+  <div class="page-head" style="margin-bottom:.5rem"><h2>{{ in_count }} in, {{ absent_count }} absent, {{ away_count }} on leave or sick</h2>
+  {% if waiting and not completed %}<form method="post" action="{% url 'attendance:approve_all' %}">{% csrf_token %}<input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}"><input type="hidden" name="next" value="team"><button class="btn" type="submit">Approve all {{ waiting }} sign-ins</button></form>{% endif %}</div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Person</th><th>Site</th><th>Signed in</th><th>Today</th><th>Status</th><th></th></tr></thead>
+    <tbody>{% for row in rows %}<tr>
+      <td><strong>{{ row.person }}</strong></td><td>{{ row.site|default:"-" }}</td>
+      <td>{% if row.record.signed_in_at %}{{ row.record.signed_in_at|time:"H:i" }}{% if row.record.late_minutes %} <span class="small">({{ row.record.late_minutes }} min late)</span>{% endif %}{% elif row.record %}{{ row.record.get_method_display }}{% else %}-{% endif %}</td>
+      <td><span class="badge {{ row.tone }}">{{ row.label }}</span></td>
+      <td>{% if row.record %}{% badge row.record %}{% else %}-{% endif %}</td>
+      <td>{% if not completed %}{% with next="team" %}{% include "attendance/_row_actions.html" %}{% endwith %}{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="6" class="empty">You have no team members yet.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+<p><a href="{% url 'attendance:records' %}">All attendance records</a></p>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Payslip {{ run.period|date:"F Y" }}{% endblock %}
+{% block content %}
+<div class="page-head no-print">
+  <div><h1>Payslip {{ run.period|date:"F Y" }}</h1>{% if office %}<p class="muted">{{ line.employee_name }}</p>{% endif %}</div>
+  <div class="actions">
+    <button class="btn" type="button" onclick="window.print()">Print</button>
+    <a class="btn secondary" href="{% if office %}{% url 'payroll:payslip_pdf' run.pk line.pk %}{% else %}{% url 'payslips:pdf' line.pk %}{% endif %}">Download PDF</a>
+    <a class="btn secondary" href="{% if office %}{{ run.get_absolute_url }}{% else %}{% url 'payslips:mine' %}{% endif %}">Back</a>
+  </div>
+</div>
+<div class="card">{% include "payroll/_payslip.html" %}</div>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Write in the OB{% endblock %}
+{% block content %}
+<div class="simple">
+  <h1>{% if corrects %}Correct {{ corrects.number }}{% else %}Write in the OB{% endif %}</h1>
+  {% if corrects %}<div class="info"><strong>The entry being corrected:</strong> {{ corrects.occurred_at|date:"d M Y H:i" }}, {{ corrects.get_kind_display }}: {{ corrects.text }}<br>It stays in the OB. Your correction is added as a new entry.</div>{% endif %}
+  <div class="card">
+    <form method="post" class="fields">{% csrf_token %}
+      {% include "partials/form.html" %}
+      <div class="form-actions"><button class="btn big wide" type="submit">Save in the OB</button></div>
+      <a href="{% url 'operations:ob' %}">Go back</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

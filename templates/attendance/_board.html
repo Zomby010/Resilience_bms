@@ -1,0 +1,27 @@
+{# The Manager's full-width IN ATTENDANCE TODAY strip. Needs `board`. #}
+<section class="card att-board" aria-labelledby="att-board-title">
+  <div class="att-board-head">
+    <h2 id="att-board-title">In attendance {% if board.day == today_date %}today{% else %}{{ board.day|date:"d M Y" }}{% endif %}</h2>
+    <div class="att-total"><strong>{{ board.total_in }}</strong> in of {{ board.total_expected }} expected
+      · <span class="off-text">{{ board.total_absent }} absent</span> · {{ board.total_away }} on leave or sick{% if board.total_later %} · {{ board.total_later }} not started yet{% endif %}</div>
+    <div class="actions">
+      {% if board.waiting_supervisor %}<span class="badge pending">{{ board.waiting_supervisor }} waiting for supervisors</span>{% endif %}
+      {% if board.completed %}<span class="badge completed">Day completed</span>{% elif board.waiting_manager %}<span class="badge pending">{{ board.waiting_manager }} waiting for you</span>{% endif %}
+      <a class="btn small" href="{% url 'attendance:day' %}?date={{ board.day|date:'Y-m-d' }}">Open day sheet</a>
+    </div>
+  </div>
+  <div class="att-sites">
+    {% for b in board.boxes %}
+    <div class="att-site {% if b.short %}short{% endif %}">
+      <div class="att-site-name">{{ b.site|default:"No site assigned" }}{% if b.short %} <span class="badge off">Short-staffed</span>{% endif %}</div>
+      <div class="att-site-count"><strong>{{ b.in|length }}</strong> in{% if b.site %} / {{ b.site.guards_needed }} needed{% endif %} · <span class="off-text">{{ b.absent|length }} absent</span></div>
+      <ul class="att-names">
+        {% for r in b.in %}<li class="in" title="{{ r.label }}">✓ {{ r.person }}{% if r.state == 'late' %} <span class="small">(late)</span>{% elif r.state == 'off_location' %} <span class="small">(off location)</span>{% endif %}</li>{% endfor %}
+        {% for r in b.absent %}<li class="out" title="{{ r.label }}">✗ {{ r.person }}</li>{% endfor %}
+        {% for r in b.away %}<li class="away">{{ r.person }} <span class="small">({{ r.label|lower }})</span></li>{% endfor %}
+        {% for r in b.later %}<li class="later">{{ r.person }} <span class="small">({{ r.label|lower }})</span></li>{% endfor %}
+      </ul>
+    </div>
+    {% empty %}<p class="muted">No sites or guards set up yet.</p>{% endfor %}
+  </div>
+</section>

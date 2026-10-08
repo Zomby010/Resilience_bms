@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Equipment per guard{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Equipment per guard</h1>
+  <p class="muted">Items given out that must come back, grouped by person. People who have left are marked so their items can be collected.</p></div>
+  {% if can_export %}<a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}export=csv">Download (CSV)</a>{% endif %}</div>
+<div class="card">
+  <form method="get" class="filters">
+    <div><label for="person">Person</label><select id="person" name="person"><option value="">Anyone</option>{% for p in choices %}<option value="{{ p.pk }}" {% if f.person == p.pk|stringformat:"s" %}selected{% endif %}>{{ p }}</option>{% endfor %}</select></div>
+    <div><label for="site">Site</label><select id="site" name="site"><option value="">Any</option>{% for s in sites %}<option value="{{ s.pk }}" {% if f.site == s.pk|stringformat:"s" %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
+    <div class="check"><label><input type="checkbox" name="left" value="1" {% if f.left == '1' %}checked{% endif %}> Only people who have left</label></div>
+    <button class="btn secondary" type="submit">Filter</button>
+  </form>
+  {% for person, items in groups %}
+    <h3>{{ person }}{% if not person.is_active %} <span class="badge off">Has left: collect these items</span>{% endif %} <span class="small muted">{{ person.tracking.site|default:"" }}</span></h3>
+    <div class="table-wrap"><table><thead><tr><th>Item</th><th>Quantity</th><th>Given</th><th>Return by</th><th>Status</th></tr></thead><tbody>
+    {% for r in items %}<tr><td>{{ r.item.code }} {{ r.item.name }}</td><td>{{ r.qty_issued|default:r.qty_requested }}</td><td>{{ r.handed_over_at|date:"d M Y"|default:"-" }}</td>
+      <td>{% if r.expected_return_date %}{{ r.expected_return_date|date:"d M Y" }}{% if r.expected_return_date < today %} <span class="badge off">Overdue</span>{% endif %}{% else %}-{% endif %}</td><td>{% badge r %}</td></tr>{% endfor %}
+    </tbody></table></div>
+  {% empty %}<p class="empty">No items out with anyone.</p>{% endfor %}
+</div>
+{% endblock %}

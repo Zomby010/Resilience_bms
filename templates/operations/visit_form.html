@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Record a site visit{% endblock %}
+{% block content %}
+<div class="simple">
+  <h1>Record a site visit</h1>
+  <p>Tick what was fine. The visit is also written in the site's OB.</p>
+  <div class="card">
+    <form method="post" enctype="multipart/form-data" class="fields">{% csrf_token %}
+      {% include "partials/form.html" %}
+      <div class="form-actions"><button class="btn big wide" type="submit">Save visit</button></div>
+      <a href="{% url 'operations:visits' %}">Go back</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

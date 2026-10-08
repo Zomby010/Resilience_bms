@@ -18,13 +18,13 @@ class ReportQuerySet(models.QuerySet):
         """The single source of truth for who may see which reports.
 
         Manager: everything. Supervisor: their own plus their team's.
-        Staff: their own. Secretary (and anyone else): nothing.
+        Staff and Secretary: their own (the Secretary's reports go straight to the Manager).
         """
         if user.role == Role.MANAGER:
             return self
         if user.role == Role.SUPERVISOR:
             return self.filter(Q(author=user) | Q(author__supervisor=user))
-        if user.role == Role.STAFF:
+        if user.role in (Role.STAFF, Role.SECRETARY):
             return self.filter(author=user)
         return self.none()
 
@@ -71,6 +71,10 @@ class Report(models.Model):
             return self.author.supervisor_id == user.pk
         return False
 
+    def can_complete(self, user):
+        """The Manager can resolve any report; a supervisor can resolve their team's."""
+        return self.status != Status.COMPLETED and self.can_reply(user)
+
     def can_edit(self, user):
         # Authors may fix a report until someone has responded to it.
         return user.pk == self.author_id and self.status == Status.PENDING
@@ -81,13 +85,19 @@ class Report(models.Model):
         """Record feedback and move the report along its workflow."""
         reply = Reply.objects.create(report=self, author=user, body=body)
         now = timezone.now()
-        if user.role == Role.MANAGER and complete:
+        if complete and self.can_complete(user):
             self.status = Status.COMPLETED
             self.completed_by, self.completed_at = user, now
         elif self.status == Status.PENDING:
             self.status = Status.REVIEWED
             self.reviewed_by, self.reviewed_at = user, now
         self.save()
+        if self.author_id != user.pk:
+            from notifications.services import notify
+
+            word = "resolved" if self.status == Status.COMPLETED else "answered"
+            notify(self.author, "report.reply", f'Your report "{self.title[:80]}" was {word}', body[:300],
+                   self.get_absolute_url(), entity=self)
         return reply
 
 

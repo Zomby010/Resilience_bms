@@ -1,0 +1,23 @@
+{# The small "My attendance today" card. Needs `att` from attendance.services.my_today. #}
+{% load static %}
+<div class="card att-card">
+  <h2>My attendance today</h2>
+  {% if att.record %}
+    <p class="status-big">{{ att.record.get_outcome_display }}{% if att.record.signed_in_at %}, signed in at {{ att.record.signed_in_at|time:"H:i" }}{% endif %}</p>
+    <p>{% badge att.record %}{% if att.record.late_minutes %} <span class="small">{{ att.record.late_minutes }} minutes late</span>{% endif %}</p>
+    {% if att.record.status == 'rejected' %}<div class="warn">Not accepted: {{ att.record.supervisor_note }}</div>{% endif %}
+  {% elif att.row %}
+    <p class="status-big">{{ att.row.label }}</p>
+  {% endif %}
+  {% if att.can_sign_in %}
+    <p>Sign in when you arrive at <strong>{{ att.site }}</strong>. Your phone's location is checked once.</p>
+    <button id="sign-in-btn" class="btn big wide" type="button" data-url="{% url 'attendance:api_sign_in' %}">Sign in now</button>
+    <p id="sign-in-msg" class="loc-msg" role="status" aria-live="polite"></p>
+    <script src="{% static 'js/attendance.js' %}" defer></script>
+  {% elif not att.site %}
+    <p class="muted">You have no site yet. The Manager assigns your site.</p>
+  {% elif att.hint and not att.record %}
+    <p class="muted">{{ att.hint }}</p>
+  {% endif %}
+  <p class="small"><a href="{% url 'attendance:mine' %}">My attendance history</a></p>
+</div>
