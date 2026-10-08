@@ -102,10 +102,10 @@ class OBTests(OpsBase):
             services.write_ob(self.site, self.staff_a1, "other", "x", occurred_at=timezone.now() + timedelta(hours=2))
 
     def test_incident_is_written_in_the_ob(self):
-        create_incident(Incident(site=self.site, occurred_at=timezone.now(), kind="theft", severity="high",
-                                 what_happened="Battery stolen from the gate motor"), self.staff_a1)
+        incident = create_incident(Incident(site=self.site, occurred_at=timezone.now(), kind="theft", severity="high",
+                                            what_happened="Battery stolen from the gate motor"), self.staff_a1)
         entry = OBEntry.objects.get(kind=OBEntry.Kind.INCIDENT)
-        self.assertIn("INC-0001", entry.text)
+        self.assertIn(incident.number, entry.text)
 
     def test_filters_print_and_csv(self):
         services.write_ob(self.site, self.staff_a1, OBEntry.Kind.PATROL, "=HYPERLINK()")

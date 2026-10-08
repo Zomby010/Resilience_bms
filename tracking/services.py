@@ -162,7 +162,7 @@ def record_update(user, data, now=None):
     """Store one location update for `user` (always the logged-in user) and work out the status."""
     now = now or timezone.now()
     lat, lng, accuracy, measured = parse_update(data, now)
-    profile = TrackingProfile.objects.select_for_update().select_related("site").get(pk=profile_for(user).pk)
+    profile = TrackingProfile.objects.select_for_update(of=("self",)).select_related("site").get(pk=profile_for(user).pk)
     if not profile.tracking_on:
         raise LocationError("Location tracking is off. Turn it on first.")
     if profile.last_ping_at and (now - profile.last_ping_at).total_seconds() < MIN_UPDATE_INTERVAL_S:
