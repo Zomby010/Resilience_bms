@@ -1,0 +1,12 @@
+{# The shared filter bar. Needs `fb` from core.filters.filter_bar(request, fields). Closed by default. #}
+<details class="filterbar no-print">
+  <summary><span aria-hidden="true">🔍</span> Looking for something? Search or filter here{% if fb.active %} <span class="badge reviewed">{{ fb.active|length }} on</span>{% endif %}<span class="arrow" aria-hidden="true">▾</span></summary>
+  <form method="get" class="filterbar-body">
+    {% for k, v in fb.keep %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+    <div class="fb-fields">{% for f in fb.main %}{% include "partials/_filter_field.html" %}{% endfor %}</div>
+    {% if fb.more %}<details class="more"{% for f in fb.more %}{% if f.value %} open{% endif %}{% endfor %}><summary>More filters ▸</summary>
+      <div class="fb-fields">{% for f in fb.more %}{% include "partials/_filter_field.html" %}{% endfor %}</div></details>{% endif %}
+    <div class="fb-actions"><button class="btn" type="submit">Show results</button>{% if fb.active %}<a class="btn secondary" href="{{ fb.clear }}">Clear all</a>{% endif %}</div>
+  </form>
+</details>
+{% if fb.active %}<div class="active-filters" aria-label="Filters in use">{% for a in fb.active %}<a href="{{ a.remove }}" title="Remove this filter">{{ a.label }}: {{ a.value }} <span aria-hidden="true">✕</span></a>{% endfor %}</div>{% endif %}

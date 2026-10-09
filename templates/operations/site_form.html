@@ -2,7 +2,7 @@
 {% block title %}Edit {{ site.name }}{% endblock %}
 {% block content %}
 <div class="page-head"><div><h1>Edit site details: {{ site.name }}</h1>
-  <p class="muted">Supervisors and staff see these details as read-only. {% if user.role == 'manager' %}The map position, radius and working hours are on the <a href="{% url 'tracking:site_edit' site.pk %}">GPS site page</a>.{% endif %}</p></div></div>
+  <p class="muted">Supervisors and guards see these details as read-only. {% if user.role == 'manager' %}The map position, radius and working hours are on the <a href="{% url 'tracking:site_edit' site.pk %}">GPS site page</a>.{% endif %}</p></div></div>
 <div class="card"><form method="post" class="fields">{% csrf_token %}{% include "partials/form.html" %}
   <div class="form-actions"><button class="btn" type="submit">Save details</button> <a href="{{ site.get_absolute_url }}">Cancel</a></div></form></div>
 {% endblock %}

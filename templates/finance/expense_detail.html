@@ -30,7 +30,7 @@
   <div class="meta">
     <span>Date: <strong>{{ expense.date|date:"d M Y" }}</strong></span>
     <span>Category: <strong>{{ expense.category }}</strong></span>
-    <span>Amount: <strong>KES {{ expense.amount|floatformat:2 }}</strong></span>
+    <span>Amount: <strong>{{ expense.amount|kes }}</strong></span>
     <span>Reference: <strong>{{ expense.reference|default:"-" }}</strong></span>
     <span>Recorded by: <strong>{{ expense.recorded_by }}</strong></span>
   </div>

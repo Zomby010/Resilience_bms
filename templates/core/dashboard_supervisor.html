@@ -29,10 +29,10 @@
 </div>
 
 <div class="grid kpis">
-  <div class="kpi gold"><div class="num">{{ to_review_count }}</div><div class="lbl">Awaiting your review</div></div>
-  <div class="kpi slate"><div class="num">{{ team|length }}</div><div class="lbl">Staff on your team</div></div>
+  <div class="kpi {% if to_review_count %}soon{% endif %}"><div class="num">{{ to_review_count }}</div><div class="lbl">Awaiting your review</div></div>
+  <div class="kpi"><div class="num">{{ team|length }}</div><div class="lbl">Guards on your team</div></div>
   <div class="kpi"><div class="num">{{ team_report_count }}</div><div class="lbl">Team reports</div></div>
-  <div class="kpi green"><div class="num">{{ feedback_given }}</div><div class="lbl">Feedback given</div></div>
+  <div class="kpi"><div class="num">{{ feedback_given }}</div><div class="lbl">Feedback given</div></div>
 </div>
 
 <div class="grid two">
@@ -51,7 +51,7 @@
       <tbody>
       {% for m in team %}
         <tr><td>{{ m }}</td><td class="num">{{ m.report_count }}</td><td class="num">{{ m.open_count }}</td></tr>
-      {% empty %}<tr><td colspan="3" class="empty">No staff are assigned to you yet. Ask the Manager.</td></tr>{% endfor %}
+      {% empty %}<tr><td colspan="3" class="empty">No guards are assigned to you yet. Ask the Manager.</td></tr>{% endfor %}
       </tbody>
     </table></div>
   </div>

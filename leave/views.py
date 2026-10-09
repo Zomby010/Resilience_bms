@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import DetailView, FormView, ListView, TemplateView
 
-from accounts.models import Role, User
+from accounts.models import ROLE_CHOICES, Role, User
 from accounts.permissions import RoleRequiredMixin
 from core.filters import apply_dates, csv_response
 from core.mixins import ActionView, FilterContextMixin
@@ -167,7 +167,7 @@ class AllowanceListView(RoleRequiredMixin, TemplateView):
         if self.request.GET.get("role") in Role.values:
             people = people.filter(role=self.request.GET["role"])
         rows = [{"person": p, "cells": [services.balance(p, lt, year) for lt in types]} for p in people]
-        ctx.update(year=year, types=types, rows=rows, q=q, roles=Role.choices, f=self.request.GET)
+        ctx.update(year=year, types=types, rows=rows, q=q, roles=ROLE_CHOICES, f=self.request.GET)
         return ctx
 
 

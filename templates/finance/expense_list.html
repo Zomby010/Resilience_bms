@@ -10,7 +10,7 @@
 </div>
 
 <div class="grid kpis">
-  <div class="kpi"><div class="num">KES {{ total|floatformat:2 }}</div><div class="lbl">Total for current filter</div></div>
+  <div class="kpi"><div class="num">{{ total|kes }}</div><div class="lbl">Total for current filter</div></div>
   <div class="kpi slate"><div class="num">{{ paginator.count }}</div><div class="lbl">Transactions</div></div>
 </div>
 
@@ -36,7 +36,7 @@
         <td>{{ e.category }}</td>
         <td><a href="{{ e.get_absolute_url }}">{{ e.description }}</a>{% if e.status != 'recorded' %} {% badge e %}{% endif %}</td>
         <td>{{ e.reference|default:"-" }}</td>
-        <td class="num">{{ e.amount|floatformat:2 }}</td>
+        <td class="num">{{ e.amount|money }}</td>
         <td>{{ e.recorded_by }}</td>
       </tr>
     {% empty %}<tr><td colspan="6" class="empty">No expenses match.</td></tr>{% endfor %}

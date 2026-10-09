@@ -5,7 +5,7 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, UpdateView
 
 from .forms import ProfileForm, UserCreateForm, UserUpdateForm
-from .models import Role, User
+from .models import ROLE_CHOICES, Role, User
 from .permissions import RoleRequiredMixin
 
 
@@ -46,7 +46,7 @@ class TeamListView(RoleRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["roles"] = Role.choices
+        ctx["roles"] = ROLE_CHOICES
         ctx["selected_role"] = self.request.GET.get("role", "")
         ctx["q"] = self.request.GET.get("q", "")
         return ctx

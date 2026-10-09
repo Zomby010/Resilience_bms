@@ -12,7 +12,7 @@ class ReportForm(forms.ModelForm):
 
 
 class ReplyForm(forms.ModelForm):
-    complete = forms.BooleanField(required=False, initial=True, label="Mark this report as completed")
+    complete = forms.BooleanField(required=False, initial=True, label="Mark this report as solved")
 
     class Meta:
         model = Reply

@@ -2,7 +2,7 @@
 {% block title %}Assign sites{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Assign sites</h1><p class="muted">Choose the work site for each staff member and supervisor.</p></div>
+  <div><h1>Assign sites</h1><p class="muted">Choose the work site for each guard and supervisor.</p></div>
   <a class="btn secondary" href="{% url 'tracking:sites' %}">Work sites</a>
 </div>
 <div class="card">
@@ -10,8 +10,8 @@
     <div><label for="q">Search</label><input id="q" name="q" value="{{ q }}" placeholder="Name or username"></div>
     <div><label for="role">Role</label>
       <select id="role" name="role">
-        <option value="">Staff and supervisors</option>
-        <option value="staff" {% if selected_role == 'staff' %}selected{% endif %}>Staff</option>
+        <option value="">Guards and supervisors</option>
+        <option value="staff" {% if selected_role == 'staff' %}selected{% endif %}>Guards</option>
         <option value="supervisor" {% if selected_role == 'supervisor' %}selected{% endif %}>Supervisors</option>
       </select></div>
     <button class="btn secondary" type="submit">Search</button>

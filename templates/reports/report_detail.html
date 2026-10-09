@@ -28,7 +28,7 @@
   <ul class="timeline">
     <li>Submitted by <strong>{{ report.author }}</strong> on {{ report.created_at|date:"d M Y, H:i" }}</li>
     {% if report.reviewed_at %}<li>Reviewed by <strong>{{ report.reviewed_by|default:"(removed user)" }}</strong> on {{ report.reviewed_at|date:"d M Y, H:i" }}</li>{% endif %}
-    {% if report.completed_at %}<li>Completed by <strong>{{ report.completed_by|default:"(removed user)" }}</strong> on {{ report.completed_at|date:"d M Y, H:i" }}</li>{% endif %}
+    {% if report.completed_at %}<li>Solved by <strong>{{ report.completed_by|default:"(removed user)" }}</strong> on {{ report.completed_at|date:"d M Y, H:i" }}</li>{% endif %}
   </ul>
 </div>
 

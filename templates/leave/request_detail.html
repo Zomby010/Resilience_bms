@@ -25,7 +25,7 @@
       <textarea id="note" name="note" rows="2"></textarea>
       <div class="actions">
         <button class="btn big" type="submit" formaction="{% url 'leave:approve' req.pk %}">Approve</button>
-        <button class="btn big secondary" type="submit" formaction="{% url 'leave:reject' req.pk %}">Say no</button>
+        <button class="btn big danger" type="submit" formaction="{% url 'leave:reject' req.pk %}">Say no</button>
       </div>
     </form>
   </div>

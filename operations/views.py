@@ -90,7 +90,7 @@ class SiteEditView(OfficeRequiredMixin, UpdateView):
     def form_valid(self, form):
         before = audit.snapshot(Site.objects.get(pk=self.object.pk), services.SITE_DETAIL_FIELDS)
         site = services.update_site_details(form.save(commit=False), before, self.request.user)
-        messages.success(self.request, "Site details saved. Supervisors and staff now see the new details.")
+        messages.success(self.request, "Site details saved. Supervisors and guards now see the new details.")
         return redirect(site)
 
 

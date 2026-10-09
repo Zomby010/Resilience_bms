@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth import password_validation
 from django.core.exceptions import ValidationError
 
-from .models import Role, User
+from .models import ROLE_CHOICES, Role, User
 
 
 class ProfileForm(forms.ModelForm):
@@ -31,7 +31,9 @@ class BaseUserAdminForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["supervisor"].queryset = User.objects.filter(role=Role.SUPERVISOR, is_active=True)
-        self.fields["supervisor"].help_text = "Only for staff: the supervisor who reviews their reports."
+        self.fields["supervisor"].help_text = "Only for guards: the supervisor who reviews their reports."
+        if "role" in self.fields:
+            self.fields["role"].choices = ROLE_CHOICES
         self.fields["email"].required = False
 
     def clean(self):
@@ -49,7 +51,7 @@ class BaseUserAdminForm(forms.ModelForm):
                     self.add_error("password1", exc)
         role, supervisor = cleaned.get("role"), cleaned.get("supervisor")
         if supervisor and role != Role.STAFF:
-            self.add_error("supervisor", "Only staff members are assigned to a supervisor.")
+            self.add_error("supervisor", "Only guards are assigned to a supervisor.")
         return cleaned
 
     def save(self, commit=True):

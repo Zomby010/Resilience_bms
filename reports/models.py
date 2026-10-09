@@ -13,6 +13,12 @@ class Status(models.TextChoices):
     COMPLETED = "completed", "Completed"
 
 
+# What people read. "Completed" is shown as "Solved" so the button and the badge use the same word
+# (the stored value stays "completed").
+STATUS_LABELS = {Status.PENDING: "Pending", Status.REVIEWED: "Reviewed", Status.COMPLETED: "Solved"}
+STATUS_CHOICES = [(value, STATUS_LABELS[value]) for value in Status.values]
+
+
 class ReportQuerySet(models.QuerySet):
     def visible_to(self, user):
         """The single source of truth for who may see which reports.
@@ -61,6 +67,9 @@ class Report(models.Model):
     def get_absolute_url(self):
         return reverse("reports:detail", args=[self.pk])
 
+    def get_status_display(self):
+        return STATUS_LABELS.get(self.status, self.status)
+
     # --- who may act on this report -------------------------------------
     def can_reply(self, user):
         if not user.is_authenticated or user.pk == self.author_id:
@@ -72,7 +81,7 @@ class Report(models.Model):
         return False
 
     def can_complete(self, user):
-        """The Manager can resolve any report; a supervisor can resolve their team's."""
+        """The Manager can mark any report solved; a supervisor can mark their team's."""
         return self.status != Status.COMPLETED and self.can_reply(user)
 
     def can_edit(self, user):
@@ -95,7 +104,7 @@ class Report(models.Model):
         if self.author_id != user.pk:
             from notifications.services import notify
 
-            word = "resolved" if self.status == Status.COMPLETED else "answered"
+            word = "solved" if self.status == Status.COMPLETED else "answered"
             notify(self.author, "report.reply", f'Your report "{self.title[:80]}" was {word}', body[:300],
                    self.get_absolute_url(), entity=self)
         return reply

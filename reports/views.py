@@ -12,7 +12,7 @@ from core.filters import apply_dates, query_string
 from notifications.services import notify, notify_role
 
 from .forms import ReplyForm, ReportForm
-from .models import Report, Status
+from .models import STATUS_CHOICES, Report, Status
 
 # Everyone takes part. The Secretary only sends reports to the Manager and sees their own.
 REPORT_ROLES = (Role.MANAGER, Role.SUPERVISOR, Role.STAFF, Role.SECRETARY)
@@ -57,7 +57,7 @@ class ReportListView(RoleRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["statuses"] = Status.choices
+        ctx["statuses"] = STATUS_CHOICES
         ctx["f_status"] = self.request.GET.get("status", "")
         ctx["f_scope"] = self.request.GET.get("scope", "")
         ctx["q"] = self.request.GET.get("q", "")
@@ -155,7 +155,7 @@ class ReplyCreateView(RoleRequiredMixin, View):
 
 
 class ResolveView(RoleRequiredMixin, View):
-    """One button on the Manager dashboard: mark a report resolved, with an optional note."""
+    """One button on the Manager dashboard: mark a report solved, with an optional note."""
 
     http_method_names = ["post"]
     allowed_roles = (Role.MANAGER, Role.SUPERVISOR)
@@ -163,12 +163,12 @@ class ResolveView(RoleRequiredMixin, View):
     def post(self, request, pk):
         report = get_object_or_404(Report.objects.visible_to(request.user).select_related("author"), pk=pk)
         if not report.can_complete(request.user):
-            messages.error(request, "This report is already resolved." if report.status == Status.COMPLETED
-                           else "You cannot resolve this report.")
+            messages.error(request, "This report is already solved." if report.status == Status.COMPLETED
+                           else "You cannot mark this report solved.")
         else:
-            note = (request.POST.get("note") or "").strip() or "Resolved."
+            note = (request.POST.get("note") or "").strip() or "Solved."
             report.add_reply(request.user, note, complete=True)
-            messages.success(request, f'Report "{report.title}" resolved.')
+            messages.success(request, f'Report "{report.title}" marked solved.')
         nxt = request.POST.get("next", "")
         safe = url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure())
         return redirect(nxt if nxt and safe else report.get_absolute_url())

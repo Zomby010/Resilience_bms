@@ -72,8 +72,13 @@ def manager_extra(user):
         "open_issue_count": _open_issues().count(),
     }
     waiting.update(_operations_glance())
-    waiting["waiting_total"] = (payroll.count() + len(waiting["escalations_waiting"]) + len(waiting["items_waiting"])
-                                + waiting["expenses_waiting"] + waiting["leave_waiting"] + waiting["attendance_waiting"])
+    # Count every waiting item, not just the five shown in each list.
+    waiting["waiting_total"] = (
+        payroll.count()
+        + Escalation.objects.filter(status__in=(Escalation.Status.OPEN, Escalation.Status.SEEN)).count()
+        + ItemRequest.objects.filter(status=ItemRequest.Status.AWAITING_MANAGER).count()
+        + waiting["expenses_waiting"] + waiting["leave_waiting"] + waiting["attendance_waiting"]
+    )
     return waiting
 
 
@@ -93,6 +98,9 @@ def _operations_glance():
         "board": today_board,
         "today_date": today_board["day"],
         "ops": {
+            # "Signed in today" matches the board's "in" count (it includes people whose shift is over);
+            # "on_duty" is the part of them still on shift now.
+            "signed_in": sum(len(box["in"]) for box in today_board["boxes"]),
             "on_duty": states.get("on_duty", 0) + states.get("late", 0) + states.get("off_location", 0),
             "late": states.get("late", 0),
             "off_location": states.get("off_location", 0),

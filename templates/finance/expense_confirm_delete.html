@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head"><h1>Delete expense #{{ object.pk }}?</h1></div>
 <div class="card">
-  <p>{{ object.date|date:"d M Y" }} &middot; {{ object.category }} &middot; {{ object.description }} &middot; <strong>KES {{ object.amount|floatformat:2 }}</strong></p>
+  <p>{{ object.date|date:"d M Y" }} &middot; {{ object.category }} &middot; {{ object.description }} &middot; <strong>{{ object.amount|kes }}</strong></p>
   <p class="muted">The record is removed from the ledger, but this deletion stays in the permanent history.</p>
   <form method="post" class="form-actions">
     {% csrf_token %}
