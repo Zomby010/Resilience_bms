@@ -1,12 +1,32 @@
-// Phone menu: the "Menu" button shows or hides the links on small screens.
+// Phone menu: the bottom bar's "More" button opens the full menu as a sheet that slides over the page.
 (function () {
-  var btn = document.querySelector(".menu-toggle");
-  var nav = document.getElementById("main-nav");
-  if (!btn || !nav) return;
-  btn.addEventListener("click", function () {
-    var open = nav.classList.toggle("open");
-    btn.setAttribute("aria-expanded", open ? "true" : "false");
-    btn.textContent = open ? "Close menu" : "Menu";
+  var sheet = document.getElementById("sidebar");
+  var more = document.querySelector(".tabbar .more-btn");
+  var close = sheet && sheet.querySelector(".sheet-close");
+  if (!sheet || !more) return;
+  function set(open) {
+    sheet.classList.toggle("open", open);
+    document.body.classList.toggle("sheet-open", open);
+    more.setAttribute("aria-expanded", open ? "true" : "false");
+    if (close) close.hidden = !open;
+    if (open) { var first = sheet.querySelector("a, summary, button"); if (first) first.focus(); }
+    else more.focus();
+  }
+  more.addEventListener("click", function () { set(!sheet.classList.contains("open")); });
+  if (close) close.addEventListener("click", function () { set(false); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && sheet.classList.contains("open")) set(false);
+  });
+})();
+
+// Menu groups: opening one closes the others, so only one group is open at a time.
+(function () {
+  var groups = document.querySelectorAll(".nav details.navgroup");
+  groups.forEach(function (g) {
+    g.addEventListener("toggle", function () {
+      if (!g.open) return;
+      groups.forEach(function (o) { if (o !== g) o.open = false; });
+    });
   });
 })();
 

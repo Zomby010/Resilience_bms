@@ -1,7 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Expenditure history{% endblock %}
+{% block title %}Expenses: who changed what{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>Expenditure history</h1><p class="muted">Every create, edit and delete, kept permanently.</p></div></div>
+<div class="page-head"><div><h1>Expenses</h1><p class="muted">Every create, edit and delete, kept permanently.</p></div></div>
+{% include "finance/_views.html" with on="history" %}
 <div class="card">
   <form method="get" class="filters">
     <div><label for="q">Search</label><input id="q" name="q" value="{{ f.q }}" placeholder="Expense number or words"></div>

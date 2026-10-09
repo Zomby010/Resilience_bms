@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Q, Sum
+from django.db.models import Count, Q, Sum
+from django.db.models.functions import TruncMonth
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
@@ -59,6 +60,11 @@ class ExpenseListView(RoleRequiredMixin, CsvExportMixin, ListView):
         ctx["categories"] = ExpenseCategory.objects.all()
         ctx["can_edit"] = self.request.user.role in EDIT_ROLES
         g = self.request.GET
+        # One Expenses page: the list, or the same filtered expenses added up per month.
+        ctx["view"] = "month" if g.get("view") == "month" else "list"
+        if ctx["view"] == "month":
+            ctx["months"] = (filtered.annotate(month=TruncMonth("date")).values("month")
+                             .annotate(total=Sum("amount"), n=Count("id")).order_by("-month"))
         ctx.update(q=g.get("q", ""), f_category=g.get("category", ""), f_from=g.get("from", ""), f_to=g.get("to", ""))
         ctx["query_string"] = query_string(self.request)
         return ctx

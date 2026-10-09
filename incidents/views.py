@@ -8,7 +8,7 @@ from django.views.generic import CreateView, DetailView, ListView
 from accounts.models import Role
 from accounts.permissions import RoleRequiredMixin
 from core.filters import apply_dates, csv_response, query_string
-from core.mixins import OFFICE, ActionView
+from core.mixins import ActionView
 from core.services.files import attachments_for
 from core.workflow import TransitionError
 from tracking.models import Site
@@ -18,10 +18,19 @@ from .forms import IncidentForm
 from .models import Incident
 
 S = Incident.Status
+OFFICE = services.OFFICE
 
 
 class ReporterMixin(RoleRequiredMixin):
+    """Reporting and the incidents list: guards and supervisors only."""
+
     allowed_roles = services.REPORTERS
+
+
+class ViewerMixin(RoleRequiredMixin):
+    """One incident's page: also the Manager, who reaches it from the to-do list or the site page."""
+
+    allowed_roles = services.VIEWERS
 
 
 def visible(user):
@@ -83,11 +92,16 @@ class IncidentListView(ReporterMixin, ListView):
             return self.base.filter(status=status)
         return self.base
 
+    # The Manager has no incidents page, but can still download them (a site's History tab links here).
+    allowed_roles = services.VIEWERS
+
     def get(self, request, *args, **kwargs):
         if request.GET.get("export") == "csv":
             if request.user.role not in OFFICE:
                 raise PermissionDenied
             return self.export(self.get_queryset())
+        if request.user.role not in services.REPORTERS:
+            raise PermissionDenied
         return super().get(request, *args, **kwargs)
 
     def export(self, qs):
@@ -120,7 +134,7 @@ class IncidentListView(ReporterMixin, ListView):
         return ctx
 
 
-class IncidentDetailView(ReporterMixin, DetailView):
+class IncidentDetailView(ViewerMixin, DetailView):
     template_name = "incidents/incident_detail.html"
     context_object_name = "incident"
 
@@ -142,7 +156,7 @@ class IncidentPrintView(IncidentDetailView):
     template_name = "incidents/incident_print.html"
 
 
-class IncidentAction(ReporterMixin, ActionView):
+class IncidentAction(ViewerMixin, ActionView):
     action = None
     done = {
         "add_note": "Note added.",

@@ -12,7 +12,7 @@ from accounts.models import Role, User
 from accounts.permissions import RoleRequiredMixin
 from attendance.services import people_on
 from core.filters import apply_dates, csv_response
-from core.mixins import FilterContextMixin, OfficeRequiredMixin
+from core.mixins import FilterContextMixin
 from core.services import audit
 from core.services.files import attachments_for
 from tracking.models import Site, SitePosting
@@ -31,6 +31,29 @@ def _local(dt):
 
 # --- sites -------------------------------------------------------------------------
 
+SITE_TABS = (("details", "Details"), ("location", "Location & hours"), ("people", "People"), ("ob", "OB"),
+             ("history", "History"))
+
+
+def site_tabs(user, site, current):
+    """The tabs of one site's page. Location & hours is the Manager's GPS form; the OB is not shown to the Secretary."""
+    from django.urls import reverse
+
+    base = reverse("operations:site_detail", args=[site.pk])
+    tabs = []
+    for key, label in SITE_TABS:
+        if key == "location":
+            if user.role != Role.MANAGER:
+                continue
+            href = reverse("tracking:site_edit", args=[site.pk])
+        elif key in ("ob", "history") and user.role == Role.SECRETARY:
+            continue
+        else:
+            href = base if key == "details" else f"{base}?tab={key}"
+        tabs.append({"key": key, "label": label, "href": href, "on": key == current})
+    return tabs
+
+
 class SiteListView(LoginRequiredMixin, FilterContextMixin, ListView):
     template_name = "operations/site_list.html"
     context_object_name = "sites"
@@ -47,7 +70,13 @@ class SiteListView(LoginRequiredMixin, FilterContextMixin, ListView):
         return qs.order_by("name")
 
     def get_context_data(self, **kwargs):
-        return {**super().get_context_data(**kwargs), "can_edit": services.can_edit_site(self.request.user)}
+        user = self.request.user
+        ctx = {**super().get_context_data(**kwargs), "can_edit": services.can_edit_site(user)}
+        if user.role == Role.MANAGER:
+            # One Sites page: the Manager also sees each site's location and working hours here.
+            ctx["sites"] = ctx["sites"].prefetch_related("hours")
+            ctx["show_location"] = True
+        return ctx
 
 
 class SiteDetailView(LoginRequiredMixin, DetailView):
@@ -65,22 +94,35 @@ class SiteDetailView(LoginRequiredMixin, DetailView):
         user, site = self.request.user, self.object
         ctx = super().get_context_data(**kwargs)
         office = user.role in OFFICE
+        tabs = site_tabs(user, site, "details")
+        tab = self.request.GET.get("tab", "details")
+        if tab not in {t["key"] for t in tabs} or tab == "location":
+            tab = "details"
+        for t in tabs:
+            t["on"] = t["key"] == tab
         ctx.update(
+            tab=tab, site_tabs=tabs,
             can_edit=services.can_edit_site(user),
             hours=site.hours.all(),
             people=services.people_at(site),
             contacts=[line for line in site.emergency_contacts.splitlines() if line.strip()],
-            ob=OBEntry.objects.visible_to(user).filter(site=site).select_related("written_by")[:10],
-            incidents=Incident.objects.visible_to(user).filter(site=site)[:5],
-            visits=SiteVisit.objects.visible_to(user).filter(site=site).select_related("supervisor")[:5],
-            postings=SitePosting.objects.filter(site=site).select_related("user")[:20] if office else None,
             can_write_ob=services.can_write_ob(user, site) and site.is_active,
+            can_read_ob=user.role != Role.SECRETARY,
         )
+        if tab == "people":
+            ctx["postings"] = SitePosting.objects.filter(site=site).select_related("user")[:50] if office else None
+        elif tab == "ob":
+            ctx["ob"] = OBEntry.objects.visible_to(user).filter(site=site).select_related("written_by")[:20]
+        elif tab == "history":
+            ctx["incidents"] = Incident.objects.visible_to(user).filter(site=site).select_related("reported_by")[:50]
+            ctx["visits"] = SiteVisit.objects.visible_to(user).filter(site=site).select_related("supervisor")[:20]
         return ctx
 
 
-class SiteEditView(OfficeRequiredMixin, UpdateView):
-    """Manager and Secretary edit the site details. Location and hours stay on the GPS pages."""
+class SiteEditView(RoleRequiredMixin, UpdateView):
+    """The Manager edits the site details. Location and hours are the site's "Location & hours" tab."""
+
+    allowed_roles = (Role.MANAGER,)
 
     model = Site
     form_class = SiteDetailsForm
@@ -93,13 +135,16 @@ class SiteEditView(OfficeRequiredMixin, UpdateView):
         messages.success(self.request, "Site details saved. Supervisors and guards now see the new details.")
         return redirect(site)
 
+    def get_context_data(self, **kwargs):
+        return {**super().get_context_data(**kwargs), "site_tabs": site_tabs(self.request.user, self.object, "details")}
+
 
 # --- my team today -------------------------------------------------------------------
 
 class TeamTodayView(RoleRequiredMixin, TemplateView):
     """Each guard's status today in plain words. No map and no coordinates."""
 
-    allowed_roles = (Role.SUPERVISOR, Role.MANAGER, Role.SECRETARY)
+    allowed_roles = (Role.SUPERVISOR, Role.MANAGER)
     template_name = "operations/team_today.html"
 
     def get_context_data(self, **kwargs):
@@ -133,7 +178,13 @@ class TeamTodayView(RoleRequiredMixin, TemplateView):
 
 # --- Occurrence Book ---------------------------------------------------------------------
 
-class OBListView(LoginRequiredMixin, FilterContextMixin, ListView):
+# The Occurrence Book is kept at the sites: guards and supervisors write it, the Manager reads it.
+OB_READERS = (Role.STAFF, Role.SUPERVISOR, Role.MANAGER)
+OB_WRITERS = (Role.STAFF, Role.SUPERVISOR)
+
+
+class OBListView(RoleRequiredMixin, FilterContextMixin, ListView):
+    allowed_roles = OB_READERS
     template_name = "operations/ob_list.html"
     context_object_name = "entries"
     paginate_by = 50
@@ -166,7 +217,7 @@ class OBListView(LoginRequiredMixin, FilterContextMixin, ListView):
         sites = services.sites_for(user)
         my_site = services.my_site(user)
         return {**super().get_context_data(**kwargs), "sites": sites, "kinds": OBEntry.Kind.choices,
-                "can_export": user.role in OFFICE, "my_site": my_site,
+                "can_export": user.role in OFFICE, "my_site": my_site, "can_write": user.role in OB_WRITERS,
                 "quick": services.QUICK_ENTRIES if my_site else None,
                 "print": self.request.GET.get("print") == "1"}
 
@@ -177,13 +228,14 @@ class OBListView(LoginRequiredMixin, FilterContextMixin, ListView):
         return 500 if self.request.GET.get("print") == "1" else self.paginate_by
 
 
-class OBWriteView(LoginRequiredMixin, FormView):
+class OBWriteView(RoleRequiredMixin, FormView):
+    allowed_roles = OB_WRITERS
     template_name = "operations/ob_form.html"
     form_class = OBForm
 
     def dispatch(self, request, *args, **kwargs):
         self.corrects = None
-        if request.user.is_authenticated and request.GET.get("corrects", "").isdigit():
+        if request.user.is_authenticated and request.user.role in OB_WRITERS and request.GET.get("corrects", "").isdigit():
             self.corrects = get_object_or_404(OBEntry.objects.visible_to(request.user), pk=int(request.GET["corrects"]))
         return super().dispatch(request, *args, **kwargs)
 
@@ -216,9 +268,10 @@ def _ob_url():
     return reverse("operations:ob")
 
 
-class OBQuickView(LoginRequiredMixin, View):
+class OBQuickView(RoleRequiredMixin, View):
     """One tap: 'Patrol done. All in order.' in the person's own site OB."""
 
+    allowed_roles = OB_WRITERS
     http_method_names = ["post"]
 
     def post(self, request, code):
@@ -260,7 +313,7 @@ class VisitCreateView(RoleRequiredMixin, FormView):
 
 
 class VisitListView(RoleRequiredMixin, FilterContextMixin, ListView):
-    allowed_roles = (Role.SUPERVISOR, Role.MANAGER, Role.SECRETARY)
+    allowed_roles = (Role.SUPERVISOR, Role.MANAGER)
     template_name = "operations/visit_list.html"
     context_object_name = "visits"
     paginate_by = 30
@@ -290,7 +343,7 @@ class VisitListView(RoleRequiredMixin, FilterContextMixin, ListView):
 
 
 class VisitDetailView(RoleRequiredMixin, DetailView):
-    allowed_roles = (Role.SUPERVISOR, Role.MANAGER, Role.SECRETARY)
+    allowed_roles = (Role.SUPERVISOR, Role.MANAGER)
     template_name = "operations/visit_detail.html"
     context_object_name = "visit"
 

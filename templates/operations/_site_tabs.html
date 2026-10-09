@@ -1,0 +1,1 @@
+{% if site_tabs|length > 1 %}<nav class="tabs site-tabs" aria-label="{{ site.name }}">{% for t in site_tabs %}<a href="{{ t.href }}" class="{% if t.on %}on{% endif %}"{% if t.on %} aria-current="page"{% endif %}>{{ t.label }}</a>{% endfor %}</nav>{% endif %}

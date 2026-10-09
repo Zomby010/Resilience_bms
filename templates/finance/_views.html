@@ -1,0 +1,5 @@
+<nav class="tabs" aria-label="Ways to see expenses">
+  <a href="{% url 'finance:list' %}" class="{% if on == 'list' %}on{% endif %}">List</a>
+  <a href="{% url 'finance:list' %}?view=month" class="{% if on == 'month' %}on{% endif %}">By month</a>
+  <a href="{% url 'finance:history' %}" class="{% if on == 'history' %}on{% endif %}">Who changed what</a>
+</nav>

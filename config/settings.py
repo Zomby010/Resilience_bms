@@ -90,6 +90,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "tracking.context_processors.location_reminder",
                 "notifications.context_processors.bell",
+                "core.menu.main_menu",
             ],
             "builtins": ["core.templatetags.ui"],
         },

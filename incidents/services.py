@@ -15,8 +15,11 @@ from operations.services import write_ob
 from .models import Incident, IncidentNote
 
 S = Incident.Status
-REPORTERS = (Role.STAFF, Role.SUPERVISOR, Role.SECRETARY, Role.MANAGER)
-OFFICE = (Role.SECRETARY, Role.MANAGER)
+# Incidents happen at sites: guards and supervisors report them. The Manager reads and decides on them from
+# the to-do list and the site page; the Secretary has no incident pages and is not told about them.
+REPORTERS = (Role.STAFF, Role.SUPERVISOR)
+VIEWERS = (Role.STAFF, Role.SUPERVISOR, Role.MANAGER)
+OFFICE = (Role.MANAGER,)
 MAX_PHOTOS = 5
 
 OBKind = OBEntry.Kind
@@ -34,10 +37,10 @@ def _note(incident, user, body="", status_from="", status_to=""):
 # --- reporting ------------------------------------------------------------------
 
 def people_to_tell(incident):
-    """The reporter's supervisor, the site's supervisor and the Secretary; Managers too when it is serious."""
+    """The reporter's supervisor and the site's supervisor; the Manager too when it is serious."""
     people = [incident.reported_by.supervisor, incident.site.supervisor]
-    roles = [Role.SECRETARY] + ([Role.MANAGER] if incident.serious else [])
-    people += list(User.objects.filter(role__in=roles, is_active=True))
+    if incident.serious:
+        people += list(User.objects.filter(role=Role.MANAGER, is_active=True))
     return [p for p in people if p is not None and p.pk != incident.reported_by_id]
 
 
@@ -134,7 +137,7 @@ def manager_review(incident, user, note=""):
 @transaction.atomic
 def close(incident, user, note=""):
     if user.role not in OFFICE:
-        raise TransitionError("Only the Secretary or the Manager can close an incident.")
+        raise TransitionError("Only the Manager can close an incident.")
     before = incident.status
     require(incident, (S.REPORTED, S.SUPERVISOR_REVIEWED, S.MANAGER_REVIEWED), S.CLOSED,
             closed_by=user, closed_at=timezone.now())
@@ -158,10 +161,14 @@ def reopen(incident, user, note):
 
 # --- for dashboards ---------------------------------------------------------------
 
-def open_serious_count():
-    """High or critical incidents that are not closed yet."""
+def open_serious():
+    """High or critical incidents that are not closed yet (they reach the Manager as to-dos)."""
     return Incident.objects.filter(severity__in=(Incident.Severity.HIGH, Incident.Severity.CRITICAL)).exclude(
-        status=S.CLOSED).count()
+        status=S.CLOSED)
+
+
+def open_serious_count():
+    return open_serious().count()
 
 
 def recent_for_site(site, n=5):

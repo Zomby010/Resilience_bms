@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head"><div><h1>Occurrence Book (OB)</h1>
   <p class="muted">Everything that happens at a site, written as it happens. Entries are never changed or deleted: a mistake is put right with a new entry.</p></div>
-  <div class="actions"><a class="btn" href="{% url 'operations:ob_write' %}">Write in the OB</a>
+  <div class="actions">{% if can_write %}<a class="btn" href="{% url 'operations:ob_write' %}">Write in the OB</a>{% endif %}
   <a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}print=1" target="_blank" rel="noopener">Print</a>
   {% if can_export %}<a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}export=csv">Download (CSV)</a>{% endif %}</div></div>
 {% if quick %}
@@ -25,7 +25,7 @@
       <td><strong>{{ e.number }}</strong></td><td>{{ e.occurred_at|date:"d M Y H:i" }}</td><td>{{ e.site }}</td><td>{{ e.get_kind_display }}</td>
       <td>{% if e.corrects %}<span class="badge pending">Corrects {{ e.corrects.number }}</span> {% endif %}{{ e.text|linebreaksbr }}{% if e.incident_id %} <a href="{% url 'incidents:detail' e.incident_id %}">Open incident</a>{% endif %}</td>
       <td>{{ e.written_by }}<br><span class="small muted">{{ e.written_at|date:"d M H:i" }}</span></td>
-      <td><a class="small" href="{% url 'operations:ob_write' %}?corrects={{ e.pk }}">Correct</a></td></tr>
+      <td>{% if can_write %}<a class="small" href="{% url 'operations:ob_write' %}?corrects={{ e.pk }}">Correct</a>{% endif %}</td></tr>
     {% empty %}<tr><td colspan="7" class="empty">No OB entries.</td></tr>{% endfor %}</tbody>
   </table></div>
   {% include "partials/pagination.html" %}

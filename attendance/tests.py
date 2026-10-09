@@ -167,8 +167,9 @@ class PageTests(AttendanceBase):
         cases = [
             ("attendance:mine", {self.staff_a1: 200, self.sup_a: 200, self.secretary: 403, self.manager: 403}),
             ("attendance:team", {self.sup_a: 200, self.staff_a1: 403, self.manager: 403}),
-            ("attendance:day", {self.manager: 200, self.secretary: 200, self.sup_a: 403, self.staff_a1: 403}),
-            ("attendance:records", {self.manager: 200, self.sup_a: 200, self.staff_a1: 200}),
+            # Only the Manager completes the day; guards see their days on "My attendance" (Frank's matrix).
+            ("attendance:day", {self.manager: 200, self.secretary: 403, self.sup_a: 403, self.staff_a1: 403}),
+            ("attendance:records", {self.manager: 200, self.secretary: 200, self.sup_a: 200, self.staff_a1: 403}),
         ]
         for name, expected in cases:
             for user, code in expected.items():

@@ -190,11 +190,12 @@ class LeavePageTests(LeaveBase):
         self.client.post(reverse("leave:approve", args=[req.pk]))
         self.assertEqual(LeaveRequest.objects.get().status, S.APPROVED)
 
-    def test_allowances_manager_edits_secretary_views_staff_forbidden(self):
+    def test_allowances_manager_only(self):
+        # Leave days per person are no longer used (Frank's leave rules); only the Manager can still open them.
         self.login(self.staff_a1)
         self.assertEqual(self.client.get(reverse("leave:allowances")).status_code, 403)
         self.login(self.secretary)
-        self.assertEqual(self.client.get(reverse("leave:allowances")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("leave:allowances")).status_code, 403)
         self.assertEqual(self.client.get(reverse("leave:allowance_edit", args=[self.staff_a1.pk])).status_code, 403)
         self.login(self.manager)
         r = self.client.post(reverse("leave:allowance_edit", args=[self.staff_a1.pk]),

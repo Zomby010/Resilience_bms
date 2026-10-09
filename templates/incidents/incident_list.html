@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head">
   <div><h1>{% if mine_only %}My incidents{% else %}Incidents{% endif %}</h1>
-  <p class="muted">{% if mine_only %}Incidents you have reported. Open one to see what the office has done.{% else %}Incidents reported at the sites. High and critical ones also go to the Manager.{% endif %}</p></div>
+  <p class="muted">{% if mine_only %}Incidents you have reported. Open one to see what the office has done.{% else %}Incidents at your sites and from your guards. High and critical ones also go to the Manager.{% endif %}</p></div>
   <div class="actions">
     <a class="btn" href="{% url 'incidents:create' %}">Report an incident</a>
     {% if office %}<a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}export=csv">Download CSV</a>{% endif %}

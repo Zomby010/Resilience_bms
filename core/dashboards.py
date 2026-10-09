@@ -58,6 +58,7 @@ def manager_extra(user):
     """The 'Waiting for me' card on the Manager dashboard."""
     from escalations.models import Escalation
     from finance.models import Expense
+    from incidents.services import open_serious
     from inventory.models import ItemRequest
     from payroll.models import PayrollRun
 
@@ -70,6 +71,8 @@ def manager_extra(user):
         "items_waiting": ItemRequest.objects.filter(status=ItemRequest.Status.AWAITING_MANAGER).select_related("item", "requester")[:5],
         "expenses_waiting": Expense.objects.filter(status=Expense.Status.AWAITING_APPROVAL).count(),
         "open_issue_count": _open_issues().count(),
+        # There is no incidents page for the Manager: serious ones arrive here, the rest are on each site's page.
+        "serious_incidents": open_serious().select_related("site").order_by("-occurred_at")[:5],
     }
     waiting.update(_operations_glance())
     # Count every waiting item, not just the five shown in each list.
@@ -78,6 +81,7 @@ def manager_extra(user):
         + Escalation.objects.filter(status__in=(Escalation.Status.OPEN, Escalation.Status.SEEN)).count()
         + ItemRequest.objects.filter(status=ItemRequest.Status.AWAITING_MANAGER).count()
         + waiting["expenses_waiting"] + waiting["leave_waiting"] + waiting["attendance_waiting"]
+        + waiting["ops"]["serious_incidents"]
     )
     return waiting
 

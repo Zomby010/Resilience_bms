@@ -32,4 +32,10 @@
   </table></div>
   {% include "partials/pagination.html" %}
 </div>
+<details class="fold" data-fold="location-changes"><summary>Who changed sites and location settings</summary>
+  <ul class="timeline small fold-body">
+    {% for a in audit %}<li>{{ a.created_at|date:"d M Y, H:i" }}: <strong>{{ a.actor|default:"(removed user)" }}</strong> {{ a.action }}</li>
+    {% empty %}<li class="muted">No changes yet.</li>{% endfor %}
+  </ul>
+</details>
 {% endblock %}

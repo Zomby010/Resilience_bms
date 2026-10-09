@@ -141,13 +141,15 @@ class ReportSubmitEditTests(CompanyTestCase):
         self.login(self.manager)
         self.assertEqual(self.client.get(reverse("reports:create")).status_code, 403)
 
-    def test_secretary_report_goes_to_manager(self):
+    def test_secretary_uses_send_to_manager_not_reports(self):
+        # One channel from the Secretary to the Manager: Escalations. Old reports stay readable.
+        old = Report.objects.create(author=self.secretary, title="Fuel costs", body="Up 10%")
         self.login(self.secretary)
-        self.client.post(reverse("reports:create"), {"title": "Fuel costs", "body": "Up 10%"})
-        report = Report.objects.get(title="Fuel costs")
-        self.assertEqual(report.author, self.secretary)
-        self.assertTrue(self.manager.notifications.filter(kind="report.new").exists())
-        self.assertFalse(report.can_reply(self.sup_a))
+        self.assertEqual(self.client.get(reverse("reports:create")).status_code, 403)
+        self.assertEqual(self.client.post(reverse("reports:create"), {"title": "New", "body": "x"}).status_code, 403)
+        self.assertFalse(Report.objects.filter(title="New").exists())
+        self.assertEqual(self.client.get(reverse("reports:detail", args=[old.pk])).status_code, 200)
+        self.assertIn(old, self.client.get(reverse("reports:list")).context["reports"])
 
     def test_author_can_edit_only_while_pending(self):
         report = Report.objects.create(author=self.staff_a1, title="Old", body="x")

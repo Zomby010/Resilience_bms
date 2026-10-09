@@ -139,8 +139,10 @@ class CategoryView(OfficeRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class FlagsView(OfficeRequiredMixin, TemplateView):
-    """D12: the Manager ticks the items that need his approval. The Secretary can only look."""
+class FlagsView(RoleRequiredMixin, TemplateView):
+    """D12: "Which items need the Manager's OK". The Manager ticks them; it is a setting, so only the Manager sees it."""
+
+    allowed_roles = (Role.MANAGER,)
 
     template_name = "inventory/flags.html"
 

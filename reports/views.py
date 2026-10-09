@@ -16,7 +16,9 @@ from .models import STATUS_CHOICES, Report, Status
 
 # Everyone takes part. The Secretary only sends reports to the Manager and sees their own.
 REPORT_ROLES = (Role.MANAGER, Role.SUPERVISOR, Role.STAFF, Role.SECRETARY)
-AUTHOR_ROLES = (Role.SUPERVISOR, Role.STAFF, Role.SECRETARY)
+# The Secretary writes to the Manager through Escalations ("Send to Manager"), so there is one channel, not two.
+# Their old reports stay readable under Manager ▸ Old reports.
+AUTHOR_ROLES = (Role.SUPERVISOR, Role.STAFF)
 
 
 class ReportListView(RoleRequiredMixin, ListView):

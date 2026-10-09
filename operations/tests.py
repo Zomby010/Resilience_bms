@@ -33,21 +33,21 @@ class OpsBase(CompanyTestCase):
 
 
 class SiteTests(OpsBase):
-    def test_office_edits_details_others_read_only(self):
+    def test_manager_edits_details_others_read_only(self):
         url = reverse("operations:site_edit", args=[self.site.pk])
-        for user in (self.sup_a, self.staff_a1):
+        for user in (self.sup_a, self.staff_a1, self.secretary):  # the Secretary reads sites (Frank's matrix)
             self.login(user)
             self.assertEqual(self.client.get(url).status_code, 403)
             r = self.client.get(self.site.get_absolute_url())
             self.assertEqual(r.status_code, 200)
             self.assertNotContains(r, "Edit details")
-        self.login(self.secretary)
+        self.login(self.manager)
         r = self.client.post(url, {"name": "Kondele Site", "address": "Off Kibos Road", "supervisor": self.sup_a.pk,
                                    "guards_needed": 3, "instructions": "Check the back gate hourly",
                                    "emergency_contacts": "Kondele Police 0712000000", "is_active": "on"})
         self.assertEqual(r.status_code, 302)
         self.site.refresh_from_db()
-        self.assertEqual((self.site.guards_needed, self.site.details_updated_by), (3, self.secretary))
+        self.assertEqual((self.site.guards_needed, self.site.details_updated_by), (3, self.manager))
         self.assertTrue(AuditLog.objects.filter(action="site.details").exists())
         self.login(self.staff_a1)
         self.assertContains(self.client.get(self.site.get_absolute_url()), "Check the back gate hourly")

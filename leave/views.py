@@ -73,7 +73,9 @@ class AskView(LoginRequiredMixin, FormView):
         return redirect(req)
 
 
-class RequestListView(LoginRequiredMixin, FilterContextMixin, ListView):
+class RequestListView(RoleRequiredMixin, FilterContextMixin, ListView):
+    # Guards see their own requests on "My leave".
+    allowed_roles = (Role.SUPERVISOR, Role.MANAGER, Role.SECRETARY)
     template_name = "leave/request_list.html"
     context_object_name = "requests"
     paginate_by = 30
@@ -153,7 +155,9 @@ class RequestAction(ActionView):
 # --- allowances (Manager sets, Secretary sees) -----------------------------------
 
 class AllowanceListView(RoleRequiredMixin, TemplateView):
-    allowed_roles = (Role.MANAGER, Role.SECRETARY)
+    # Leave days per person are no longer used (the Manager types the days given on each request).
+    # The old figures stay readable for the Manager from Leave & sick ▸ Requests to decide.
+    allowed_roles = (Role.MANAGER,)
     template_name = "leave/allowances.html"
 
     def get_context_data(self, **kwargs):

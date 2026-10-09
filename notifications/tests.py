@@ -40,7 +40,7 @@ class NotificationTests(OpsTestCase):
         notify(self.staff_a1, "x", "Two")
         self.login(self.staff_a1)
         page = self.client.get(reverse("core:home")).content.decode()
-        self.assertIn('aria-label="2 unread"', page)
+        self.assertIn('aria-label="Notifications, 2 unread"', page)
         self.client.post(reverse("notifications:read_all"))
         self.assertFalse(Notification.objects.filter(recipient=self.staff_a1, read_at__isnull=True).exists())
 
