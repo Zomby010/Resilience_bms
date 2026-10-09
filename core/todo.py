@@ -123,18 +123,14 @@ def _expenses_for_manager():
 
 
 def _leave_to_decide(user):
-    from django.db.models import Q
-
+    """Only the Manager decides leave (Frank's rule). Supervisors are told, in the bell."""
     from leave.models import LeaveRequest
 
-    qs = LeaveRequest.objects.filter(status=LeaveRequest.Status.WAITING).select_related("user", "leave_type")
-    if user.role == Role.MANAGER:
-        qs = qs.exclude(user=user).filter(Q(approver__isnull=True) | ~Q(approver__is_active=True) | Q(approver=user))
-    else:
-        qs = qs.filter(approver=user)
+    qs = (LeaveRequest.objects.filter(status=LeaveRequest.Status.WAITING).exclude(user=user)
+          .select_related("user", "leave_type"))
     for r in qs.order_by("start_date")[:LIMIT]:
         yield Todo(r.user, f"{r.leave_type.name}: {r.start_date:%d %b} to {r.end_date:%d %b}", r.get_absolute_url(),
-                   [open_("Approve this")], "Open it to approve or say no. They are told at once.", r.created_at)
+                   [open_("Give the days")], "Type the days given, or say no. They are told at once.", r.created_at)
 
 
 def _attendance_day_for_manager(board):
@@ -358,7 +354,7 @@ def todos_for(user, board=None):
                    _secretary_clients(), _secretary_system()]
     elif role == Role.SUPERVISOR:
         sources = [_signins_for_supervisor(user), _reports_for(user), _incidents_for_supervisor(user),
-                   _issues_for_supervisor(user), _leave_to_decide(user), _unread_replies(user), _my_items(user)]
+                   _issues_for_supervisor(user), _unread_replies(user), _my_items(user)]
     else:
         sources = [_unread_replies(user), _my_items(user)]
     return [t for source in sources for t in source]

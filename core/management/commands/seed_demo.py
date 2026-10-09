@@ -240,7 +240,8 @@ def _seed_site_operations(users, sites):
 
     annual = LeaveType.objects.get(code="annual")
     leave.ask_for_leave(users["staff2"], annual, today + timedelta(days=14), today + timedelta(days=18), "Family visit", users["staff2"])
-    leave.ask_for_leave(users["staff4"], annual, today, today + timedelta(days=2), "Wedding", users["supervisor2"])
+    wedding = leave.ask_for_leave(users["staff4"], annual, today, today + timedelta(days=4), "Wedding", users["supervisor2"])
+    leave.decide(wedding, users["manager"], True, "Enjoy the wedding.", days_given=3)  # the Manager gives 3 of the days asked
     leave.report_sick(users["staff3"], today, today + timedelta(days=1), "", users["supervisor2"])
 
     ops.write_ob(sites[0], users["staff1"], OBEntry.Kind.SHIFT_START, "Shift started. All in order.", at(today, 7, 0))

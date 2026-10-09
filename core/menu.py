@@ -28,9 +28,9 @@ MENUS = {
             T(("My incidents", "incidents:list", ())),
         ]),
         ("🗓️", "Leave & sick", [
-            T(("My leave", "leave:mine", ("/leave/requests/",))),
+            T(("Ask for leave", "leave:ask", ())),
             T(("Report in sick", "leave:sick_report", ())),
-            T(("My sick reports", "leave:sick_list", ())),
+            T(("My requests", "leave:mine", ("/leave/requests/", "/leave/sick/"))),
         ]),
         ("🎒", "Items", [
             T(("Ask for an item", "inventory:browse", ())),
@@ -66,8 +66,9 @@ MENUS = {
             T(("Send a report", "reports:create", ())),
         ]),
         ("🗓️", "My leave", [
-            T(("My leave", "leave:mine", ())),
+            T(("Ask for leave", "leave:ask", ())),
             T(("Report in sick", "leave:sick_report", ())),
+            T(("My requests", "leave:mine", ())),
         ]),
         ("🎒", "Items", [
             T(("Ask for an item", "inventory:browse", ())),
@@ -101,7 +102,7 @@ MENUS = {
             T(("Attendance records", "attendance:records", ())),
             T(("Leave requests", "leave:request_list", ())),
             T(("Sick", "leave:sick_list", ())),
-            T(("My leave", "leave:mine", ())),
+            T(("My requests", "leave:mine", ())),
         ]),
         ("✉️", "Manager", [
             T(("Send to Manager", "escalations:create", ())),
@@ -125,7 +126,7 @@ MENUS = {
         ("🗓️", "Leave & sick", [
             T(("Requests to decide", "leave:request_list", ())),
             T(("Sick", "leave:sick_list", ())),
-            T(("My leave", "leave:mine", ())),
+            T(("My requests", "leave:mine", ())),
         ]),
         ("📍", "Sites", [
             T(("Sites", "operations:sites", ("/location/sites/",))),

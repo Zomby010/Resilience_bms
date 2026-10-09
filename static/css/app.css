@@ -498,3 +498,14 @@ details.filterbar[open] > summary .arrow { transform: rotate(180deg); }
   table.cards tr:hover td { background: transparent; }
   .table-wrap:has(table.cards) { overflow: visible; }
 }
+
+/* Ask for leave: four big type buttons (LEAVE-01). */
+.type-pick { border: 0; padding: 0; margin: 0 0 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.type-pick legend { font-weight: 600; margin-bottom: 6px; }
+.fields .type-pick label.type-btn { display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 10px 12px; border: 2px solid var(--silver);
+  border-radius: 10px; background: var(--white); font-weight: 600; cursor: pointer; }
+.fields .type-pick .type-btn input { width: 20px; height: 20px; min-height: 0; margin: 0; flex: none; }
+.fields .type-pick .type-btn:has(input:checked) { border-color: var(--primary); background: var(--primary-bg); }
+.type-pick .errorlist { grid-column: 1 / -1; }
+.chip.away { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: var(--blue-bg); color: var(--primary-dark); white-space: nowrap; }
+.chip.away.sick { background: var(--amber-bg); color: var(--amber); }

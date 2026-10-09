@@ -32,7 +32,9 @@ MATRIX = [
     row("attendance:records",      (200, 200, 200, 403), "msv"),
     row("leave:mine",              (200, 200, 200, 200), "msvg"),
     row("leave:request_list",      (200, 200, 200, 403), "msv"),
-    row("leave:sick_list",         (200, 200, 200, 200), "msvg"),
+    row("leave:ask",               (200, 200, 200, 200), "vg"),     # the office asks from "My requests"
+    # A guard's sick reports are on "My requests"; the list of everyone's is for the office and supervisors.
+    row("leave:sick_list",         (200, 200, 200, 403), "msv"),
     row("leave:sick_report",       (200, 200, 200, 200), "vg"),
     row("leave:allowances",        (200, 403, 403, 403)),            # kept for the Manager behind "▸", not in a menu
     row("operations:sites",        (200, 200, 200, 200), "msvg"),

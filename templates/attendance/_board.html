@@ -18,7 +18,7 @@
       <ul class="att-names">
         {% for r in b.in %}<li class="in" title="{{ r.label }}">✓ {{ r.person }}{% if r.state == 'late' %} <span class="small">(late)</span>{% elif r.state == 'off_location' %} <span class="small">(off location)</span>{% endif %}</li>{% endfor %}
         {% for r in b.absent %}<li class="out" title="{{ r.label }}">✗ {{ r.person }}</li>{% endfor %}
-        {% for r in b.away %}<li class="away">{{ r.person }} <span class="small">({{ r.label|lower }})</span></li>{% endfor %}
+        {% for r in b.away %}<li class="away">{{ r.person }} <span class="chip away{% if r.state == 'sick' %} sick{% endif %}">{{ r.label }}</span></li>{% endfor %}
         {% for r in b.later %}<li class="later">{{ r.person }} <span class="small">({{ r.label|lower }})</span></li>{% endfor %}
       </ul>
     </div>

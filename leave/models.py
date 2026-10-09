@@ -2,7 +2,7 @@
 
 - LeaveType: annual, maternity, paternity and so on, with the days allowed each year.
 - LeaveAllowance: the days the Manager has set for one person, one type, one year.
-- LeaveRequest: someone asks for days off; the right person approves or says no.
+- LeaveRequest: someone asks for days off; the Manager decides and types the days given.
 - SickLeave: sickness is reported and counts at once; no approval is needed to be off sick.
 - SickNote: the sick sheet file. Stored outside the normal upload folder and only handed out
   to the person, the Secretary and the Manager, through a view that logs every download.
@@ -70,7 +70,10 @@ class LeaveRequestQuerySet(models.QuerySet):
         return self.filter(user=user)
 
     def covering(self, day):
-        return self.filter(start_date__lte=day, end_date__gte=day)
+        # The days the Manager gave decide when the person is back, not the days asked for.
+        return self.filter(start_date__lte=day).filter(
+            Q(last_day_given__gte=day) | Q(last_day_given__isnull=True, end_date__gte=day)
+        )
 
 
 class LeaveRequest(models.Model):
@@ -84,7 +87,11 @@ class LeaveRequest(models.Model):
     leave_type = models.ForeignKey(LeaveType, on_delete=models.PROTECT, related_name="requests")
     start_date = models.DateField("first day off")
     end_date = models.DateField("last day off")
-    days = models.DecimalField(max_digits=5, decimal_places=1, help_text="Days counted against the allowance.")
+    days = models.DecimalField(max_digits=5, decimal_places=1, help_text="Days asked for.")
+    days_given = models.DecimalField(
+        max_digits=5, decimal_places=1, null=True, blank=True, help_text="Days the Manager gave. Empty until decided."
+    )
+    last_day_given = models.DateField(null=True, blank=True, help_text="Last day off, counted from the days given.")
     reason = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.WAITING, db_index=True)
     approver = models.ForeignKey(
@@ -109,6 +116,10 @@ class LeaveRequest(models.Model):
 
     def get_absolute_url(self):
         return reverse("leave:request_detail", args=[self.pk])
+
+    @property
+    def last_day_off(self):
+        return self.last_day_given or self.end_date
 
 
 class SickLeaveQuerySet(models.QuerySet):
