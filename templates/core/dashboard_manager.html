@@ -1,120 +1,20 @@
 {% extends "base.html" %}
-{% block title %}Manager dashboard{% endblock %}
+{% block title %}To do{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>Manager dashboard</h1><p class="muted">Company activity at a glance.</p></div></div>
+<div class="page-head"><div><h1>Welcome, {{ user.first_name|default:user.username }}</h1></div></div>
 
-{% include "attendance/_board.html" %}
+{% include "core/_todo_list.html" with empty_text="Approvals and decisions will appear here as they arrive." %}
 
-<div class="grid kpis ops-kpis">
-  <a class="kpi" href="{% url 'operations:team_today' %}"><div class="num">{{ ops.signed_in }}</div><div class="lbl">Signed in today</div><div class="muted small">{{ ops.on_duty }} still on shift{% if ops.late or ops.off_location %} · {{ ops.late }} late · {{ ops.off_location }} off location{% endif %}</div></a>
-  <a class="kpi {% if ops.absent %}now{% endif %}" href="{% url 'operations:team_today' %}?state=not_signed_in"><div class="num">{{ ops.absent }}</div><div class="lbl">Absent or not signed in</div></a>
-  <a class="kpi" href="{% url 'leave:request_list' %}"><div class="num">{{ ops.on_leave }}</div><div class="lbl">On leave today</div></a>
-  <a class="kpi {% if sick_to_check %}soon{% endif %}" href="{% url 'leave:sick_list' %}?now=1"><div class="num">{{ ops.sick }}</div><div class="lbl">Off sick today</div>{% if sick_to_check %}<div class="muted small">{{ sick_to_check }} sick sheet{{ sick_to_check|pluralize }} to check</div>{% endif %}</a>
-  <a class="kpi {% if ops.short_sites %}now{% endif %}" href="{% url 'attendance:day' %}"><div class="num">{{ ops.short_sites }}</div><div class="lbl">Short-staffed sites</div></a>
-  <a class="kpi {% if ops.serious_incidents %}now{% endif %}" href="#waiting"><div class="num">{{ ops.serious_incidents }}</div><div class="lbl">Open high or critical incidents</div></a>
-</div>
-
-<div class="grid kpis">
-  <a class="kpi {% if unchecked_count %}soon{% endif %}" href="{% url 'reports:list' %}?status=pending"><div class="num">{{ unchecked_count }}</div><div class="lbl">Reports from guards not yet checked</div><div class="muted small">{{ open_count }} not yet solved in total</div></a>
-  <a class="kpi" href="{% url 'reports:list' %}?resolved_by=supervisor"><div class="num">{{ resolved_by_supervisors }}</div><div class="lbl">Reports solved by supervisors</div></a>
-  <a class="kpi" href="{% url 'reports:list' %}?resolved_by=manager"><div class="num">{{ resolved_by_manager }}</div><div class="lbl">Reports solved by the Manager</div></a>
-  <div class="kpi"><div class="num">{{ active_supervisors }}</div><div class="lbl">Active supervisors</div></div>
-  <div class="kpi"><div class="num">{{ feedback_sent }}</div><div class="lbl">Feedback sent</div></div>
-  <div class="kpi spend">
-    <div class="lbl" id="spend-label">Money spent</div>
-    <div class="spend-tabs" role="tablist" aria-labelledby="spend-label">{% for label, amount, key in spend %}<button type="button" role="tab" id="spend-tab-{{ key }}" aria-controls="spend-val-{{ key }}" data-spend="{{ key }}" aria-selected="{% if key == 'month' %}true{% else %}false{% endif %}">{{ label }}</button>{% endfor %}</div>
-    {% for label, amount, key in spend %}<div class="num" role="tabpanel" id="spend-val-{{ key }}" aria-labelledby="spend-tab-{{ key }}" data-spend-value="{{ key }}" {% if key != 'month' %}hidden{% endif %}>{{ amount|kes0 }}</div>{% endfor %}
-    <div class="muted small"><a href="{% url 'finance:list' %}?from={{ week_start|date:'Y-m-d' }}">See expenses</a></div>
+<section class="card" aria-labelledby="picture-title">
+  <div class="page-head" style="margin-bottom:.5rem"><h2 id="picture-title">Today's picture</h2><a class="btn small secondary" href="{% url 'attendance:day' %}">Open the full board</a></div>
+  <div class="grid kpis ops-kpis">
+    <a class="kpi" href="{% url 'operations:team_today' %}"><div class="num">{{ ops.signed_in }}</div><div class="lbl">Signed in today</div><div class="muted small">{{ ops.on_duty }} still on shift{% if ops.late or ops.off_location %} · {{ ops.late }} late · {{ ops.off_location }} off location{% endif %}</div></a>
+    <a class="kpi {% if ops.absent %}now{% endif %}" href="{% url 'operations:team_today' %}?state=not_signed_in"><div class="num">{{ ops.absent }}</div><div class="lbl">Absent or not signed in</div></a>
+    <a class="kpi" href="{% url 'leave:request_list' %}?status=approved"><div class="num">{{ ops.on_leave }}</div><div class="lbl">On leave today</div></a>
+    <a class="kpi" href="{% url 'leave:sick_list' %}?now=1"><div class="num">{{ ops.sick }}</div><div class="lbl">Off sick today</div></a>
+    <a class="kpi {% if ops.short_sites %}now{% endif %}" href="{% url 'attendance:day' %}"><div class="num">{{ ops.short_sites }}</div><div class="lbl">Short-staffed sites</div></a>
+    <a class="kpi {% if ops.serious_incidents %}now{% endif %}" href="#todo"><div class="num">{{ ops.serious_incidents }}</div><div class="lbl">Open high or critical incidents</div></a>
+    <a class="kpi" href="{% url 'finance:list' %}?view=month"><div class="num">{{ month_total|kes0 }}</div><div class="lbl">Spent in {{ month_label }}</div></a>
   </div>
-</div>
-
-<div class="card">
-  <h2 id="waiting">Waiting for me {% if waiting_total %}<span class="badge off">{{ waiting_total }}</span>{% endif %}</h2>
-  <ul class="timeline">
-    {% for i in serious_incidents %}<li><span class="badge high">{{ i.get_severity_display }} incident</span> <a href="{{ i.get_absolute_url }}">{{ i.number }}: {{ i.get_kind_display }} at {{ i.site }}</a> <span class="small muted">{{ i.occurred_at|timesince }} ago</span></li>{% endfor %}
-    {% for r in payroll_waiting %}<li><span class="badge pending">Payroll</span> <a href="{{ r.get_absolute_url }}">Approve payroll for {{ r.period|date:"F Y" }}</a> <span class="small muted">net KES {{ r.total_net|money }}</span></li>{% endfor %}
-    {% for e in escalations_waiting %}<li><span class="badge pending">From Secretary</span> <a href="{% url 'escalations:detail' e.pk %}">{{ e.subject }}</a> <span class="small muted">{{ e.raised_at|timesince }} ago</span></li>{% endfor %}
-    {% for r in items_waiting %}<li><span class="badge pending">Item</span> <a href="{{ r.get_absolute_url }}">{{ r.requester }} asked for {{ r.qty_requested }} x {{ r.item.name }}</a></li>{% endfor %}
-    {% if leave_waiting %}<li><span class="badge pending">Leave</span> <a href="{% url 'leave:request_list' %}?show=decide">{{ leave_waiting }} leave request{{ leave_waiting|pluralize }} to decide</a></li>{% endif %}
-    {% if attendance_waiting %}<li><span class="badge pending">Attendance</span> <a href="{% url 'attendance:day' %}">{{ attendance_waiting }} sign-in{{ attendance_waiting|pluralize }} approved by supervisors; complete the day</a></li>{% endif %}
-    {% if expenses_waiting %}<li><span class="badge pending">Expenses</span> <a href="{% url 'finance:approvals' %}">{{ expenses_waiting }} expense{{ expenses_waiting|pluralize }} above the limit</a></li>{% endif %}
-    {% if not waiting_total %}<li class="empty">Nothing is waiting for you.</li>{% endif %}
-  </ul>
-  <p class="small muted"><a href="{% url 'clients:issue_list' %}">{{ open_issue_count }} open client issue{{ open_issue_count|pluralize }}</a> · <a href="{% url 'inventory:flags' %}">Which items need my OK</a></p>
-</div>
-
-<div class="grid two">
-  <div class="card">
-    <div class="page-head" style="margin-bottom:.5rem"><h2>Reports received</h2>
-      <div class="tabs" style="margin:0">{% for key, label in periods %}<a href="?period={{ key }}#received" class="{% if received_period == key %}on{% endif %}">{{ label }}</a>{% endfor %}</div></div>
-    <p class="small muted" id="received">Since {{ received_since|date:"D d M Y" }}. Mark a report solved here, or open it to reply.</p>
-    {% for g in received_groups %}{% if g.total %}
-      <h3 class="small">{{ g.label }} <span class="muted">· {{ g.total }} received, {{ g.open }} open, {{ g.resolved }} solved</span>
-        <a class="small" href="{% url 'reports:list' %}?from_role={{ g.role }}&amp;from={{ received_since|date:'Y-m-d' }}">All</a></h3>
-      <ul class="timeline received">
-        {% for r in g.reports %}<li>
-          <a href="{{ r.get_absolute_url }}"><strong>{{ r.title }}</strong></a> {% include "partials/status.html" with status=r.status label=r.get_status_display %}
-          <br><span class="small muted">{{ r.author }} · {{ r.created_at|date:"d M H:i" }}{% if r.completed_by %} · solved by {{ r.completed_by }}{% endif %}</span>
-          {% if r.status != 'completed' %}<form method="post" action="{% url 'reports:resolve' r.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn small" type="submit" data-confirm="Mark this report as solved?">Mark solved</button></form>{% endif %}
-        </li>{% endfor %}
-      </ul>
-    {% endif %}{% empty %}{% endfor %}
-    {% if not received_any %}<p class="muted">Nothing received in this period.</p>{% endif %}
-  </div>
-
-  <div class="card">
-    <h2>Supervisor performance <a class="small" href="{% url 'accounts:team' %}?role=supervisor">Manage</a></h2>
-    <div class="table-wrap"><table>
-      <thead><tr><th>Supervisor</th><th class="num">Team</th><th class="num">Team reports</th><th class="num">Open</th><th class="num">Feedback</th></tr></thead>
-      <tbody>
-      {% for s in supervisors %}
-        <tr><td>{{ s }}</td><td class="num">{{ s.team_size }}</td><td class="num">{{ s.team_reports }}</td><td class="num">{{ s.team_open }}</td><td class="num">{{ s.feedback_given }}</td></tr>
-      {% empty %}<tr><td colspan="5" class="empty">No supervisors yet.</td></tr>{% endfor %}
-      </tbody>
-    </table></div>
-  </div>
-</div>
-
-<div class="grid two">
-  <div class="card">
-    <h2>Latest reports <a class="small" href="{% url 'reports:list' %}">View all</a></h2>
-    <div class="table-wrap"><table>
-      <tbody>
-      {% for r in recent_reports %}
-        <tr><td><a href="{{ r.get_absolute_url }}">{{ r.title }}</a><br><span class="muted small">{{ r.author }} &middot; {{ r.created_at|date:"d M, H:i" }}</span></td>
-        <td class="right">{% include "partials/status.html" with status=r.status label=r.get_status_display %}</td></tr>
-      {% empty %}<tr><td class="empty">No reports yet.</td></tr>{% endfor %}
-      </tbody>
-    </table></div>
-  </div>
-  <div class="card">
-    <h2>Recent activity</h2>
-    <ul class="timeline">
-      {% for e in activity %}
-        <li><strong>{{ e.who }}</strong> {{ e.what }} <a href="{{ e.report.get_absolute_url }}">open</a><br><span class="muted small">{{ e.when|date:"d M Y, H:i" }}</span></li>
-      {% empty %}<li class="muted">No activity yet.</li>{% endfor %}
-    </ul>
-  </div>
-</div>
-
-<div class="card">
-  <h2>Feedback history</h2>
-  <ul class="timeline">
-    {% for p in feedback_history %}
-      <li><strong>{{ p.author }}</strong> on <a href="{{ p.report.get_absolute_url }}">{{ p.report.title }}</a> <span class="muted small">&middot; {{ p.created_at|date:"d M Y, H:i" }}</span><br>{{ p.body|truncatechars:140 }}</li>
-    {% empty %}<li class="muted">No feedback yet.</li>{% endfor %}
-  </ul>
-</div>
+</section>
 {% endblock %}
-{% block scripts %}<script>
-(function () {
-  document.querySelectorAll(".kpi.spend").forEach(function (card) {
-    card.querySelectorAll("[data-spend]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        card.querySelectorAll("[data-spend]").forEach(function (b) { b.setAttribute("aria-selected", b === btn ? "true" : "false"); });
-        card.querySelectorAll("[data-spend-value]").forEach(function (v) { v.hidden = v.dataset.spendValue !== btn.dataset.spend; });
-      });
-    });
-  });
-})();
-</script>{% endblock %}

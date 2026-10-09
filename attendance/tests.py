@@ -196,7 +196,7 @@ class PageTests(AttendanceBase):
     def test_manager_dashboard_shows_attendance_first(self):
         self.login(self.manager)
         html = self.client.get(reverse("core:home")).content.decode()
-        self.assertIn("In attendance today", html)
-        self.assertLess(html.index("In attendance today"), html.index("Reports from guards not yet checked"))
+        # DASH-01: the to-do list comes first, then a short "Today's picture" with a link to the full board.
+        self.assertLess(html.index('id="todo"'), html.index('id="picture-title"'))
+        self.assertIn(reverse("attendance:day"), html)
         self.assertNotIn('class="chart"', html)
-        self.assertIn("Reports received", html)

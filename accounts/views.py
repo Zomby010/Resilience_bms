@@ -49,6 +49,9 @@ class TeamListView(RoleRequiredMixin, ListView):
         ctx["roles"] = ROLE_CHOICES
         ctx["selected_role"] = self.request.GET.get("role", "")
         ctx["q"] = self.request.GET.get("q", "")
+        from reports.services import supervisor_performance
+
+        ctx["supervisors"] = supervisor_performance()  # moved here from the Manager's home page (DASH-03)
         return ctx
 
 

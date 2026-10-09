@@ -147,7 +147,7 @@ def set_item_active(item, active, user):
 
 @transaction.atomic
 def set_manager_flags(flagged_ids, user):
-    """D12: the Manager chooses which items need his approval before the Secretary can give them out."""
+    """D12: the Manager chooses which items need the Manager's OK before the Secretary can give them out."""
     if user.role != Role.MANAGER:
         raise TransitionError("Only the Manager can choose these items.")
     flagged_ids = set(flagged_ids)
@@ -161,17 +161,8 @@ def set_manager_flags(flagged_ids, user):
                          f"{item.name}: {'now needs' if want else 'no longer needs'} Manager approval",
                          changes={"needs_manager_approval": [not want, want]})
             changed.append((item, want))
-    if changed:
-        on = [i.name for i, w in changed if w]
-        off = [i.name for i, w in changed if not w]
-        parts = []
-        if on:
-            parts.append("Now need Manager approval: " + ", ".join(on[:8]))
-        if off:
-            parts.append("No longer need it: " + ", ".join(off[:8]))
-        # No link: the list is the Manager's own setting page (each request still says when it needs the Manager's OK).
-        notify_role(Role.SECRETARY, "item.flags_changed", "The Manager changed which items need the Manager's OK",
-                    ". ".join(parts) + ".", "")
+    # No notice to the Secretary: this is the Manager's own setting (NOTE-01). Each request still says when it
+    # needs the Manager's OK, and every change is in the audit log.
     return len(changed)
 
 

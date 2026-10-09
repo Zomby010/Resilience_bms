@@ -179,23 +179,30 @@ class DashboardTests(CompanyTestCase):
             response = self.client.get(reverse("core:home"))
             self.assertEqual(response.status_code, 200, user.username)
 
-    def test_manager_dashboard_numbers(self):
-        r1 = Report.objects.create(author=self.staff_a1, title="1", body="x")
-        Report.objects.create(author=self.staff_b1, title="2", body="x")
-        r1.add_reply(self.manager, "ok", complete=True)
+    def test_manager_home_is_a_todo_list(self):
+        # DASH-01/03: the report tiles, Reports received, Recent activity and Feedback history left the home page.
+        # Reports sent to the Manager (by supervisors) are to-dos; guards' reports are their supervisor's job.
+        Report.objects.create(author=self.staff_a1, title="Guard report", body="x")
+        sup = Report.objects.create(author=self.sup_a, title="Need two more guards", body="x")
+        done = Report.objects.create(author=self.sup_b, title="Old", body="x")
+        done.add_reply(self.manager, "ok", complete=True)
         self.login(self.manager)
-        ctx = self.client.get(reverse("core:home")).context
-        self.assertEqual(ctx["open_count"], 1)
-        self.assertEqual(ctx["completed_count"], 1)
-        self.assertEqual(ctx["active_supervisors"], 2)
-        self.assertEqual(ctx["feedback_sent"], 1)
-        self.assertEqual(ctx["unchecked_count"], 1)
-        self.assertEqual(ctx["resolved_by_manager"], 1)
-        self.assertEqual(ctx["resolved_by_supervisors"], 0)
-        self.assertNotIn("chart", ctx)
-        groups = {g["role"]: g for g in ctx["received_groups"]}
-        self.assertEqual(groups["staff"]["total"], 2)
-        self.assertEqual(groups["staff"]["resolved"], 1)
+        r = self.client.get(reverse("core:home"))
+        summaries = [t.summary for t in r.context["todos"]]
+        self.assertIn("Need two more guards", summaries)
+        self.assertNotIn("Guard report", summaries)
+        self.assertNotIn("Old", summaries)
+        html = r.content.decode()
+        for gone in ("Recent activity", "Feedback history", "Reports received", "Supervisor performance"):
+            self.assertNotIn(gone, html)
+        self.assertIn(reverse("reports:resolve", args=[sup.pk]), html)
+        # One tap from the row solves it and comes back to the list.
+        r = self.client.post(reverse("reports:resolve", args=[sup.pk]), {"next": reverse("core:home")})
+        self.assertRedirects(r, reverse("core:home"))
+        sup.refresh_from_db()
+        self.assertEqual(sup.status, Status.COMPLETED)
+        # Supervisor performance now lives on Company ▸ Team.
+        self.assertContains(self.client.get(reverse("accounts:team")), "Supervisor performance")
 
     def test_home_requires_login(self):
         self.assertEqual(self.client.get(reverse("core:home")).status_code, 302)

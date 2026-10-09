@@ -60,6 +60,6 @@ class ManagerCountTests(CompanyTestCase):
 
         for i in range(7):
             Escalation.objects.create(kind=Escalation.Kind.OTHER, subject=f"Matter {i}", note="x", raised_by=self.secretary)
-        from core.dashboards import manager_extra
+        from core.todo import todos_for
 
-        self.assertGreaterEqual(manager_extra(self.manager)["waiting_total"], 7)
+        self.assertGreaterEqual(len(todos_for(self.manager)), 7)

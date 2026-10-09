@@ -14,11 +14,9 @@ from django.views.generic import ListView, TemplateView, UpdateView
 from accounts.models import ROLE_CHOICES, Role
 from accounts.permissions import RoleRequiredMixin
 from finance.models import Expense
-from reports import services
 from tracking import services as tracking
 
-from . import dashboards
-from .filters import PERIODS, clean_period, period_start
+from . import dashboards, todo
 from .access import can_view
 from .forms import CompanySettingsForm
 from .models import Attachment, AuditLog, CompanySettings
@@ -41,45 +39,33 @@ class HomeView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
+        # Every home page starts with "N things need you" (core.todo); the rest is a short picture of today.
         if user.role == Role.MANAGER:
-            ctx.update(services.manager_dashboard(clean_period(self.request.GET.get("period"))))
-            ctx.update(_finance_glance())
-            ctx.update(dashboards.manager_extra(user))
-            ctx["periods"] = PERIODS
+            extra = dashboards.manager_extra(user)
+            ctx.update(extra)
+            ctx.update(_month_spend())
+            ctx.update(todo.context(user, board=extra["board"]))
         elif user.role == Role.SUPERVISOR:
-            ctx.update(services.supervisor_dashboard(user))
             ctx["location_state"] = tracking.my_state(user)
             ctx.update(dashboards.supervisor_extra(user))
+            ctx.update(todo.context(user))
         elif user.role == Role.SECRETARY:
-            ctx.update(_finance_glance())
+            ctx.update(_month_spend())
             ctx["recent_expenses"] = Expense.objects.filter(status=Expense.Status.RECORDED).select_related("category")[:8]
             ctx.update(dashboards.secretary_overview(user))
+            ctx.update(todo.context(user))
         else:
-            ctx.update(services.staff_dashboard(user))
             if tracking.is_tracked(user):
                 ctx["location_state"] = tracking.my_state(user)
             ctx.update(dashboards.staff_extra(user))
+            ctx.update(todo.context(user))
         return ctx
 
 
-def _finance_glance():
+def _month_spend():
     today = timezone.localdate()
-    month = Expense.objects.filter(
-        date__year=today.year, date__month=today.month, status=Expense.Status.RECORDED
-    )
-    recorded = Expense.objects.filter(status=Expense.Status.RECORDED)
-
-    def spent(period):
-        return recorded.filter(date__gte=period_start(period, today), date__lte=today).aggregate(t=Sum("amount"))["t"] or 0
-
-    return {
-        "month_total": month.aggregate(t=Sum("amount"))["t"] or 0,
-        "month_count": month.count(),
-        "month_label": today.strftime("%B %Y"),
-        "spend": [("Today", spent("day"), "day"), ("This week", spent("week"), "week"), ("This month", spent("month"), "month")],
-        "today": today,
-        "week_start": period_start("week", today),
-    }
+    month = Expense.objects.filter(date__year=today.year, date__month=today.month, status=Expense.Status.RECORDED)
+    return {"month_total": month.aggregate(t=Sum("amount"))["t"] or 0, "month_label": today.strftime("%B %Y")}
 
 
 class CompanySettingsView(RoleRequiredMixin, UpdateView):

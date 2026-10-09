@@ -33,4 +33,11 @@
   </table>
   </div>
 </div>
+<details class="fold" data-fold="sup-performance"><summary>Supervisor performance <span class="n">({{ supervisors|length }})</span></summary>
+  <div class="fold-body table-wrap"><table>
+    <thead><tr><th>Supervisor</th><th class="num">Team</th><th class="num">Team reports</th><th class="num">Not yet solved</th><th class="num">Feedback given</th></tr></thead>
+    <tbody>{% for s in supervisors %}<tr><td>{{ s }}</td><td class="num">{{ s.team_size }}</td><td class="num">{{ s.team_reports }}</td><td class="num">{{ s.team_open }}</td><td class="num">{{ s.feedback_given }}</td></tr>
+    {% empty %}<tr><td colspan="5" class="empty">No supervisors yet.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</details>
 {% endblock %}
