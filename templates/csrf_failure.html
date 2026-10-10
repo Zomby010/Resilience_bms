@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Page expired{% endblock %}
+{% block content %}
+<div class="card"><h1>This page has expired</h1>
+<p class="muted">Please go back, reload the page and try again. If it keeps happening, make sure cookies are allowed for this site.</p>
+<a class="btn" href="{% url 'core:home' %}">Back to dashboard</a></div>
+{% endblock %}
