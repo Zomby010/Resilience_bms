@@ -22,9 +22,12 @@ MATRIX = [
     row("notifications:inbox",     (200, 200, 200, 200)),            # the bell, not a menu item
     # Reports: the Secretary keeps their old reports (Manager ▸ Old reports) but sends new things through Escalations.
     row("reports:list",            (200, 200, 200, 200), "msvg"),
-    row("reports:create",          (403, 403, 200, 200), "vg"),
+    # FLOW-01: guards have one "Report a problem" door; the two forms open from it (old links still work).
+    # Supervisors keep "Submit a report to management" in their menu.
+    row("core:report_problem",     (403, 403, 200, 200), "vg"),
+    row("reports:create",          (403, 403, 200, 200), "v"),
     # Incidents happen at sites: no Incidents page for the Manager or the Secretary (Frank's rule).
-    row("incidents:create",        (403, 403, 200, 200), "vg"),
+    row("incidents:create",        (403, 403, 200, 200)),
     row("incidents:list",          (403, 403, 200, 200), "vg"),
     row("attendance:mine",         (403, 403, 200, 200), "vg"),
     row("attendance:team",         (403, 403, 200, 403), "v"),
@@ -141,3 +144,28 @@ class RolePageMatrixTests(CompanyTestCase):
             bar = bar[:bar.index("</nav>")]
             self.assertEqual(bar.count("<a "), 4)
             self.assertIn("More", bar)
+
+
+class ReportDoorTests(CompanyTestCase):
+    """FLOW-01: one "Report a problem" door with two choices; the old form links still work."""
+
+    def test_guard_door_offers_incident_or_supervisor(self):
+        self.login(self.staff_a1)
+        page = self.client.get(reverse("core:report_problem")).content.decode()
+        self.assertIn("Something bad happened at the site", page)
+        self.assertIn("I need to tell my supervisor something", page)
+        self.assertIn(f'href="{reverse("incidents:create")}"', page)
+        self.assertIn(f'href="{reverse("reports:create")}"', page)
+        home = self.client.get(reverse("core:home")).content.decode()
+        self.assertIn(f'href="{reverse("core:report_problem")}"', home)
+        form = self.client.get(reverse("incidents:create")).content.decode()
+        tabs = form[form.index('<nav class="page-tabs'):]
+        self.assertIn(f'href="{reverse("core:report_problem")}" class="on"', tabs[:tabs.index("</nav>")])
+        self.assertIn("Tell my supervisor", self.client.get(reverse("reports:create")).content.decode())
+
+    def test_supervisor_door_and_report_to_management(self):
+        self.login(self.sup_a)
+        page = self.client.get(reverse("core:report_problem")).content.decode()
+        self.assertIn("I need to tell management something", page)
+        self.assertIn(reverse("reports:create"), hrefs(self.sup_a))
+        self.assertIn("Submit a report to management", self.client.get(reverse("reports:create")).content.decode())

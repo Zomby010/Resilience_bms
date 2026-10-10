@@ -550,3 +550,14 @@ td .sign-out { border: 0; margin: 0; padding: 0; }
 details.fold.month { margin-bottom: .6rem; }
 details.fold.month > .fold-body { padding: 0 .4rem .6rem; }
 details.fold > summary { flex-wrap: wrap; }
+
+/* "Report a problem": one door, two big choices (FLOW-01). */
+.doors { display: grid; gap: .8rem; margin: 1rem 0; }
+.door { display: flex; gap: .9rem; align-items: flex-start; min-height: 88px; padding: 1rem 1.1rem; border: 2px solid var(--silver); border-radius: var(--radius);
+        background: #fff; color: var(--black); text-decoration: none; }
+.door:hover, .door:focus-visible { border-color: var(--primary); background: var(--primary-bg); }
+.door.danger { border-color: #f3b4b4; }
+.door.danger:hover, .door.danger:focus-visible { border-color: var(--red); background: var(--red-bg); }
+.door strong { display: block; font-size: 1.1rem; }
+.door-ico { font-size: 1.8rem; line-height: 1; }
+.door-hint { display: block; margin-top: .25rem; color: var(--charcoal); font-size: .95rem; }

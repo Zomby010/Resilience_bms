@@ -103,6 +103,12 @@ class AttendanceRecord(models.Model):
     def get_absolute_url(self):
         return reverse("attendance:records") + f"?from={self.date}&to={self.date}&person={self.user_id}"
 
+    def get_status_display(self):
+        # A sign-in with no supervisor to approve it (a supervisor's own) waits for the Manager.
+        if self.status == self.Status.WAITING_SUPERVISOR and self.supervisor_id is None:
+            return "Waiting for Manager"
+        return self._get_FIELD_display(self._meta.get_field("status"))
+
     @property
     def worked(self):
         if self.signed_in_at and self.signed_out_at and self.signed_out_at > self.signed_in_at:

@@ -88,7 +88,8 @@ class ReportCreateView(RoleRequiredMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["title"] = "Send a report to the Manager" if self.request.user.role == Role.SECRETARY else "Submit a report"
+        ctx["title"] = {Role.SECRETARY: "Send a report to the Manager", Role.STAFF: "Tell my supervisor"}.get(
+            self.request.user.role, "Submit a report to management")
         return ctx
 
 

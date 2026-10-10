@@ -223,6 +223,7 @@ class WithoutLocationTests(AttendanceBase):
     def test_supervisor_goes_to_the_manager(self):
         rec = services.sign_in_without_location(self.sup_a, "phone", now=at(self.day, 6, 0))
         self.assertIsNone(rec.supervisor)
+        self.assertEqual(rec.get_status_display(), "Waiting for Manager")  # ATT-04: not "Waiting for supervisor"
         self.assertTrue(self.manager.notifications.filter(kind="attendance.no_location").exists())
         self.assertFalse(services.can_approve(self.sup_b, rec))
         from core.todo import todos_for

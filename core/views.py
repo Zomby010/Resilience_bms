@@ -117,6 +117,13 @@ class LogoView(LoginRequiredMixin, View):
         return FileResponse(fh)
 
 
+class ReportProblemView(RoleRequiredMixin, TemplateView):
+    """FLOW-01: one door for guards and supervisors. It asks what happened and sends them to the right form."""
+
+    allowed_roles = (Role.SUPERVISOR, Role.STAFF)
+    template_name = "core/report_problem.html"
+
+
 class AuditLogView(RoleRequiredMixin, ListView):
     allowed_roles = (Role.MANAGER,)
     template_name = "core/audit_log.html"

@@ -21,9 +21,9 @@ MENUS = {
             T(("Occurrence Book", "operations:ob", ())),
             T(("My site", "operations:sites", ())),
         ]),
+        # FLOW-01: one door that asks what happened; the incident and report forms open from it.
         ("⚠️", "Report a problem", [
-            T(("Report an incident", "incidents:create", ())),
-            T(("Tell my supervisor", "reports:create", ())),
+            T(("Report a problem", "core:report_problem", ("/incidents/new/", "/reports/new/"))),
             T(("What I reported", "reports:list", ())),
             T(("My incidents", "incidents:list", ())),
         ]),
@@ -61,8 +61,8 @@ MENUS = {
             T(("Client issues", "clients:issue_list", ())),
         ]),
         ("⚠️", "Report a problem", [
-            T(("Report an incident", "incidents:create", ())),
-            T(("Send a report", "reports:create", ())),
+            T(("Report a problem", "core:report_problem", ("/incidents/new/",))),
+            T(("Submit a report to management", "reports:create", ())),
         ]),
         ("🗓️", "My leave", [
             T(("Ask for leave", "leave:ask", ())),
