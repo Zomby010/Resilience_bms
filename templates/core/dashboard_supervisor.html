@@ -9,7 +9,6 @@
   {% include "attendance/_my_card.html" %}
   {% include "attendance/_team_card.html" %}
 </div>
-{% if location_state %}{% include "tracking/_location_card.html" %}{% endif %}
 <div class="actions" style="margin-bottom:1rem">
   <a class="btn big secondary" href="{% url 'operations:visit_create' %}">Record a site visit</a>
   <a class="btn big secondary" href="{% url 'incidents:create' %}">Report an incident</a>

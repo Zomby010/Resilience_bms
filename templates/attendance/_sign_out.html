@@ -1,0 +1,8 @@
+{# Sign out of one day (ATT-02). Recorded, never approved. Needs `rec` and `reasons`; optional `next`, `compact`. #}
+<div class="sign-out" data-sign-out>
+  {% if not compact %}<p>Leaving {{ rec.site|default:"work" }}{% if rec.date != today %} ({{ rec.date|date:"D d M" }}){% endif %}? Sign out so your hours are recorded.</p>{% endif %}
+  <button class="btn {% if compact %}secondary{% else %}big wide{% endif %} js-sign-out" type="button" data-url="{% url 'attendance:api_sign_out' rec.pk %}">Sign out</button>
+  <p class="loc-msg" role="status" aria-live="polite"></p>
+  {% url 'attendance:sign_out_no_location' rec.pk as out_url %}
+  {% include "attendance/_no_location.html" with action=out_url label="Sign out without location" %}
+</div>

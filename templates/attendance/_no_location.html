@@ -1,0 +1,13 @@
+{# The fallback when the phone's location fails (ATT-01, Q7). Needs `action`, `reasons`, `label`; optional `open_it`, `with_note`. #}
+<details class="no-loc"{% if open_it %} open{% endif %} data-no-loc>
+  <summary>▸ Location not working?</summary>
+  <form method="post" action="{{ action }}" class="fields">{% csrf_token %}
+    <input type="hidden" name="next" value="{{ next|default:'home' }}">
+    <fieldset class="field type-pick reason-pick"><legend>Why?</legend>
+      {% for v, l in reasons %}<label class="type-btn"><input type="radio" name="reason" value="{{ v }}" required><span>{{ l }}</span></label>{% endfor %}
+    </fieldset>
+    {% if with_note %}<div class="field"><label for="no-loc-note">Note (optional)</label><input id="no-loc-note" name="note" maxlength="200"></div>{% endif %}
+    <button class="btn big wide secondary" type="submit">{{ label }}</button>
+    <p class="small muted">The time is taken from the system, not your phone.</p>
+  </form>
+</details>

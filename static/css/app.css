@@ -509,3 +509,19 @@ details.filterbar[open] > summary .arrow { transform: rotate(180deg); }
 .type-pick .errorlist { grid-column: 1 / -1; }
 .chip.away { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: var(--blue-bg); color: var(--primary-dark); white-space: nowrap; }
 .chip.away.sick { background: var(--amber-bg); color: var(--amber); }
+
+/* Today status card (ATT-04) and the no-location fallback (ATT-01). */
+.status-line { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-weight: 600; font-size: 1.05rem; margin: 0 0 8px; }
+.status-line .st.ok { color: var(--green); }
+.status-line .st.warn { color: var(--amber); }
+.status-line .st.bad { color: var(--red-dark); }
+.status-line a.st { min-height: 44px; display: inline-flex; align-items: center; }
+.status-line .st-sep { color: var(--muted); }
+.no-loc { margin: 10px 0; }
+.no-loc > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--primary); font-weight: 600; list-style: none; }
+.no-loc > summary::-webkit-details-marker { display: none; }
+.reason-pick { margin-top: 6px; }
+.location-inline { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px; }
+.location-inline h3 { margin: 0 0 6px; font-size: 1rem; }
+.sign-out { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px; }
+td .sign-out { border: 0; margin: 0; padding: 0; }

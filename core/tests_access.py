@@ -41,7 +41,8 @@ MATRIX = [
     row("tracking:people",         (200, 403, 403, 403), "m"),
     row("tracking:tracker",        (200, 403, 403, 403), "m"),
     row("tracking:history",        (200, 403, 403, 403), "m"),
-    row("operations:team_today",   (200, 403, 200, 403), "mv"),
+    # ATT-03: one page per role. Supervisors land on My team ▸ Today, the Manager on the day sheet.
+    row("operations:team_today",   (302, 403, 302, 403)),
     row("operations:ob",           (200, 403, 200, 200), "mvg"),
     row("operations:ob_write",     (403, 403, 200, 200)),            # a button on the OB page
     row("operations:visits",       (200, 403, 200, 403), "mv"),

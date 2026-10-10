@@ -56,6 +56,24 @@ def api_sign_in(request):
     return JsonResponse({"ok": True, "message": text})
 
 
+@require_POST
+@api(TRACKED_ROLES)
+def api_sign_out(request, pk):
+    """Sign out with the phone's position. Recorded, never approved."""
+    rec = get_object_or_404(AttendanceRecord, pk=pk, user=request.user)
+    try:
+        data = json.loads(request.body or b"{}")
+    except ValueError:
+        return JsonResponse({"error": "Bad request."}, status=400)
+    if not isinstance(data, dict):
+        return JsonResponse({"error": "Bad request."}, status=400)
+    try:
+        rec = services.sign_out(rec, request.user, data)
+    except ValidationError as exc:
+        return JsonResponse({"error": " ".join(exc.messages)}, status=400)
+    return JsonResponse({"ok": True, "message": f"Signed out at {timezone.localtime(rec.signed_out_at):%H:%M}. {rec.in_out}."})
+
+
 class MyAttendanceView(RoleRequiredMixin, TemplateView):
     allowed_roles = TRACKED_ROLES
     template_name = "attendance/mine.html"
@@ -63,12 +81,18 @@ class MyAttendanceView(RoleRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["att"] = services.my_today(self.request.user)
-        ctx["history"] = AttendanceRecord.objects.filter(user=self.request.user).select_related("site")[:31]
+        history = list(AttendanceRecord.objects.filter(user=self.request.user).select_related("site")[:31])
+        for r in history:
+            r.can_sign_out = services.can_sign_out(self.request.user, r)
+        ctx["history"] = history
+        ctx["reasons"] = AttendanceRecord.Reason.choices
+        ctx["next"] = "mine"
         return ctx
 
 
 class TeamView(RoleRequiredMixin, TemplateView):
-    """Supervisor: today's sign-ins for their team, to approve or mark."""
+    """Supervisor's "My team ▸ Today" (ATT-03): each person's status, sign-in and sign-out, items held,
+    and the buttons to approve or mark. History is the records list."""
 
     allowed_roles = (Role.SUPERVISOR,)
     template_name = "attendance/team.html"
@@ -77,6 +101,11 @@ class TeamView(RoleRequiredMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         day = _day(self.request)
         ctx.update(services.team_today(self.request.user, day))
+        from operations.services import equipment_by_person
+
+        held = equipment_by_person(User.objects.filter(pk__in=[r["person"].pk for r in ctx["rows"]]))
+        for r in ctx["rows"]:
+            r["items"] = held.get(r["person"].pk, [])
         ctx.update(day=day, today=timezone.localdate(), completed=services.day_completed(day), outcomes=_mark_outcomes())
         return ctx
 
@@ -118,6 +147,8 @@ class RecordListView(RoleRequiredMixin, FilterContextMixin, ListView):
             qs = qs.filter(outcome=g["outcome"])
         if g.get("status") in S.values:
             qs = qs.filter(status=g["status"])
+        if g.get("method") in AttendanceRecord.Method.values:
+            qs = qs.filter(method=g["method"])
         return apply_dates(qs, g, "date").order_by("-date", "user__first_name")
 
     def get(self, request, *args, **kwargs):
@@ -125,16 +156,18 @@ class RecordListView(RoleRequiredMixin, FilterContextMixin, ListView):
             def when(dt):
                 return timezone.localtime(dt).strftime("%H:%M") if dt else ""
             rows = ((r.date, r.user, r.site or "", r.get_outcome_display(), r.late_minutes or "", when(r.signed_in_at),
-                     r.get_method_display(), r.get_status_display(), r.note or r.supervisor_note)
+                     r.get_method_display(), r.get_manual_reason_display(), when(r.signed_out_at),
+                     r.get_sign_out_method_display(), r.get_status_display(), r.note or r.supervisor_note)
                     for r in self.get_queryset())
             return csv_response("attendance.csv", ["Date", "Person", "Site", "Attendance", "Minutes late", "Signed in",
-                                                   "How", "Status", "Note"], rows)
+                                                   "How", "No-location reason", "Signed out", "Sign-out", "Status", "Note"], rows)
         return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         user = self.request.user
         return {**super().get_context_data(**kwargs), "people": services.lookup_people(user),
                 "sites": Site.objects.filter(is_active=True), "outcomes": O.choices, "statuses": S.choices,
+                "methods": AttendanceRecord.Method.choices,
                 "can_export": user.role in (Role.MANAGER, Role.SECRETARY)}
 
 
@@ -143,6 +176,8 @@ class _Post(RoleRequiredMixin, View):
 
     def back(self, day):
         nxt = self.request.POST.get("next", "")
+        if nxt == "mine":
+            return redirect("attendance:mine")
         if nxt in ("team", "day"):
             return redirect(reverse(f"attendance:{nxt}") + f"?date={day}")
         return redirect("core:home")
@@ -205,3 +240,27 @@ class ReopenDayView(_Post):
     def post(self, request):
         day = _day(request)
         return self.run(lambda: services.reopen_day(day, request.user), "Day reopened. You can change it and complete it again.", day)
+
+
+class SignInWithoutLocationView(_Post):
+    """ATT-01: when the phone's location fails or is refused. The server stamps the time."""
+
+    allowed_roles = TRACKED_ROLES
+
+    def post(self, request):
+        p = request.POST
+
+        def ok(rec):
+            who = "Your supervisor" if rec.supervisor_id else "The Manager"
+            return f"Signed in at {timezone.localtime(rec.signed_in_at):%H:%M} without location. {who} will check it."
+        return self.run(lambda: services.sign_in_without_location(request.user, p.get("reason", ""), p.get("note", "")),
+                        ok, timezone.localdate())
+
+
+class SignOutWithoutLocationView(_Post):
+    allowed_roles = TRACKED_ROLES
+
+    def post(self, request, pk):
+        rec = get_object_or_404(AttendanceRecord, pk=pk, user=request.user)
+        return self.run(lambda: services.sign_out(rec, request.user, reason=request.POST.get("reason", "")),
+                        lambda r: f"Signed out at {timezone.localtime(r.signed_out_at):%H:%M}. {r.in_out}.", rec.date)

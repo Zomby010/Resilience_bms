@@ -7,10 +7,11 @@
   <div class="card">
     <h2>Last 31 days</h2>
     <div class="table-wrap"><table>
-      <thead><tr><th>Day</th><th>Site</th><th>Attendance</th><th>Signed in</th><th>Status</th></tr></thead>
+      <thead><tr><th>Day</th><th>Site</th><th>Attendance</th><th>In and out</th><th>Status</th></tr></thead>
       <tbody>{% for r in history %}<tr><td>{{ r.date|date:"D d M" }}</td><td>{{ r.site|default:"-" }}</td>
-        <td>{% badge r "outcome" %}{% if r.late_minutes %} <span class="small">{{ r.late_minutes }} min</span>{% endif %}</td>
-        <td>{{ r.signed_in_at|time:"H:i"|default:"-" }}</td><td>{% badge r %}{% if r.supervisor_note %}<br><span class="small">{{ r.supervisor_note }}</span>{% endif %}</td></tr>
+        <td>{% badge r "outcome" %}{% if r.late_minutes %} <span class="small">{{ r.late_minutes }} min</span>{% endif %}{% if r.method == 'no_location' %}<br><span class="small muted">No location: {{ r.get_manual_reason_display }}</span>{% endif %}</td>
+        <td>{{ r.in_out|default:"-" }}{% if r.can_sign_out and r.pk != att.open.pk %}{% include "attendance/_sign_out.html" with rec=r reasons=reasons compact=True next="mine" %}{% endif %}</td>
+        <td>{% badge r %}{% if r.supervisor_note %}<br><span class="small">{{ r.supervisor_note }}</span>{% endif %}</td></tr>
       {% empty %}<tr><td colspan="5" class="empty">No attendance yet.</td></tr>{% endfor %}</tbody>
     </table></div>
   </div>

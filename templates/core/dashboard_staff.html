@@ -5,7 +5,6 @@
   <p class="muted">{% if user.supervisor %}Your supervisor is {{ user.supervisor }}.{% else %}No supervisor assigned yet.{% endif %}</p></div></div>
 
 {% include "attendance/_my_card.html" %}
-{% if location_state %}{% include "tracking/_location_card.html" %}{% endif %}
 {% if quick %}
 <div class="card"><h2>Occurrence Book: {{ my_site }}</h2>
   <div class="actions">{% for code, entry in quick.items %}<form method="post" action="{% url 'operations:ob_quick' code %}">{% csrf_token %}<input type="hidden" name="next" value="home"><button class="btn big secondary" type="submit">{{ entry.1 }}</button></form>{% endfor %}

@@ -37,9 +37,21 @@ class AttendanceRecord(models.Model):
 
     class Method(models.TextChoices):
         GPS = "gps", "Signed in at the site"
+        NO_LOCATION = "no_location", "Signed in without location"
         SUPERVISOR = "supervisor", "Marked by supervisor"
         OFFICE = "office", "Marked by the Manager"
         SYSTEM = "system", "Recorded when the day was completed"
+
+    class Reason(models.TextChoices):
+        """Why the phone's location could not be used (Q7)."""
+        NO_SIGNAL = "no_signal", "No signal"
+        PHONE = "phone", "Phone problem"
+        WRONG_PLACE = "wrong_place", "GPS shows wrong place"
+        OTHER = "other", "Other"
+
+    class OutMethod(models.TextChoices):
+        GPS = "gps", "Signed out with location"
+        NO_LOCATION = "no_location", "Signed out without location"
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="attendance")
     date = models.DateField(db_index=True, help_text="The day the shift started.")
@@ -60,6 +72,12 @@ class AttendanceRecord(models.Model):
     accuracy_m = models.FloatField(null=True, blank=True)
     distance_m = models.FloatField(null=True, blank=True)
     location_status = models.CharField(max_length=20, blank=True)
+    manual_reason = models.CharField("reason for no location", max_length=20, choices=Reason.choices, blank=True)
+    # Sign-out is recorded, never approved, and never filled in for the person (Q8).
+    signed_out_at = models.DateTimeField(null=True, blank=True, help_text="Server time of the sign-out.")
+    sign_out_method = models.CharField(max_length=20, choices=OutMethod.choices, blank=True)
+    sign_out_distance_m = models.FloatField(null=True, blank=True)
+    sign_out_reason = models.CharField(max_length=20, choices=Reason.choices, blank=True)
     note = models.CharField(max_length=255, blank=True)
     marked_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     supervisor_decided_by = models.ForeignKey(
@@ -84,6 +102,34 @@ class AttendanceRecord(models.Model):
 
     def get_absolute_url(self):
         return reverse("attendance:records") + f"?from={self.date}&to={self.date}&person={self.user_id}"
+
+    @property
+    def worked(self):
+        if self.signed_in_at and self.signed_out_at and self.signed_out_at > self.signed_in_at:
+            return self.signed_out_at - self.signed_in_at
+        return None
+
+    @property
+    def in_out(self):
+        """'In 06:50 · Out 18:05 · 11 h 15 m', 'In 06:50 · Not signed out yet' or 'In 06:50 · No sign-out' (Q8:
+        never filled in). Empty when there was no sign-in."""
+        from django.utils import timezone
+
+        if not self.signed_in_at:
+            return ""
+        text = f"In {timezone.localtime(self.signed_in_at):%H:%M}"
+        if not self.signed_out_at:
+            from datetime import timedelta
+
+            # Today's (or a night shift from yesterday) may still be going on; older days are simply missing it.
+            still_open = self.date >= timezone.localdate() - timedelta(days=1)
+            return text + (" · Not signed out yet" if still_open else " · No sign-out")
+        text += f" · Out {timezone.localtime(self.signed_out_at):%H:%M}"
+        worked = self.worked
+        if worked:
+            minutes = int(worked.total_seconds() // 60)
+            text += f" · {minutes // 60} h {minutes % 60} m"
+        return text
 
     @property
     def is_in(self):
