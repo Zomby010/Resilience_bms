@@ -62,3 +62,48 @@ def query_string(request):
     params.pop("page", None)
     params.pop("export", None)
     return params.urlencode()
+
+
+# --- the shared filter bar ---------------------------------------------------------------
+# A view describes its filters once; partials/filter_bar.html draws them closed by default,
+# with the active ones shown as chips that remove themselves.
+
+class F:
+    """One filter field. kind: 'text', 'select' or 'date'. `main` fields show first; the rest sit under
+    "More filters". `options` is a list of (value, label) for selects (an "Any" choice is added)."""
+
+    def __init__(self, name, label, kind="text", options=(), hint="", main=False, placeholder="", any_label="Any"):
+        self.name, self.label, self.kind, self.hint, self.main = name, label, kind, hint, main
+        self.options, self.placeholder, self.any_label = [(str(v), str(lbl)) for v, lbl in options], placeholder, any_label
+        self.value = ""
+
+    @property
+    def value_label(self):
+        if self.kind == "select":
+            return dict(self.options).get(self.value, self.value)
+        if self.kind == "date":
+            date = parse_date(self.value)
+            return date.strftime("%d %b %Y") if date else self.value
+        return f'"{self.value}"'
+
+
+def filter_bar(request, fields):
+    """Context for partials/filter_bar.html: the fields with their current values, the active
+    filters as removable chips, and the other GET values to keep (tabs, scope, show...)."""
+    names = {f.name for f in fields}
+    active = []
+    for f in fields:
+        f.value = request.GET.get(f.name, "")
+        if f.value:
+            params = request.GET.copy()
+            params.pop(f.name, None)
+            params.pop("page", None)
+            active.append({"label": f.label, "value": f.value_label, "remove": "?" + params.urlencode()})
+    keep = [(k, v) for k in request.GET for v in request.GET.getlist(k) if k not in names and k not in ("page", "export")]
+    return {
+        "main": [f for f in fields if f.main] or fields[:2],
+        "more": [f for f in fields if not f.main] if any(f.main for f in fields) else fields[2:],
+        "active": active,
+        "keep": keep,
+        "clear": "?" + "&".join(f"{k}={v}" for k, v in keep) if keep else "?",
+    }

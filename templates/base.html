@@ -118,7 +118,7 @@
     <div class="userbox">
       <strong>{{ user }}</strong>
       <span>{{ user.get_role_display }}</span>
-      <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="btn small" type="submit">Sign out</button></form>
+      <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="btn small" type="submit">Log out</button></form>
     </div>
   </aside>
   <main class="main" id="main">
@@ -135,6 +135,7 @@
   </main>
 </div>
 <script src="{% static 'js/menu.js' %}" defer></script>
+<script src="{% static 'js/fold.js' %}" defer></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

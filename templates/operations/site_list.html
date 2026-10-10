@@ -2,7 +2,7 @@
 {% block title %}Sites{% endblock %}
 {% block content %}
 <div class="page-head"><div><h1>{% if user.role == 'staff' %}My site{% else %}Sites{% endif %}</h1>
-  <p class="muted">{% if can_edit %}Site details you edit here are shown to supervisors and staff as read-only.{% else %}Site details are kept by the office. You can read them here.{% endif %}</p></div></div>
+  <p class="muted">{% if can_edit %}Site details you edit here are shown to supervisors and guards as read-only.{% else %}Site details are kept by the office. You can read them here.{% endif %}</p></div></div>
 <div class="card">
   {% if user.role != 'staff' %}
   <form method="get" class="filters">

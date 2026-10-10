@@ -89,7 +89,7 @@ def sign_in(user, data, now=None):
     """Sign `user` in at their site. Only the logged-in person can sign themself in."""
     now = now or timezone.now()
     if user.role not in tracking.TRACKED_ROLES:
-        raise AttendanceError("Only staff and supervisors sign in.")
+        raise AttendanceError("Only guards and supervisors sign in.")
     try:
         lat, lng, accuracy, _ = tracking.parse_update(data, now)
     except tracking.LocationError as exc:

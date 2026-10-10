@@ -179,7 +179,7 @@ def set_manager_flags(flagged_ids, user):
 @transaction.atomic
 def create_request(item, qty, reason, user):
     if user.role not in REQUESTER_ROLES:
-        raise TransitionError("Only staff and supervisors ask for items here.")
+        raise TransitionError("Only guards and supervisors ask for items here.")
     if not item.is_active:
         raise TransitionError("This item is no longer available.")
     if not 1 <= qty <= MAX_REQUEST_QTY:

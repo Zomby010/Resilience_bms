@@ -2,9 +2,9 @@
 <div class="card">
   <div class="page-head" style="margin-bottom:.5rem"><h2>My team's attendance today</h2><a class="btn small" href="{% url 'attendance:team' %}">Open</a></div>
   <div class="grid kpis">
-    <div class="kpi green"><div class="num">{{ team_att.in_count }}</div><div class="lbl">In attendance</div></div>
-    <div class="kpi"><div class="num">{{ team_att.absent_count }}</div><div class="lbl">Not signed in / absent</div></div>
-    <div class="kpi slate"><div class="num">{{ team_att.away_count }}</div><div class="lbl">On leave or sick</div></div>
-    <div class="kpi gold"><div class="num">{{ team_att.waiting }}</div><div class="lbl">Sign-ins to approve</div></div>
+    <div class="kpi"><div class="num">{{ team_att.in_count }}</div><div class="lbl">In attendance</div></div>
+    <div class="kpi {% if team_att.absent_count %}now{% endif %}"><div class="num">{{ team_att.absent_count }}</div><div class="lbl">Not signed in / absent</div></div>
+    <div class="kpi"><div class="num">{{ team_att.away_count }}</div><div class="lbl">On leave or sick</div></div>
+    <div class="kpi {% if team_att.waiting %}soon{% endif %}"><div class="num">{{ team_att.waiting }}</div><div class="lbl">Sign-ins to approve</div></div>
   </div>
 </div>

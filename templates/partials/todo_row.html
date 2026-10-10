@@ -1,0 +1,11 @@
+{# One thing that needs someone. Needs `t` (a core.todo.Todo): who sent it, what, how long ago, the action, what happens next. #}
+<li class="todo s-{{ t.sender_css }}{% if t.urgent %} urgent{% endif %}">
+  <div class="todo-main">
+    <div class="todo-top">{% sender_chip t.sender %}{% if t.when %}<span class="todo-age">{{ t.when|timesince }} ago</span>{% endif %}{% if t.urgent %}<span class="badge off">Urgent</span>{% endif %}</div>
+    <div class="todo-what"><a href="{{ t.url }}">{{ t.summary }}</a></div>
+    {% if t.next %}<div class="todo-next">{{ t.next }}</div>{% endif %}
+  </div>
+  <div class="todo-actions">
+    {% for a in t.actions %}{% if a.post %}<form method="post" action="{{ a.post }}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">{% for k, v in a.fields %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}<button class="btn {{ a.style }}" type="submit"{% if a.confirm %} data-confirm="{{ a.confirm }}"{% endif %}>{{ a.label }}</button></form>{% else %}<a class="btn {{ a.style }}" href="{{ a.url|default:t.url }}">{{ a.label }}</a>{% endif %}{% endfor %}
+  </div>
+</li>

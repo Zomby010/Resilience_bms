@@ -11,7 +11,7 @@ from django.utils.dateparse import parse_date
 from django.views import View
 from django.views.generic import ListView, TemplateView, UpdateView
 
-from accounts.models import Role
+from accounts.models import ROLE_CHOICES, Role
 from accounts.permissions import RoleRequiredMixin
 from finance.models import Expense
 from reports import services
@@ -155,7 +155,7 @@ class AuditLogView(RoleRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx.update(q=self.request.GET.get("q", ""), f_role=self.request.GET.get("role", ""), roles=Role.choices)
+        ctx.update(q=self.request.GET.get("q", ""), f_role=self.request.GET.get("role", ""), roles=ROLE_CHOICES)
         params = self.request.GET.copy()
         params.pop("page", None)
         ctx["query_string"] = params.urlencode()

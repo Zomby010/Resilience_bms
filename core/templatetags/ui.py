@@ -1,4 +1,4 @@
-"""Template helpers: status badges, money and masked account numbers."""
+"""Template helpers: status badges, sender chips, money and masked account numbers."""
 from decimal import Decimal, InvalidOperation
 
 from django import template
@@ -9,7 +9,7 @@ register = template.Library()
 # Colour family for each status value used across the apps.
 TONES = {
     "completed": {
-        "resolved", "closed", "responded", "sent", "paid", "approved", "returned", "recorded",
+        "resolved", "responded", "sent", "paid", "approved", "returned", "recorded",
         "recorded_offline", "issued_keep", "accepted", "present",
     },
     "reviewed": {
@@ -22,9 +22,11 @@ TONES = {
         "waiting_supervisor", "reported",
     },
     "off": {
-        "supervisor_needed", "failed", "overdue", "cancelled", "rejected", "lost", "escalated", "urgent", "high",
+        "supervisor_needed", "failed", "overdue", "rejected", "lost", "escalated", "urgent", "high",
         "critical", "not_accepted", "absent",
     },
+    # Finished and put away: grey, not green, so "closed" never reads as "all good" or "danger".
+    "closed": {"closed", "cancelled", "day_off", "shift_over"},
 }
 _TONE_OF = {value: tone for tone, values in TONES.items() for value in values}
 
@@ -40,6 +42,44 @@ def badge(obj, field="status"):
     value = getattr(obj, field, "")
     label = getattr(obj, f"get_{field}_display", lambda: value)()
     return format_html('<span class="badge {}">{}</span>', tone(value), label)
+
+
+# Badges are drawn by the {% badge %} tag; status_badge is the name the design system uses.
+status_badge = register.simple_tag(badge, name="status_badge")
+
+# Who sent it: one colour, icon and word per sender (report section 6.1).
+SENDERS = {
+    "staff": ("guard", "🛡", "Guard"),
+    "supervisor": ("supervisor", "⭐", "Supervisor"),
+    "secretary": ("secretary", "📋", "Secretary"),
+    "manager": ("manager", "👔", "Manager"),
+    "client": ("client", "🏢", "Client"),
+    "system": ("system", "⚙", "System"),
+}
+
+
+def sender_kind(sender):
+    """'staff', 'supervisor', ... for a user; 'client' for a Client; 'system' for nothing."""
+    if sender is None or sender == "system":
+        return "system"
+    if isinstance(sender, str):
+        return sender if sender in SENDERS else "system"
+    role = getattr(sender, "role", None)
+    if role:
+        return role
+    return "client" if sender.__class__.__name__ == "Client" else "system"
+
+
+@register.simple_tag
+def sender_chip(sender, show_name=True):
+    """A coloured chip saying who sent something: icon, ROLE and (optionally) the name."""
+    kind = sender_kind(sender)
+    css, icon, word = SENDERS.get(kind, SENDERS["system"])
+    name = str(sender) if show_name and kind != "system" and not isinstance(sender, str) else ""
+    if name:
+        return format_html('<span class="sender s-{}"><span aria-hidden="true">{}</span> <b>{}</b> · {}</span>',
+                           css, icon, word.upper(), name)
+    return format_html('<span class="sender s-{}"><span aria-hidden="true">{}</span> <b>{}</b></span>', css, icon, word.upper())
 
 
 @register.filter

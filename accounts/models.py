@@ -10,6 +10,11 @@ class Role(models.TextChoices):
     SECRETARY = "secretary", "Secretary"
 
 
+# The words people read. "Staff" is a guard everywhere in the interface (the stored value stays "staff").
+ROLE_LABELS = {"manager": "Manager", "supervisor": "Supervisor", "staff": "Guard", "secretary": "Secretary"}
+ROLE_CHOICES = [(value, ROLE_LABELS[value]) for value in Role.values]
+
+
 class RoleUserManager(UserManager):
     def create_superuser(self, username, email=None, password=None, **extra_fields):
         # A superuser created from the command line is the company's Manager.
@@ -40,11 +45,14 @@ class User(AbstractUser):
     def __str__(self):
         return self.get_full_name() or self.username
 
+    def get_role_display(self):
+        return ROLE_LABELS.get(self.role, self.role)
+
     def clean(self):
         super().clean()
         if self.supervisor_id:
             if self.role != Role.STAFF:
-                raise ValidationError({"supervisor": "Only staff members are assigned to a supervisor."})
+                raise ValidationError({"supervisor": "Only guards are assigned to a supervisor."})
             if self.supervisor.role != Role.SUPERVISOR:
                 raise ValidationError({"supervisor": "The selected user is not a supervisor."})
 

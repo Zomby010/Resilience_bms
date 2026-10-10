@@ -40,7 +40,8 @@ def reports_received(period="week", today=None):
             "total": qs.count(), "open": qs.exclude(status=Status.COMPLETED).count(),
             "resolved": qs.filter(status=Status.COMPLETED).count(),
         })
-    return {"received_groups": groups, "received_period": period, "received_since": start}
+    return {"received_groups": groups, "received_period": period, "received_since": start,
+            "received_any": any(g["total"] for g in groups)}
 
 
 def manager_dashboard(period="week"):

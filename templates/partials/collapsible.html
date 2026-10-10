@@ -1,0 +1,5 @@
+{# A section that is closed until tapped. Use: {% include "partials/collapsible.html" with key="history" title="History" count=n body="app/_part.html" %} #}
+<details class="fold" data-fold="{{ key }}"{% if open %} open{% endif %}>
+  <summary>{{ title }}{% if count is not None and count != "" %} <span class="n">({{ count }})</span>{% endif %}</summary>
+  <div class="fold-body">{% include body %}</div>
+</details>

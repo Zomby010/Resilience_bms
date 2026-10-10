@@ -1,4 +1,5 @@
 from datetime import datetime, time, timedelta
+from unittest import mock
 
 from django.core.exceptions import ValidationError
 from django.urls import reverse
@@ -82,8 +83,10 @@ class SignInTests(AttendanceBase):
 
     def test_api_returns_plain_message_and_never_trusts_user_field(self):
         self.login(self.staff_a1)
-        r = self.client.post(reverse("attendance:api_sign_in"), {**FAR_AWAY, "user": self.staff_a2.pk},
-                             content_type="application/json")
+        # Fix the clock inside the shift: otherwise this test fails when run after 18:00.
+        with mock.patch("attendance.services.timezone.now", return_value=at(self.day, 6, 5)):
+                r = self.client.post(reverse("attendance:api_sign_in"), {**FAR_AWAY, "user": self.staff_a2.pk},
+                                 content_type="application/json")
         self.assertEqual(r.status_code, 400)
         self.assertIn("must be at the site", r.json()["error"])
         self.login(self.secretary)
@@ -193,6 +196,6 @@ class PageTests(AttendanceBase):
         self.login(self.manager)
         html = self.client.get(reverse("core:home")).content.decode()
         self.assertIn("In attendance today", html)
-        self.assertLess(html.index("In attendance today"), html.index("Reports from staff not yet checked"))
+        self.assertLess(html.index("In attendance today"), html.index("Reports from guards not yet checked"))
         self.assertNotIn('class="chart"', html)
         self.assertIn("Reports received", html)
