@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Report a problem{% endblock %}
+{% block content %}
+<div class="simple">
+  <h1>Report a problem</h1>
+  <p class="muted">What happened? Choose one.</p>
+  <div class="doors">
+    <a class="door danger" href="{% url 'incidents:create' %}">
+      <span class="door-ico" aria-hidden="true">🚨</span>
+      <span><strong>Something bad happened at the site</strong>
+      <span class="door-hint">Theft, break-in, trespass, fire, injury, a fight or damage. It goes to the office as an incident and is written in the OB.</span></span>
+    </a>
+    {% if user.role == 'staff' %}
+    <a class="door" href="{% url 'reports:create' %}">
+      <span class="door-ico" aria-hidden="true">💬</span>
+      <span><strong>I need to tell my supervisor something</strong>
+      <span class="door-hint">A question, a broken torch, a gate that will not lock, a note about a patrol. {% if user.supervisor %}{{ user.supervisor }} reads it and replies.{% else %}You have no supervisor yet, so it goes to management.{% endif %}</span></span>
+    </a>
+    {% else %}
+    <a class="door" href="{% url 'reports:create' %}">
+      <span class="door-ico" aria-hidden="true">💬</span>
+      <span><strong>I need to tell management something</strong>
+      <span class="door-hint">Submit a report to management: a request, a problem with a site or a client, or a summary.</span></span>
+    </a>
+    {% endif %}
+  </div>
+  <p class="small muted">Not well? <a href="{% url 'leave:sick_report' %}">Report in sick</a> instead. Just a note for the logbook? <a href="{% url 'operations:ob_write' %}">Write in the OB</a>.</p>
+</div>
+{% endblock %}
