@@ -1,4 +1,4 @@
-"""Leave rules: who decides, how days are counted, balances in plain words, and sick sheets."""
+"""Leave rules: the Manager decides and types the days given; sick is reported, not asked for."""
 import io
 from datetime import date, timedelta
 from decimal import Decimal
@@ -37,18 +37,19 @@ def people_for(user):
 
 
 def approver_for(person):
-    """Staff leave goes to their supervisor; everyone else's (and staff with no supervisor) to the Manager."""
+    """Frank's rule: the Manager decides every leave request. None means the Manager."""
+    return None
+
+
+def supervisor_of(person):
+    """The guard's supervisor, who is told about leave (to plan cover) but does not decide it."""
     if person.role == Role.STAFF and person.supervisor_id and person.supervisor.is_active:
         return person.supervisor
     return None
 
 
 def can_decide(user, req):
-    if req.user_id == user.pk and user.role != Role.MANAGER:
-        return False
-    if user.role == Role.MANAGER:
-        return True
-    return user.role == Role.SUPERVISOR and req.user.supervisor_id == user.pk
+    return user.role == Role.MANAGER
 
 
 def can_cancel(user, req):
@@ -82,6 +83,42 @@ def count_days(leave_type, person, start, end):
     return Decimal(sum(1 for i in range(total) if (start + timedelta(days=i)).weekday() in weekdays))
 
 
+def last_day_for(leave_type, person, start, days):
+    """The last day off when `days` are given from `start`, counted the type's way (working or calendar days)."""
+    need = int(Decimal(days).to_integral_value(rounding="ROUND_CEILING"))
+    if need <= 1:
+        return start
+    if leave_type.counting == LeaveType.Counting.CALENDAR:
+        return start + timedelta(days=need - 1)
+    weekdays = working_weekdays(person)
+    day, counted = start, 1 if start.weekday() in weekdays else 0
+    while counted < need and (day - start).days < 731:
+        day += timedelta(days=1)
+        if day.weekday() in weekdays:
+            counted += 1
+    return day
+
+
+def date_span(first, last):
+    """'12–23 Oct', '28 Sep–3 Oct' or '30 Dec 2026–4 Jan 2027'."""
+    if first == last:
+        return f"{first.day} {first:%b}"
+    if first.year != last.year:
+        return f"{first.day} {first:%b %Y}–{last.day} {last:%b %Y}"
+    if first.month != last.month:
+        return f"{first.day} {first:%b}–{last.day} {last:%b}"
+    return f"{first.day}–{last.day} {last:%b}"
+
+
+# Kenyan Employment Act minimums. Below these the decide screen shows a quiet warning (it never blocks).
+LEGAL_MINIMUM = {"annual": 21, "maternity": 90, "paternity": 14}
+
+
+def below_minimum(leave_type, days):
+    floor = LEGAL_MINIMUM.get(leave_type.code)
+    return floor if floor and Decimal(days) < floor else None
+
+
 def _days_in_year(start, end, year):
     """The part of [start, end] that falls in `year`, as a (start, end) pair or None."""
     lo, hi = max(start, date(year, 1, 1)), min(end, date(year, 12, 31))
@@ -112,7 +149,10 @@ def balance(person, leave_type, year=None, exclude=None):
             qs = qs.exclude(pk=exclude.pk)
         for r in qs:
             part = _days_in_year(r.start_date, r.end_date, year)
-            days = r.days if part == (r.start_date, r.end_date) else count_days(leave_type, person, *part)
+            if r.days_given is not None and part == (r.start_date, r.end_date):
+                days = r.days_given
+            else:
+                days = r.days if part == (r.start_date, r.end_date) else count_days(leave_type, person, *part)
             if r.status == S.APPROVED:
                 taken += days
             else:
@@ -159,6 +199,7 @@ def _check_overlap(person, start, end, exclude=None):
 
 @transaction.atomic
 def ask_for_leave(person, leave_type, start, end, reason, entered_by):
+    """The person picks dates only. Nothing is blocked by a balance: the Manager types the days given."""
     if not people_for(entered_by).filter(pk=person.pk).exists():
         raise ValidationError("You cannot record leave for this person.")
     if end < start:
@@ -170,48 +211,58 @@ def ask_for_leave(person, leave_type, start, end, reason, entered_by):
     days = count_days(leave_type, person, start, end)
     if days <= 0:
         raise ValidationError("Those dates have no working days in them.")
-    if leave_type.needs_balance and leave_type.days_per_year and entered_by.role != Role.MANAGER:
-        for year in range(start.year, end.year + 1):
-            part = _days_in_year(start, end, year)
-            needed = count_days(leave_type, person, *part)
-            left = balance(person, leave_type, year)["left"]
-            if needed > left:
-                raise ValidationError(
-                    f"Not enough {leave_type.name.lower()} left in {year}: {_n(needed)} days asked for, {_n(left)} left."
-                )
     req = LeaveRequest.objects.create(
         user=person, leave_type=leave_type, start_date=start, end_date=end, days=days, reason=reason,
-        approver=approver_for(person), entered_by=entered_by,
+        approver=None, entered_by=entered_by,
     )
     audit.record(entered_by, "leave.asked", req, f"Leave asked for {person}: {leave_type} {_n(days)} days")
     if can_decide(entered_by, req):
         decide(req, entered_by, approve=True, note="Recorded and approved at the same time.")
         return req
     link = req.get_absolute_url()
-    title = f"Leave request from {person}"
-    message = f"{leave_type}: {start:%d %b} to {end:%d %b %Y} ({_n(days)} days)."
-    if req.approver_id:
-        notify(req.approver, "leave.request", title, message, link, entity=req)
-    else:
-        notify_role(Role.MANAGER, "leave.request", title, message, link, entity=req, exclude=entered_by)
+    message = f"{leave_type}: {date_span(start, end)}."
+    notify_role(Role.MANAGER, "leave.request", f"Leave request from {person}", message, link, entity=req, exclude=entered_by)
+    sup = supervisor_of(person)
+    if sup and sup.pk != entered_by.pk:
+        notify(sup, "leave.fyi", f"{person} asked for leave", message + " The Manager decides. This is so you can plan cover.",
+               link, entity=req)
     if entered_by.pk != person.pk:
         notify(person, "leave.request", "Leave was asked for on your behalf", message, link, entity=req)
     return req
 
 
 @transaction.atomic
-def decide(req, user, approve, note=""):
+def decide(req, user, approve, note="", days_given=None):
     if not can_decide(user, req):
-        raise ValidationError("You cannot decide this leave request.")
+        raise ValidationError("Only the Manager decides leave.")
     if not approve and not note.strip():
         raise ValidationError("Write the reason for saying no, so the person understands.")
     new = S.APPROVED if approve else S.REJECTED
-    require(req, S.WAITING, new, decided_by=user, decided_at=timezone.now(), decision_note=note.strip())
+    extra = {}
+    if approve:
+        given = req.days if days_given in (None, "") else Decimal(str(days_given))
+        if given <= 0 or given > 366:
+            raise ValidationError("Type the days given: a number from 0.5 to 366.")
+        extra = {"days_given": given, "last_day_given": last_day_for(req.leave_type, req.user, req.start_date, given)}
+    require(req, S.WAITING, new, decided_by=user, decided_at=timezone.now(), decision_note=note.strip(), **extra)
     word = "approved" if approve else "not approved"
-    audit.record(user, f"leave.{new}", req, f"Leave for {req.user} {word}", changes={"status": [S.WAITING, new]})
+    changes = {"status": [S.WAITING, new]}
+    if approve:
+        changes["days_given"] = [None, str(req.days_given)]
+    audit.record(user, f"leave.{new}", req, f"Leave for {req.user} {word}", changes=changes)
+    if approve:
+        days = req.days_given
+        head = f"Approved: {_n(days)} {'day' if days == 1 else 'days'}, {date_span(req.start_date, req.last_day_given)}."
+    else:
+        head = "Not approved."
+    text = f"{req.leave_type}. " + (f"Note: {note}" if note else "")
     if req.user_id != user.pk:
-        text = f"{req.leave_type}: {req.start_date:%d %b} to {req.end_date:%d %b %Y}." + (f" Note: {note}" if note else "")
-        notify(req.user, "leave.decided", f"Your leave was {word}", text, req.get_absolute_url(), entity=req)
+        notify(req.user, "leave.decided", head, text.strip(), req.get_absolute_url(), entity=req)
+    sup = supervisor_of(req.user)
+    if sup and sup.pk != user.pk:
+        notify(sup, "leave.fyi", f"{req.user}'s leave: {head[0].lower()}{head[1:]}",
+               f"{req.leave_type}. Plan cover for these days." if approve else f"{req.leave_type}.",
+               req.get_absolute_url(), entity=req)
     return req
 
 
@@ -379,15 +430,20 @@ def log_sheet_download(user, note):
 
 def away_on(day, users=None):
     """{user_id: 'on_leave' | 'sick'} for people away on `day`. Sick wins over leave."""
+    return {uid: v[0] for uid, v in away_until(day, users).items()}
+
+
+def away_until(day, users=None):
+    """{user_id: (state, last day away)} for people away on `day`. The days given decide the leave end."""
     away = {}
     leave = LeaveRequest.objects.filter(status=S.APPROVED).covering(day)
     sick = SickLeave.objects.exclude(status=SICK.NOT_ACCEPTED).covering(day)
     if users is not None:
         leave, sick = leave.filter(user__in=users), sick.filter(user__in=users)
-    for uid in leave.values_list("user_id", flat=True):
-        away[uid] = "on_leave"
-    for uid in sick.values_list("user_id", flat=True):
-        away[uid] = "sick"
+    for uid, given, end in leave.values_list("user_id", "last_day_given", "end_date"):
+        away[uid] = ("on_leave", given or end)
+    for uid, last in sick.values_list("user_id", "last_day"):
+        away[uid] = ("sick", last)
     return away
 
 

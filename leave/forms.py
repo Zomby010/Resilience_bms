@@ -21,13 +21,15 @@ class PersonChoiceMixin:
 
 
 class LeaveRequestForm(PersonChoiceMixin, forms.Form):
-    leave_type = forms.ModelChoiceField(queryset=LeaveType.objects.none(), label="Type of leave", empty_label=None)
+    leave_type = forms.ModelChoiceField(queryset=LeaveType.objects.none(), label="Type of leave", empty_label=None,
+                                        widget=forms.RadioSelect)
     start_date = forms.DateField(label="First day off", widget=DATE)
     end_date = forms.DateField(label="Last day off", widget=DATE)
     reason = forms.CharField(label="Reason (optional)", required=False, widget=forms.Textarea(attrs={"rows": 2}))
 
     def __init__(self, *args, user, **kwargs):
         super().__init__(*args, **kwargs)
+        # Annual, Maternity, Paternity, Compassionate. Sick is reported on its own page, not asked for.
         self.fields["leave_type"].queryset = LeaveType.objects.filter(is_active=True).exclude(code=services.SICK_CODE)
         self.add_person(user)
 

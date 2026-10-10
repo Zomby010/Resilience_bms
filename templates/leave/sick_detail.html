@@ -3,15 +3,15 @@
 {% block content %}
 <div class="simple">
   <h1>Sick leave: {{ sick.user }}</h1>
-  <div class="status-big">{{ sick.get_status_display }}</div>
+  {% if sees_files or can_review %}<div class="status-big">{{ sick.get_status_display }}</div>{% endif %}
   <div class="card">
     <dl class="facts">
       <dt>First day</dt><dd>{{ sick.first_day|date:"l d M Y" }}</dd>
       <dt>Last day</dt><dd>{{ sick.last_day|date:"l d M Y" }} ({{ sick.days }} day{{ sick.days|pluralize }})</dd>
       <dt>Reported</dt><dd>{{ sick.created_at|date:"d M Y H:i" }} by {{ sick.reported_by }}</dd>
-      {% if sees_files %}<dt>Sick days this year</dt><dd>{{ sick_balance }}</dd>{% endif %}
+      {% if sick_balance %}<dt>Sick days this year</dt><dd>{{ sick_balance }}</dd>{% endif %}
       {% if sees_files and sick.comment %}<dt>Note</dt><dd>{{ sick.comment|linebreaksbr }}</dd>{% endif %}
-      {% if sick.reviewed_by %}<dt>Checked</dt><dd>{{ sick.reviewed_by }}, {{ sick.reviewed_at|date:"d M Y" }}</dd>{% endif %}
+      {% if sick.reviewed_by and sees_files %}<dt>Checked</dt><dd>{{ sick.reviewed_by }}, {{ sick.reviewed_at|date:"d M Y" }}</dd>{% endif %}
       {% if sick.review_note and sees_files %}<dt>Office note</dt><dd>{{ sick.review_note|linebreaksbr }}</dd>{% endif %}
     </dl>
   </div>

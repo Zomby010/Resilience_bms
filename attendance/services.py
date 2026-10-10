@@ -353,7 +353,7 @@ def people_on(day=None, people=None, now=None):
 
     Rows never include coordinates, so they are safe to show to supervisors.
     """
-    from leave.services import away_on
+    from leave.services import away_until
 
     now = now or timezone.now()
     day = day or timezone.localdate(now)
@@ -361,7 +361,7 @@ def people_on(day=None, people=None, now=None):
     ids = [p.pk for p in people]
     profiles = {p.user_id: p for p in TrackingProfile.objects.filter(user_id__in=ids).select_related("site")}
     records = {r.user_id: r for r in AttendanceRecord.objects.filter(date=day, user_id__in=ids)}
-    away = away_on(day, ids)
+    away = away_until(day, ids)
     hours_map = tracking.all_hours()
     completed = day_completed(day) or day < timezone.localdate(now)
     rows = []
@@ -374,10 +374,16 @@ def people_on(day=None, people=None, now=None):
             # No working hours set: treat the whole day as the shift.
             start = timezone.make_aware(datetime.combine(day, datetime.min.time()))
             shift = (start, start + timedelta(days=1))
-        state = _state(record, away.get(person.pk), shift, profile, now, completed)
+        gone, until = away.get(person.pk, (None, None))
+        state = _state(record, gone, shift, profile, now, completed)
+        label = STATE_LABELS[state]
+        if state == gone and until:
+            # LEAVE-06: "On leave until 23 Oct", from the days the Manager gave.
+            label = f"{label} until {until.day} {until:%b}"
         rows.append({
             "person": person, "site": profile.site if profile else None, "record": record,
-            "shift": shift if hours else None, "state": state, "label": STATE_LABELS[state], "tone": STATE_TONES[state],
+            "shift": shift if hours else None, "state": state, "label": label, "tone": STATE_TONES[state],
+            "until": until if state == gone else None,
             "is_in": state in ("on_duty", "late", "off_location", "shift_over"),
             "is_absent": state in ("not_signed_in", "absent", "rejected"),
         })

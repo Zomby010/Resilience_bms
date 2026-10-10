@@ -1,28 +1,24 @@
 {% extends "base.html" %}
-{% block title %}My leave{% endblock %}
+{% block title %}My requests{% endblock %}
 {% block content %}
 <div class="simple" style="max-width:none">
-  <div class="page-head"><h1>My leave</h1>
-    <div class="actions"><a class="btn big" href="{% url 'leave:ask' %}">Ask for leave</a><a class="btn big secondary" href="{% url 'leave:sick_report' %}">Report sick</a></div></div>
+  <div class="page-head"><h1>My requests</h1>
+    <div class="actions"><a class="btn big" href="{% url 'leave:ask' %}">Ask for leave</a></div></div>
   {% if to_decide %}<div class="warn"><strong>{{ to_decide }} leave request{{ to_decide|pluralize }} waiting for your answer.</strong> <a href="{% url 'leave:request_list' %}?show=decide">Open them</a></div>{% endif %}
   <div class="card">
-    <h2>My days this year</h2>
-    <ul class="choice-list">{% for b in balances %}<li><div><div class="name">{{ b.type.name }}</div><span>{{ b.text }}</span></div></li>{% endfor %}</ul>
-  </div>
-  <div class="card">
-    <h2>My leave requests</h2>
+    <h2>Leave</h2>
     <ul class="choice-list">
-    {% for r in requests %}<li><div><div class="name">{{ r.leave_type }}: {{ r.start_date|date:"d M" }} to {{ r.end_date|date:"d M Y" }}</div><span class="small muted">{{ r.days|floatformat:"-1" }} days</span> {% badge r %}</div>
+    {% for r in requests %}<li><div><div class="name">{{ r.leave_type }}: {{ r.start_date|date:"d M" }} to {{ r.last_day_off|date:"d M Y" }}</div>{% if r.days_given is not None %}<span class="small muted">{{ r.days_given|floatformat:"-1" }} days given</span> {% endif %}{% badge r %}</div>
       <a class="btn secondary" href="{{ r.get_absolute_url }}">Open</a></li>
     {% empty %}<li class="empty">You have not asked for leave yet.</li>{% endfor %}
     </ul>
   </div>
   <div class="card">
-    <h2>My sick leave</h2>
+    <h2>Sick</h2>
     <ul class="choice-list">
     {% for s in sick %}<li><div><div class="name">Sick {{ s.first_day|date:"d M" }} to {{ s.last_day|date:"d M Y" }}</div>{% badge s %}</div>
       <a class="btn secondary" href="{{ s.get_absolute_url }}">{% if s.status == 'certificate_needed' %}Upload sick sheet{% else %}Open{% endif %}</a></li>
-    {% empty %}<li class="empty">No sick leave recorded.</li>{% endfor %}
+    {% empty %}<li class="empty">No sick days recorded.</li>{% endfor %}
     </ul>
   </div>
 </div>

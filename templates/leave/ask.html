@@ -3,10 +3,19 @@
 {% block content %}
 <div class="simple">
   <h1>Ask for leave</h1>
-  <p>Choose the type of leave and the days. {% if user.role == 'staff' %}Your supervisor will answer.{% else %}The Manager will answer.{% endif %}</p>
+  <p>Pick the type and your days off. The Manager will answer.</p>
   <div class="card">
     <form method="post" class="fields">{% csrf_token %}
-      {% include "partials/form.html" %}
+      {% if form.non_field_errors %}<div class="errorlist">{{ form.non_field_errors }}</div>{% endif %}
+      {% if form.person %}<div class="field"><label for="{{ form.person.id_for_label }}">{{ form.person.label }}</label>{{ form.person }}{{ form.person.errors }}</div>{% endif %}
+      <fieldset class="field type-pick">
+        <legend>Type of leave</legend>
+        {% for radio in form.leave_type %}<label class="type-btn">{{ radio.tag }}<span>{{ radio.choice_label }}</span></label>{% endfor %}
+        {{ form.leave_type.errors }}
+      </fieldset>
+      {% for field in form %}{% if field.name != 'person' and field.name != 'leave_type' %}
+      <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}{{ field.errors }}</div>
+      {% endif %}{% endfor %}
       <div class="form-actions"><button class="btn big wide" type="submit">Send</button></div>
       <a href="{% url 'leave:mine' %}">Go back</a>
     </form>

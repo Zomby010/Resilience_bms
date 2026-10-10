@@ -1,3 +1,5 @@
+from decimal import Decimal, InvalidOperation
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
@@ -27,7 +29,7 @@ def _year(request):
 
 
 class MyLeaveView(LoginRequiredMixin, TemplateView):
-    """Every person's own page: days left in plain words, their leave and their sick leave."""
+    """'My requests': the person's own leave requests and sick reports. No day balances (Frank's rule)."""
 
     template_name = "leave/mine.html"
 
@@ -35,19 +37,19 @@ class MyLeaveView(LoginRequiredMixin, TemplateView):
         user = self.request.user
         ctx = super().get_context_data(**kwargs)
         ctx.update(
-            balances=services.balances_for(user),
             requests=LeaveRequest.objects.filter(user=user).select_related("leave_type", "decided_by")[:20],
-            sick=SickLeave.objects.filter(user=user)[:10],
-            to_decide=_to_decide(user).count() if user.role in (Role.SUPERVISOR, Role.MANAGER) else 0,
+            sick=SickLeave.objects.filter(user=user)[:20],
+            to_decide=_to_decide(user).count() if user.role == Role.MANAGER else 0,
         )
         return ctx
 
 
 def _to_decide(user):
+    """Only the Manager decides leave, every request (older ones sent to a supervisor included)."""
     qs = LeaveRequest.objects.filter(status=S.WAITING).select_related("user", "leave_type")
     if user.role == Role.MANAGER:
-        return qs.exclude(user=user).filter(Q(approver__isnull=True) | ~Q(approver__is_active=True)) | qs.filter(approver=user)
-    return qs.filter(approver=user)
+        return qs.exclude(user=user)
+    return qs.none()
 
 
 class AskView(LoginRequiredMixin, FormView):
@@ -66,11 +68,13 @@ class AskView(LoginRequiredMixin, FormView):
             form.add_error(None, " ".join(exc.messages))
             return self.form_invalid(form)
         if req.status == S.APPROVED:
-            messages.success(self.request, f"Leave recorded and approved: {services._n(req.days)} days.")
+            messages.success(self.request, f"Leave recorded and approved: {services._n(req.days_given)} days.")
         else:
-            who = req.approver or "the Manager"
-            messages.success(self.request, f"Leave asked for: {services._n(req.days)} days. {who} will decide.")
+            messages.success(self.request, "Leave asked for. The Manager will answer.")
         return redirect(req)
+
+    def get_context_data(self, **kwargs):
+        return {**super().get_context_data(**kwargs), "show": self.request.GET.get("type", "")}
 
 
 class RequestListView(RoleRequiredMixin, FilterContextMixin, ListView):
@@ -127,8 +131,9 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
         ctx.update(
             can_decide=req.status == S.WAITING and services.can_decide(user, req),
             can_cancel=services.can_cancel(user, req),
-            balance=services.plain_balance(req.leave_type, services.balance(req.user, req.leave_type, req.start_date.year),
-                                           you=req.user_id == user.pk),
+            minimum=services.LEGAL_MINIMUM.get(req.leave_type.code),
+            given_short=req.days_given is not None and services.below_minimum(req.leave_type, req.days_given),
+            until=req.last_day_given and services.date_span(req.start_date, req.last_day_given),
         )
         return ctx
 
@@ -143,8 +148,16 @@ class RequestAction(ActionView):
     def act(self, req):
         note = self.request.POST.get("note", "")
         if self.action == "approve":
-            services.decide(req, self.request.user, True, note)
-            return "Leave approved. They have been told."
+            given = (self.request.POST.get("days_given") or "").strip()
+            try:
+                given = Decimal(given) if given else None
+            except InvalidOperation:
+                raise ValidationError("Type the days given as a number, for example 10 or 2.5.")
+            services.decide(req, self.request.user, True, note, days_given=given)
+            short = services.below_minimum(req.leave_type, req.days_given)
+            if short:
+                messages.info(self.request, f"Note: the legal minimum for {req.leave_type.name.lower()} is {short} days.")
+            return f"Leave approved: {services._n(req.days_given)} days, {services.date_span(req.start_date, req.last_day_given)}. They have been told."
         if self.action == "reject":
             services.decide(req, self.request.user, False, note)
             return "Leave not approved. They have been told why."
@@ -220,7 +233,9 @@ class ReportSickView(LoginRequiredMixin, FormView):
         return redirect(sick)
 
 
-class SickListView(LoginRequiredMixin, FilterContextMixin, ListView):
+class SickListView(RoleRequiredMixin, FilterContextMixin, ListView):
+    # A guard's own sick reports are on "My requests".
+    allowed_roles = (Role.SUPERVISOR, Role.MANAGER, Role.SECRETARY)
     template_name = "leave/sick_list.html"
     context_object_name = "sick_list"
     paginate_by = 30
@@ -270,7 +285,8 @@ class SickDetailView(LoginRequiredMixin, DetailView):
             can_change=services.can_change_sick(user, sick),
             sheet_form=SheetForm() if sees_files else None,
             last_day_form=LastDayForm(initial={"last_day": sick.last_day}),
-            sick_balance=services.plain_balance(*_sick_balance(sick.user, sick.first_day.year), you=sick.user_id == user.pk),
+            # Day counts are for the office only (Frank's rule: no balances for staff).
+            sick_balance=user.role in services.OFFICE and services.plain_balance(*_sick_balance(sick.user, sick.first_day.year), you=False),
         )
         return ctx
 

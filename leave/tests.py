@@ -52,6 +52,14 @@ class LeaveTypesTests(LeaveBase):
         self.assertTrue({"annual", "sick", "maternity", "paternity", "pre_adoptive", "compassionate", "unpaid"} <= codes)
         self.assertEqual(self.annual.days_per_year, 21)
 
+    def test_only_four_types_can_be_asked_for(self):
+        # Frank's rule (LEAVE-02): the others are switched off, never deleted, so old requests keep their type.
+        from .forms import LeaveRequestForm
+
+        offered = set(LeaveRequestForm(user=self.staff_a1).fields["leave_type"].queryset.values_list("code", flat=True))
+        self.assertEqual(offered, {"annual", "maternity", "paternity", "compassionate"})
+        self.assertEqual(LeaveType.objects.filter(is_active=False).count(), 3)
+
     def test_working_days_skip_sunday(self):
         # Monday to the next Monday = 8 calendar days, 7 working days (Sunday off).
         days = services.count_days(self.annual, self.staff_a1, self.monday, self.monday + timedelta(days=7))
@@ -67,11 +75,14 @@ class LeaveRequestTests(LeaveBase):
         start = start or self.monday
         return services.ask_for_leave(person, self.annual, start, start + timedelta(days=days - 1), "Family", entered_by or person)
 
-    def test_staff_request_goes_to_their_supervisor(self):
+    def test_staff_request_goes_to_the_manager_and_supervisor_is_told(self):
+        # Frank's rule (LEAVE-04, Q2): the Manager decides; the supervisor is told so they can plan cover.
         req = self.ask(self.staff_a1)
         self.assertEqual(req.status, S.WAITING)
-        self.assertEqual(req.approver, self.sup_a)
-        self.assertTrue(self.sup_a.notifications.filter(kind="leave.request").exists())
+        self.assertIsNone(req.approver)
+        self.assertTrue(self.manager.notifications.filter(kind="leave.request").exists())
+        self.assertTrue(self.sup_a.notifications.filter(kind="leave.fyi").exists())
+        self.assertFalse(self.sup_a.notifications.filter(kind="leave.request").exists())
         self.assertFalse(self.sup_b.notifications.exists())
 
     def test_supervisor_and_secretary_requests_go_to_manager(self):
@@ -80,39 +91,69 @@ class LeaveRequestTests(LeaveBase):
             self.assertIsNone(req.approver)
         self.assertEqual(self.manager.notifications.filter(kind="leave.request").count(), 2)
 
-    def test_only_the_right_people_decide(self):
+    def test_only_the_manager_decides(self):
         req = self.ask(self.staff_a1)
-        self.assertFalse(services.can_decide(self.sup_b, req))
-        self.assertFalse(services.can_decide(self.staff_a2, req))
-        self.assertFalse(services.can_decide(self.secretary, req))
+        for user in (self.sup_a, self.sup_b, self.staff_a2, self.secretary):
+            self.assertFalse(services.can_decide(user, req))
+            with self.assertRaises(ValidationError):
+                services.decide(req, user, True)
         self.assertTrue(services.can_decide(self.manager, req))
-        with self.assertRaises(ValidationError):
-            services.decide(req, self.sup_b, True)
-        services.decide(req, self.sup_a, True)
+        services.decide(req, self.manager, True)
         req.refresh_from_db()
-        self.assertEqual((req.status, req.decided_by), (S.APPROVED, self.sup_a))
+        self.assertEqual((req.status, req.decided_by, req.days_given), (S.APPROVED, self.manager, Decimal(3)))
         self.assertTrue(self.staff_a1.notifications.filter(kind="leave.decided").exists())
+        self.assertEqual(self.sup_a.notifications.filter(kind="leave.fyi").count(), 2)  # asked, then decided
+
+    def test_manager_types_the_days_given(self):
+        # LEAVE-03: 11 working days asked, 5 given. The person is told the days and dates; "On leave" follows the 5.
+        req = self.ask(self.staff_a1, days=12)  # Monday to the second Friday: 11 working days (Sunday off)
+        self.assertEqual(req.days, Decimal(11))
+        services.decide(req, self.manager, True, days_given=Decimal(5))
+        req.refresh_from_db()
+        self.assertEqual(req.days_given, Decimal(5))
+        self.assertEqual(req.last_day_given, self.monday + timedelta(days=4))
+        note = self.staff_a1.notifications.get(kind="leave.decided")
+        self.assertTrue(note.title.startswith("Approved: 5 days, "), note.title)
+        self.assertEqual(services.away_on(self.monday + timedelta(days=4)), {self.staff_a1.pk: "on_leave"})
+        self.assertEqual(services.away_on(self.monday + timedelta(days=5)), {})
+        with self.assertRaises(ValidationError):
+            services.decide(self.ask(self.staff_a1, start=self.monday + timedelta(days=21)), self.manager, True, days_given=0)
+
+    def test_working_days_given_skip_days_off(self):
+        # 7 working days from a Monday (Mon to Sat by default) ends on the next Monday.
+        self.assertEqual(services.last_day_for(self.annual, self.staff_a1, self.monday, 7), self.monday + timedelta(days=7))
+        maternity = LeaveType.objects.get(code="maternity")
+        self.assertEqual(services.last_day_for(maternity, self.staff_a1, self.monday, 90), self.monday + timedelta(days=89))
+
+    def test_legal_minimum_is_a_quiet_warning(self):
+        self.assertEqual(services.below_minimum(self.annual, 10), 21)
+        self.assertIsNone(services.below_minimum(self.annual, 21))
+        self.assertIsNone(services.below_minimum(LeaveType.objects.get(code="compassionate"), 1))
 
     def test_saying_no_needs_a_reason(self):
         req = self.ask(self.staff_a1)
         with self.assertRaises(ValidationError):
-            services.decide(req, self.sup_a, False, "")
-        services.decide(req, self.sup_a, False, "Two guards already off that week")
+            services.decide(req, self.manager, False, "")
+        services.decide(req, self.manager, False, "Two guards already off that week")
         self.assertEqual(LeaveRequest.objects.get().status, S.REJECTED)
 
     def test_double_click_does_not_decide_twice(self):
         req = self.ask(self.staff_a1)
-        services.decide(req, self.sup_a, True)
+        services.decide(req, self.manager, True)
         stale = LeaveRequest.objects.get(pk=req.pk)
         stale.status = S.WAITING
         with self.assertRaises(Exception):
-            services.decide(stale, self.sup_a, False, "no")
+            services.decide(stale, self.manager, False, "no")
         self.assertEqual(LeaveRequest.objects.get().status, S.APPROVED)
 
-    def test_supervisor_entering_for_team_is_approved_at_once(self):
+    def test_supervisor_entering_for_team_still_goes_to_the_manager(self):
         req = self.ask(self.staff_a1, entered_by=self.sup_a)
-        self.assertEqual(req.status, S.APPROVED)
+        self.assertEqual(req.status, S.WAITING)
         self.assertEqual(req.entered_by, self.sup_a)
+
+    def test_manager_entering_is_approved_at_once(self):
+        req = self.ask(self.staff_a1, entered_by=self.manager)
+        self.assertEqual((req.status, req.days_given), (S.APPROVED, Decimal(3)))
 
     def test_secretary_entering_on_behalf_still_needs_approval(self):
         req = self.ask(self.staff_a1, entered_by=self.secretary)
@@ -130,15 +171,14 @@ class LeaveRequestTests(LeaveBase):
         with self.assertRaises(ValidationError):
             self.ask(self.staff_a1, start=self.monday + timedelta(days=1))
 
-    def test_balance_blocks_too_many_days_except_for_manager(self):
-        with self.assertRaises(ValidationError) as ctx:
-            self.ask(self.staff_a1, days=30)
-        self.assertIn("Not enough annual leave", str(ctx.exception))
-        req = self.ask(self.staff_a1, entered_by=self.manager, days=30)
-        self.assertEqual(req.status, S.APPROVED)
+    def test_no_balance_blocks_a_request(self):
+        # LEAVE-03: the guard picks dates only; the Manager decides the days.
+        req = self.ask(self.staff_a1, days=30)
+        self.assertEqual(req.status, S.WAITING)
 
     def test_balance_counts_taken_and_waiting(self):
-        services.decide(self.ask(self.staff_a1, days=3), self.sup_a, True)
+        # Still kept for the Manager's old "leave days per person" page.
+        services.decide(self.ask(self.staff_a1, days=3), self.manager, True)
         self.ask(self.staff_a1, start=self.monday + timedelta(days=14), days=2)
         b = services.balance(self.staff_a1, self.annual, self.year)
         self.assertEqual((b["taken"], b["waiting"], b["left"]), (Decimal(3), Decimal(2), Decimal(16)))
@@ -156,11 +196,26 @@ class LeaveRequestTests(LeaveBase):
 
 
 class LeavePageTests(LeaveBase):
-    def test_every_role_sees_my_leave_page(self):
+    def test_my_requests_has_no_balances_or_sick_button(self):
+        # LEAVE-01/05: no "My days this year"; Report in sick is its own entry. Sick history stays here.
+        today = timezone.localdate()
+        services.report_sick(self.staff_a1, today, today, "", self.staff_a1)
         for user in (self.manager, self.sup_a, self.staff_a1, self.secretary):
             self.login(user)
             r = self.client.get(reverse("leave:mine"))
-            self.assertContains(r, "days of annual leave left")
+            self.assertContains(r, "My requests")
+            for gone in ("My days this year", "left this year", ">Report sick<"):
+                self.assertNotContains(r, gone)
+        self.login(self.staff_a1)
+        self.assertContains(self.client.get(reverse("leave:mine")), f"Sick {today:%d %b}")
+
+    def test_ask_page_has_four_big_buttons_and_no_numbers(self):
+        self.login(self.staff_a1)
+        page = self.client.get(reverse("leave:ask")).content.decode()
+        self.assertEqual(page.count('class="type-btn"'), 4)
+        self.assertIn("The Manager will answer", page)
+        self.assertNotIn("supervisor will answer", page)
+        self.assertNotIn("Sick leave", page)
 
     def test_ask_form_creates_request(self):
         self.login(self.staff_a1)
@@ -180,15 +235,30 @@ class LeavePageTests(LeaveBase):
         url = req.get_absolute_url()
         for user, code in ((self.staff_a2, 404), (self.sup_b, 404), (self.sup_a, 200), (self.secretary, 200), (self.manager, 200)):
             self.login(user)
-            self.assertEqual(self.client.get(url).status_code, code, user.username)
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, code, user.username)
+            if code == 200:
+                self.assertNotContains(r, "Days left")
+                self.assertEqual('name="days_given"' in r.content.decode(), user == self.manager)
 
     def test_approve_button(self):
-        req = services.ask_for_leave(self.staff_a1, self.annual, self.monday, self.monday, "", self.staff_a1)
+        req = services.ask_for_leave(self.staff_a1, self.annual, self.monday, self.monday + timedelta(days=4), "", self.staff_a1)
         self.login(self.sup_b)
         self.assertEqual(self.client.post(reverse("leave:approve", args=[req.pk])).status_code, 404)
         self.login(self.sup_a)
         self.client.post(reverse("leave:approve", args=[req.pk]))
-        self.assertEqual(LeaveRequest.objects.get().status, S.APPROVED)
+        self.assertEqual(LeaveRequest.objects.get().status, S.WAITING)  # the supervisor cannot decide
+        self.login(self.manager)
+        self.client.post(reverse("leave:approve", args=[req.pk]), {"days_given": "abc"})
+        self.assertEqual(LeaveRequest.objects.get().status, S.WAITING)
+        r = self.client.post(reverse("leave:approve", args=[req.pk]), {"days_given": "2"}, follow=True)
+        self.assertContains(r, "legal minimum")
+        req.refresh_from_db()
+        self.assertEqual((req.status, req.days_given, req.last_day_given), (S.APPROVED, Decimal(2), self.monday + timedelta(days=1)))
+
+    def test_guard_cannot_open_everyones_sick_list(self):
+        self.login(self.staff_a1)
+        self.assertEqual(self.client.get(reverse("leave:sick_list")).status_code, 403)
 
     def test_allowances_manager_only(self):
         # Leave days per person are no longer used (Frank's leave rules); only the Manager can still open them.
@@ -307,3 +377,19 @@ class SickLeaveTests(LeaveBase):
                                                             "sheet": SimpleUploadedFile("x.exe", b"MZ....")})
         self.assertEqual(r.status_code, 200)
         self.assertFalse(SickLeave.objects.exists())
+
+
+class OnLeaveChipTests(LeaveBase):
+    def test_people_rows_say_on_leave_until_the_last_day_given(self):
+        # LEAVE-06: Team today, Guards today and the day sheet all read these rows.
+        from accounts.models import User
+        from attendance.services import people_on
+
+        today = timezone.localdate()
+        req = services.ask_for_leave(self.staff_a1, self.annual, today, today + timedelta(days=20), "", self.staff_a1)
+        services.decide(req, self.manager, True, days_given=1)
+        row = people_on(today, User.objects.filter(pk=self.staff_a1.pk))[0]
+        self.assertEqual(row["state"], "on_leave")
+        self.assertEqual(row["label"], f"On leave until {today.day} {today:%b}")
+        tomorrow = people_on(today + timedelta(days=1), User.objects.filter(pk=self.staff_a1.pk))[0]
+        self.assertNotEqual(tomorrow["state"], "on_leave")
