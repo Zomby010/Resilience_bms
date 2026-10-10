@@ -1,0 +1,9 @@
+{# "N things need you", grouped by who sent them. Needs todo_groups and todo_count (core.todo.context). #}
+<section class="card todo-card" id="todo" aria-labelledby="todo-title">
+  <div class="todo-head"><h2 id="todo-title">{% if todo_count %}<span class="n">{{ todo_count }}</span> thing{{ todo_count|pluralize }} need{{ todo_count|pluralize:"s," }} you{% else %}Nothing needs you right now{% endif %}</h2></div>
+  {% if not todo_count %}<p class="muted">{{ empty_text|default:"New things will appear here as they arrive." }}</p>{% endif %}
+  {% for label, rows in todo_groups %}
+    <h3 class="todo-group">{{ label }} <span class="muted small">({{ rows|length }})</span></h3>
+    <ul class="todo-list">{% for t in rows %}{% include "partials/todo_row.html" %}{% endfor %}</ul>
+  {% endfor %}
+</section>

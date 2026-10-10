@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 
 from accounts.models import Role
@@ -88,4 +89,8 @@ class ActionView(RoleRequiredMixin, View):
         else:
             if msg:
                 messages.success(request, msg)
+        # A to-do row sends `next` so a one-tap answer goes back to the list it was on.
+        nxt = request.POST.get("next", "")
+        if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+            return redirect(nxt)
         return redirect(self.get_success_url())

@@ -90,7 +90,8 @@ class ManagerFlagTests(OpsTestCase):
         self.item.refresh_from_db()
         self.assertTrue(self.item.needs_manager_approval)
         self.assertEqual(self.item.flag_changed_by, self.manager)
-        self.assertTrue(Notification.objects.filter(recipient=self.secretary, kind="item.flags_changed").exists())
+        # NOTE-01: a settings change is not news for the Secretary (it is in the audit log).
+        self.assertFalse(Notification.objects.filter(recipient=self.secretary, kind="item.flags_changed").exists())
         self.client.post(url, {})
         self.item.refresh_from_db()
         self.assertFalse(self.item.needs_manager_approval)

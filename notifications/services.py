@@ -31,5 +31,12 @@ def notify_role(role, kind, title, message="", link="", priority=Notification.Pr
     return notify(users, kind, title, message, link, priority, entity)
 
 
+def fyi(qs):
+    """Leave out notices whose subject is already on the person's to-do list (one inbox, not two)."""
+    from core.todo import TODO_KINDS
+
+    return qs.exclude(kind__in=TODO_KINDS)
+
+
 def unread_count(user):
-    return Notification.objects.filter(recipient=user, read_at__isnull=True).count()
+    return fyi(Notification.objects.filter(recipient=user, read_at__isnull=True)).count()

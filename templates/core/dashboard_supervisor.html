@@ -1,69 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Supervisor dashboard{% endblock %}
+{% block title %}Today{% endblock %}
 {% block content %}
-<div class="page-head">
-  <div><h1>Welcome, {{ user.first_name|default:user.username }}</h1><p class="muted">Your team and the reports waiting for you.</p></div>
-  <a class="btn" href="{% url 'reports:create' %}">Submit a report to management</a>
-</div>
+<div class="page-head"><div><h1>Welcome, {{ user.first_name|default:user.username }}</h1></div></div>
 
-{% include "attendance/_team_card.html" %}
-{% if team_leave_waiting %}<div class="warn"><strong>{{ team_leave_waiting }} leave request{{ team_leave_waiting|pluralize }} from your team waiting for your answer.</strong> <a href="{% url 'leave:request_list' %}?show=decide">Open them</a></div>{% endif %}
+{% include "core/_todo_list.html" with empty_text="Sign-ins to approve, guard reports, client issues and incidents will appear here." %}
+
 <div class="grid two">
   {% include "attendance/_my_card.html" %}
-  <div class="card"><h2>Quick links</h2><div class="actions">
-    <a class="btn secondary" href="{% url 'operations:team_today' %}">My team today</a>
-    <a class="btn secondary" href="{% url 'operations:visit_create' %}">Record a site visit</a>
-    <a class="btn secondary" href="{% url 'operations:ob' %}">Occurrence Book</a>
-    <a class="btn secondary" href="{% url 'incidents:create' %}">Report an incident</a>
-    <a class="btn secondary" href="{% url 'leave:mine' %}">My leave</a></div></div>
+  {% include "attendance/_team_card.html" %}
 </div>
-
 {% if location_state %}{% include "tracking/_location_card.html" %}{% endif %}
-
-<div class="grid two">
-  <div class="card">
-    <h2>My client issues {% if my_urgent_count %}<span class="badge off">{{ my_urgent_count }} urgent</span>{% endif %} <a class="small" href="{% url 'clients:issue_list' %}">View all</a></h2>
-    <ul class="timeline">{% for i in my_issues %}<li><a href="{{ i.get_absolute_url }}"><strong>{{ i.number }}</strong> {{ i.subject }}</a><br><span class="small muted">{{ i.client }}</span> {% badge i "priority" %} {% badge i %}</li>{% empty %}<li class="empty">No open client issues for you.</li>{% endfor %}</ul>
-  </div>
-  {% include "core/_my_items_card.html" %}
-</div>
-
-<div class="grid kpis">
-  <div class="kpi {% if to_review_count %}soon{% endif %}"><div class="num">{{ to_review_count }}</div><div class="lbl">Awaiting your review</div></div>
-  <div class="kpi"><div class="num">{{ team|length }}</div><div class="lbl">Guards on your team</div></div>
-  <div class="kpi"><div class="num">{{ team_report_count }}</div><div class="lbl">Team reports</div></div>
-  <div class="kpi"><div class="num">{{ feedback_given }}</div><div class="lbl">Feedback given</div></div>
-</div>
-
-<div class="grid two">
-  <div class="card">
-    <h2>To review <a class="small" href="{% url 'reports:list' %}?scope=team&amp;status=pending">View all</a></h2>
-    <div class="table-wrap"><table><tbody>
-      {% for r in to_review %}
-        <tr><td><a href="{{ r.get_absolute_url }}">{{ r.title }}</a><br><span class="muted small">{{ r.author }} &middot; {{ r.created_at|date:"d M, H:i" }}</span></td></tr>
-      {% empty %}<tr><td class="empty">Nothing waiting. Nice work.</td></tr>{% endfor %}
-    </tbody></table></div>
-  </div>
-  <div class="card">
-    <h2>My team</h2>
-    <div class="table-wrap"><table>
-      <thead><tr><th>Name</th><th class="num">Reports</th><th class="num">Open</th></tr></thead>
-      <tbody>
-      {% for m in team %}
-        <tr><td>{{ m }}</td><td class="num">{{ m.report_count }}</td><td class="num">{{ m.open_count }}</td></tr>
-      {% empty %}<tr><td colspan="3" class="empty">No guards are assigned to you yet. Ask the Manager.</td></tr>{% endfor %}
-      </tbody>
-    </table></div>
-  </div>
-</div>
-
-<div class="card">
-  <h2>My reports to management <a class="small" href="{% url 'reports:list' %}?scope=mine">View all</a></h2>
-  <div class="table-wrap"><table><tbody>
-    {% for r in my_reports %}
-      <tr><td><a href="{{ r.get_absolute_url }}">{{ r.title }}</a></td><td>{{ r.created_at|date:"d M Y" }}</td>
-      <td class="right">{% include "partials/status.html" with status=r.status label=r.get_status_display %}</td></tr>
-    {% empty %}<tr><td class="empty">You have not submitted any reports.</td></tr>{% endfor %}
-  </tbody></table></div>
+<div class="actions" style="margin-bottom:1rem">
+  <a class="btn big secondary" href="{% url 'operations:visit_create' %}">Record a site visit</a>
+  <a class="btn big secondary" href="{% url 'incidents:create' %}">Report an incident</a>
+  <a class="btn big secondary" href="{% url 'reports:create' %}">Send a report to management</a>
 </div>
 {% endblock %}

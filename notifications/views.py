@@ -10,6 +10,7 @@ from core.filters import apply_dates
 from core.mixins import FilterContextMixin
 
 from .models import Notification
+from .services import fyi
 
 
 class InboxView(LoginRequiredMixin, FilterContextMixin, ListView):
@@ -19,6 +20,8 @@ class InboxView(LoginRequiredMixin, FilterContextMixin, ListView):
 
     def get_queryset(self):
         qs = Notification.objects.filter(recipient=self.request.user)
+        if self.request.GET.get("all") != "1":
+            qs = fyi(qs)
         if self.request.GET.get("unread") == "1":
             qs = qs.filter(read_at__isnull=True)
         return apply_dates(qs, self.request.GET, "created_at")

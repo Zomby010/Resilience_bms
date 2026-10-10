@@ -2,7 +2,7 @@
 {% block title %}Notifications{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Notifications</h1><p class="muted">Messages from the system about things that need you. Tap one to open it.</p></div>
+  <div><h1>Notifications</h1><p class="muted">News for you. Things you need to act on are on your <a href="{% url 'core:home' %}">to-do list</a>.{% if f.all == '1' %} Showing everything, including to-dos. <a href="{% url 'notifications:inbox' %}">Show news only</a>{% else %} <a href="?all=1">Show everything</a>{% endif %}</p></div>
   <form method="post" action="{% url 'notifications:read_all' %}">{% csrf_token %}<button class="btn secondary" type="submit">Mark all as read</button></form>
 </div>
 <div class="card">
@@ -11,7 +11,7 @@
     <a href="?unread=1{% if date_query %}&amp;{{ date_query }}{% endif %}" class="{% if f.unread == '1' %}on{% endif %}">Unread{% if unread_notifications %} ({{ unread_notifications }}){% endif %}</a>
   </div>
   <form method="get" class="filters">
-    {% if f.unread == '1' %}<input type="hidden" name="unread" value="1">{% endif %}
+    {% if f.unread == '1' %}<input type="hidden" name="unread" value="1">{% endif %}{% if f.all == '1' %}<input type="hidden" name="all" value="1">{% endif %}
     <div><label for="from">From</label><input id="from" type="date" name="from" value="{{ f.from }}"></div>
     <div><label for="to">To</label><input id="to" type="date" name="to" value="{{ f.to }}"></div>
     <button class="btn secondary" type="submit">Filter</button>
