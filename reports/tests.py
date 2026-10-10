@@ -159,7 +159,9 @@ class ReportSubmitEditTests(CompanyTestCase):
         report.refresh_from_db()
         self.assertEqual(report.title, "New")
         report.add_reply(self.sup_a, "ok")
-        self.assertEqual(self.client.post(url, {"title": "Sneaky", "body": "z"}).status_code, 403)
+        r = self.client.post(url, {"title": "Sneaky", "body": "z"})
+        self.assertEqual(r.status_code, 403)
+        self.assertContains(r, "already been responded to", status_code=403)
         report.refresh_from_db()
         self.assertEqual(report.title, "New")
 

@@ -1,5 +1,7 @@
 from django.contrib import messages
+from django.contrib.auth import views as auth_views
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.messages.views import SuccessMessageMixin
 from django.db.models import Count, Q
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, UpdateView
@@ -7,6 +9,12 @@ from django.views.generic import CreateView, ListView, UpdateView
 from .forms import ProfileForm, UserCreateForm, UserUpdateForm
 from .models import ROLE_CHOICES, Role, User
 from .permissions import RoleRequiredMixin
+
+
+class PasswordChangeView(SuccessMessageMixin, auth_views.PasswordChangeView):
+    template_name = "registration/password_change.html"
+    success_url = reverse_lazy("accounts:profile")
+    success_message = "Your password was changed. Use the new one next time you sign in."
 
 
 class ProfileView(LoginRequiredMixin, UpdateView):

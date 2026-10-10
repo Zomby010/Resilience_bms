@@ -93,3 +93,13 @@ class ProfileAndAuthTests(CompanyTestCase):
         self.assertEqual(self.staff_a1.first_name, "Pete")
         self.assertEqual(self.staff_a1.role, Role.STAFF)
         self.assertEqual(self.staff_a1.supervisor, self.sup_a)
+
+    def test_password_change_confirms_success(self):
+        self.login(self.staff_a1)
+        r = self.client.post(reverse("accounts:password_change"), {
+            "old_password": PASSWORD, "new_password1": "Fresh-Pass-2026", "new_password2": "Fresh-Pass-2026",
+        }, follow=True)
+        self.assertRedirects(r, reverse("accounts:profile"))
+        self.assertContains(r, "Your password was changed")
+        self.staff_a1.refresh_from_db()
+        self.assertTrue(self.staff_a1.check_password("Fresh-Pass-2026"))
