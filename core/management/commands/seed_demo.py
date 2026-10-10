@@ -17,7 +17,7 @@ from django.utils import timezone
 
 from accounts.models import Role, User
 from finance.models import Expense, ExpenseCategory, ExpenseLog
-from reports.models import Report, Status
+from reports.models import Reply, Report, Status
 from tracking.models import Site, TrackingProfile, WorkHours
 
 PEOPLE = [
@@ -84,6 +84,14 @@ class Command(BaseCommand):
                 report.add_reply(author.supervisor, "Reviewed - thanks. Please follow the standard procedure.")
             if roll > 0.55:
                 report.add_reply(users["manager"], "Noted. Thank you for the update.", complete=True)
+            # add_reply stamps "now"; move replies and workflow times back near the report date.
+            stamps = [min(created + timedelta(days=n), now) for n in (1, 2)]
+            for reply, stamp in zip(report.replies.order_by("pk"), stamps):
+                Reply.objects.filter(pk=reply.pk).update(created_at=stamp)
+            Report.objects.filter(pk=report.pk, reviewed_at__isnull=False).update(reviewed_at=stamps[0])
+            Report.objects.filter(pk=report.pk, completed_at__isnull=False).update(
+                completed_at=stamps[report.replies.count() - 1] if report.replies.exists() else now
+            )
 
         cats = [ExpenseCategory.objects.create(name=n) for n in CATEGORIES]
         for _ in range(40):

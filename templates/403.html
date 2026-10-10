@@ -2,6 +2,6 @@
 {% block title %}Not allowed{% endblock %}
 {% block content %}
 <div class="card"><h1>You do not have access to this page</h1>
-<p class="muted">Your role does not allow this. If you think that is a mistake, contact the Manager.</p>
+<p class="muted">{% if exception %}{{ exception }}{% else %}Your role does not allow this. If you think that is a mistake, contact the Manager.{% endif %}</p>
 <a class="btn" href="{% url 'core:home' %}">Back to dashboard</a></div>
 {% endblock %}
