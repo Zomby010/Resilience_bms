@@ -1,11 +1,12 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q, Sum
+import logging
 import secrets
 
 from django.conf import settings
 from django.http import FileResponse, Http404, JsonResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.views import View
@@ -173,3 +174,20 @@ class CronDailyView(View):
         tracking.evaluate_alerts()
         result["location_records_deleted"] = tracking.purge_history()
         return JsonResponse(result)
+
+
+csrf_log = logging.getLogger("django.security.csrf")
+
+
+def csrf_failure(request, reason=""):
+    """A form was refused by the CSRF check: log why, and show a plain "try again" page."""
+    csrf_log.warning(
+        "CSRF failure: %s (host=%s origin=%s referer=%s secure=%s csrf_cookie=%s)",
+        reason,
+        request.get_host(),
+        request.META.get("HTTP_ORIGIN", "-"),
+        request.META.get("HTTP_REFERER", "-"),
+        request.is_secure(),
+        "yes" if settings.CSRF_COOKIE_NAME in request.COOKIES else "no",
+    )
+    return render(request, "csrf_failure.html", status=403)

@@ -38,8 +38,40 @@ if not SECRET_KEY:
     else:
         raise RuntimeError("Set DJANGO_SECRET_KEY (or DJANGO_DEBUG=1 for local development).")
 
-ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
-CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
+def _env_list(name, default=""):
+    return [v.strip() for v in os.environ.get(name, default).split(",") if v.strip()]
+
+
+ALLOWED_HOSTS = _env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+# Vercel names the deployment's own addresses (its *.vercel.app URLs and the production domain);
+# accept them so a new domain or preview works without editing the host list first.
+for _name in ("VERCEL_URL", "VERCEL_BRANCH_URL", "VERCEL_PROJECT_PRODUCTION_URL"):
+    _host = os.environ.get(_name, "").strip()
+    if _host and _host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_host)
+
+# Forms posted from any address the site answers on are trusted, so a new domain or subdomain
+# (e.g. app.example.com behind Cloudflare) only needs adding to DJANGO_ALLOWED_HOSTS.
+# DJANGO_CSRF_TRUSTED_ORIGINS adds further origins; a value without a scheme gets https://.
+CSRF_TRUSTED_ORIGINS = [o if "://" in o else f"https://{o}" for o in _env_list("DJANGO_CSRF_TRUSTED_ORIGINS")]
+for _host in ALLOWED_HOSTS:
+    if _host in ("*", "localhost", "127.0.0.1", "[::1]"):
+        continue
+    _origin = f"https://*{_host}" if _host.startswith(".") else f"https://{_host}"
+    if _origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(_origin)
+
+# A failed form check shows a plain "page expired" page and logs why (visible in the host's logs).
+CSRF_FAILURE_VIEW = "core.views.csrf_failure"
+
+# Warnings and errors go to the console, which is what the hosting logs (e.g. Vercel's) show.
+# Django's own default prints nothing to the console once DEBUG is off.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "root": {"handlers": ["console"], "level": "WARNING"},
+}
 
 INSTALLED_APPS = [
     "django.contrib.admin",
