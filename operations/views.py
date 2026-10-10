@@ -142,10 +142,22 @@ class SiteEditView(RoleRequiredMixin, UpdateView):
 # --- my team today -------------------------------------------------------------------
 
 class TeamTodayView(RoleRequiredMixin, TemplateView):
-    """Each guard's status today in plain words. No map and no coordinates."""
+    """Each guard's status today in plain words. No map and no coordinates.
+
+    ATT-03: merged into one page per role. Supervisors use My team ▸ Today (attendance:team) and the Manager
+    the day sheet, so a plain visit goes there. The Manager can still filter by site or supervisor here
+    (the day sheet links to it), which keeps "items held" per guard visible.
+    """
 
     allowed_roles = (Role.SUPERVISOR, Role.MANAGER)
     template_name = "operations/team_today.html"
+
+    def get(self, request, *args, **kwargs):
+        if request.user.role == Role.SUPERVISOR:
+            return redirect("attendance:team")
+        if not request.GET:
+            return redirect("attendance:day")
+        return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         user, g = self.request.user, self.request.GET

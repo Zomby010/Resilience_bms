@@ -1,23 +1,34 @@
-{# The small "My attendance today" card. Needs `att` from attendance.services.my_today. #}
+{# One status card for Today (ATT-04): sign-in, sign-out and location together. Needs `att` from attendance.services.my_today; `location_state` is optional. #}
 {% load static %}
-<div class="card att-card">
-  <h2>My attendance today</h2>
+<div class="card att-card" id="today-status">
+  <h2>Today</h2>
+  <p class="status-line">
+    {% if att.record.status == 'rejected' %}<span class="st bad">✖ Sign-in not accepted</span>
+    {% elif att.record.signed_in_at %}<span class="st ok">✔ Signed in {{ att.record.signed_in_at|time:"H:i" }}{% if att.record.late_minutes %} ({{ att.record.late_minutes }} min late){% endif %}</span>{% if att.record.signed_out_at %} <span class="st">· Out {{ att.record.signed_out_at|time:"H:i" }}</span>{% endif %}
+    {% elif att.record %}<span class="st">{{ att.record.get_outcome_display }}</span>
+    {% elif att.can_sign_in %}<span class="st warn">○ Not signed in yet</span>
+    {% elif att.row %}<span class="st">{{ att.row.label }}</span>{% endif %}
+    {% if location_state %}<span class="st-sep">·</span>{% if location_state.tracking_on %}<span class="st ok">✔ Location is on</span>{% else %}<a class="st warn" href="#loc-toggle">⚠ Location is off: turn it on</a>{% endif %}{% endif %}
+  </p>
   {% if att.record %}
-    <p class="status-big">{{ att.record.get_outcome_display }}{% if att.record.signed_in_at %}, signed in at {{ att.record.signed_in_at|time:"H:i" }}{% endif %}</p>
-    <p>{% badge att.record %}{% if att.record.late_minutes %} <span class="small">{{ att.record.late_minutes }} minutes late</span>{% endif %}</p>
+    <p>{% badge att.record %}{% if att.record.method == 'no_location' %} <span class="small muted">Without location: {{ att.record.get_manual_reason_display }}</span>{% endif %}</p>
     {% if att.record.status == 'rejected' %}<div class="warn">Not accepted: {{ att.record.supervisor_note }}</div>{% endif %}
-  {% elif att.row %}
-    <p class="status-big">{{ att.row.label }}</p>
   {% endif %}
   {% if att.can_sign_in %}
     <p>Sign in when you arrive at <strong>{{ att.site }}</strong>. Your phone's location is checked once.</p>
     <button id="sign-in-btn" class="btn big wide" type="button" data-url="{% url 'attendance:api_sign_in' %}">Sign in now</button>
     <p id="sign-in-msg" class="loc-msg" role="status" aria-live="polite"></p>
-    <script src="{% static 'js/attendance.js' %}" defer></script>
+    {% url 'attendance:sign_in_no_location' as no_loc_url %}
+    {% include "attendance/_no_location.html" with action=no_loc_url reasons=att.reasons label="Sign in without location" with_note=True %}
   {% elif not att.site %}
     <p class="muted">You have no site yet. The Manager assigns your site.</p>
   {% elif att.hint and not att.record %}
     <p class="muted">{{ att.hint }}</p>
   {% endif %}
+  {% if att.open %}
+    {% include "attendance/_sign_out.html" with rec=att.open reasons=att.reasons today=att.today %}
+  {% endif %}
+  {% if location_state %}{% include "tracking/_location_card.html" with inline=True %}{% endif %}
   <p class="small"><a href="{% url 'attendance:mine' %}">My attendance history</a></p>
+  {% if att.can_sign_in or att.open %}<script src="{% static 'js/attendance.js' %}" defer></script>{% endif %}
 </div>

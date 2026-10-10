@@ -10,7 +10,7 @@ from accounts.models import Role, User
 from core.models import CompanySettings
 from core.services import audit
 from core.workflow import TransitionError, advance, require
-from notifications.services import notify
+from notifications.services import notify, notify_role
 from tracking import geo
 from tracking import services as tracking
 from tracking.models import LocationStatus, TrackingProfile
@@ -84,16 +84,10 @@ def _late_minutes(start, at):
 
 # --- signing in -------------------------------------------------------------------
 
-@transaction.atomic
-def sign_in(user, data, now=None):
-    """Sign `user` in at their site. Only the logged-in person can sign themself in."""
-    now = now or timezone.now()
+def _shift_to_sign_in(user, now):
+    """(profile, site, day, shift start) for the shift `user` may sign in to now. Refuses with plain words."""
     if user.role not in tracking.TRACKED_ROLES:
         raise AttendanceError("Only guards and supervisors sign in.")
-    try:
-        lat, lng, accuracy, _ = tracking.parse_update(data, now)
-    except tracking.LocationError as exc:
-        raise AttendanceError(str(exc))
     profile = TrackingProfile.objects.select_for_update(of=("self",)).select_related("site").get(pk=tracking.profile_for(user).pk)
     site = profile.site
     if site is None or not site.is_active:
@@ -112,13 +106,29 @@ def sign_in(user, data, now=None):
     if existing:
         when = f" at {timezone.localtime(existing.signed_in_at):%H:%M}" if existing.signed_in_at else ""
         raise AttendanceError(f"You are already recorded for today{when}: {existing.get_outcome_display()}.")
+    return profile, site, day, start
+
+
+@transaction.atomic
+def sign_in(user, data, now=None):
+    """Sign `user` in at their site. Only the logged-in person can sign themself in."""
+    now = now or timezone.now()
+    if user.role not in tracking.TRACKED_ROLES:
+        raise AttendanceError("Only guards and supervisors sign in.")
+    try:
+        lat, lng, accuracy, _ = tracking.parse_update(data, now)
+    except tracking.LocationError as exc:
+        raise AttendanceError(str(exc))
+    profile, site, day, start = _shift_to_sign_in(user, now)
 
     distance = geo.distance_m(site.latitude, site.longitude, lat, lng)
     status = geo.classify(distance, accuracy, site.radius_m)
     if status == LocationStatus.WEAK:
-        raise AttendanceError(f"Your GPS is not accurate enough (±{accuracy:.0f} m). Go outside, wait a minute and try again.")
+        raise AttendanceError(f"Your GPS is not accurate enough (±{accuracy:.0f} m). Go outside, wait a minute and try "
+                              "again, or sign in without location.")
     if status == LocationStatus.OFF:
-        raise AttendanceError(f"You are about {distance:.0f} m from {site}. You must be at the site to sign in.")
+        raise AttendanceError(f"You are about {distance:.0f} m from {site}. You must be at the site to sign in. "
+                              "If the GPS shows the wrong place, sign in without location.")
 
     late = _late_minutes(start, now)
     supervisor = approver_for(user)
@@ -135,10 +145,99 @@ def sign_in(user, data, now=None):
     return rec
 
 
+def _reason(value):
+    if value not in AttendanceRecord.Reason.values:
+        raise AttendanceError("Choose why the location could not be used.")
+    return value
+
+
+@transaction.atomic
+def sign_in_without_location(user, reason, note="", now=None):
+    """ATT-01: the server stamps the time and the person says why the phone's location could not be used.
+
+    A guard's goes to their supervisor to approve; a supervisor's goes to the Manager (it waits as
+    "waiting for approval" with no supervisor, so only the Manager can approve it).
+    """
+    now = now or timezone.now()
+    reason = _reason(reason)
+    _profile, site, day, start = _shift_to_sign_in(user, now)
+    late = _late_minutes(start, now)
+    supervisor = approver_for(user)
+    rec = AttendanceRecord.objects.create(
+        user=user, date=day, site=site, supervisor=supervisor, outcome=O.LATE if late else O.PRESENT,
+        status=S.WAITING_SUPERVISOR, method=M.NO_LOCATION, signed_in_at=now, shift_start=start, late_minutes=late,
+        manual_reason=reason, note=(note or "").strip()[:255], marked_by=user,
+    )
+    why = rec.get_manual_reason_display()
+    audit.record(user, "attendance.signed_in", rec, f"{user} signed in without location at {site} ({why})")
+    title = f"{user} signed in without location"
+    text = f"At {site}, {timezone.localtime(now):%H:%M}. Reason: {why}."
+    if supervisor:
+        notify(supervisor, "attendance.no_location", title, text, _team_url(day), entity=rec)
+    else:
+        notify_role(Role.MANAGER, "attendance.no_location", title, text, _day_url(day), entity=rec)
+    return rec
+
+
+def no_location_this_month(user, now=None):
+    today = timezone.localdate(now or timezone.now())
+    return AttendanceRecord.objects.filter(user=user, method=M.NO_LOCATION, date__year=today.year,
+                                           date__month=today.month).count()
+
+
+# --- signing out (recorded, never approved) ---------------------------------------------
+
+def can_sign_out(user, rec, now=None):
+    """Your own sign-in from today or yesterday (a night shift), not yet signed out."""
+    today = timezone.localdate(now or timezone.now())
+    return (rec.user_id == user.pk and rec.signed_in_at is not None and rec.signed_out_at is None
+            and rec.status != S.REJECTED and rec.date >= today - timedelta(days=1))
+
+
+def open_sign_in(user, now=None):
+    """The sign-in `user` can still sign out of, or None."""
+    today = timezone.localdate(now or timezone.now())
+    return (AttendanceRecord.objects.filter(user=user, date__gte=today - timedelta(days=1), signed_in_at__isnull=False,
+                                            signed_out_at__isnull=True).exclude(status=S.REJECTED)
+            .select_related("site").order_by("-date").first())
+
+
+@transaction.atomic
+def sign_out(rec, user, data=None, reason="", now=None):
+    """ATT-02: with the phone's position when possible, otherwise with a reason. Nothing to approve."""
+    now = now or timezone.now()
+    rec = AttendanceRecord.objects.select_for_update().select_related("site").get(pk=rec.pk)
+    if not can_sign_out(user, rec, now):
+        raise AttendanceError("You cannot sign out of this day. It may already be signed out.")
+    fields = {"signed_out_at": now}
+    if data is not None:
+        try:
+            lat, lng, _accuracy, _ = tracking.parse_update(data, now)
+        except tracking.LocationError as exc:
+            raise AttendanceError(str(exc))
+        fields["sign_out_method"] = AttendanceRecord.OutMethod.GPS
+        if rec.site:
+            fields["sign_out_distance_m"] = round(geo.distance_m(rec.site.latitude, rec.site.longitude, lat, lng), 1)
+    else:
+        fields["sign_out_method"] = AttendanceRecord.OutMethod.NO_LOCATION
+        fields["sign_out_reason"] = _reason(reason)
+    AttendanceRecord.objects.filter(pk=rec.pk).update(**fields, updated_at=now)
+    for k, v in fields.items():
+        setattr(rec, k, v)
+    audit.record(user, "attendance.signed_out", rec, f"{user} signed out ({rec.get_sign_out_method_display().lower()})")
+    return rec
+
+
 def _team_url(day):
     from django.urls import reverse
 
     return reverse("attendance:team") + f"?date={day}"
+
+
+def _day_url(day):
+    from django.urls import reverse
+
+    return reverse("attendance:day") + f"?date={day}"
 
 
 # --- supervisor and Manager decisions --------------------------------------------------
@@ -445,6 +544,7 @@ def my_today(user, now=None):
     can_sign_in = bool(profile.site_id and shift and record is None and not day_completed(day))
     return {
         "row": row, "record": record, "can_sign_in": can_sign_in, "site": profile.site,
+        "open": open_sign_in(user, now), "today": timezone.localdate(now), "reasons": AttendanceRecord.Reason.choices,
         "hint": "" if shift or not hours else _next_shift_text(hours, now),
         "recent": AttendanceRecord.objects.filter(user=user).select_related("site")[:7],
     }

@@ -216,8 +216,11 @@ def _seed_site_operations(users, sites):
     today = timezone.localdate()
     yesterday = today - timedelta(days=1)
 
+    now = timezone.now()
+
     def at(day, hh, mm):
-        return timezone.make_aware(datetime.combine(day, time(hh, mm)))
+        # Never in the future, so the demo also seeds early in the morning.
+        return min(timezone.make_aware(datetime.combine(day, time(hh, mm))), now - timedelta(minutes=1))
 
     for username, day, hh, mm in (("staff1", yesterday, 6, 55), ("staff3", yesterday, 7, 30), ("supervisor1", yesterday, 6, 50)):
         user = users[username]
@@ -226,6 +229,9 @@ def _seed_site_operations(users, sites):
             user=user, date=day, site=user.tracking.site, supervisor=attendance.approver_for(user),
             outcome="late" if late else "present", status="waiting_manager", method="gps", signed_in_at=at(day, hh, mm),
             shift_start=at(day, 7, 0), late_minutes=late + 15 if late else 0, distance_m=12, location_status="on",
+            # Sign-out is recorded, not approved; staff3 forgot, so their day shows "No sign-out".
+            signed_out_at=None if username == "staff3" else at(day, 18, 5), sign_out_method="" if username == "staff3" else "gps",
+            sign_out_distance_m=None if username == "staff3" else 15,
         )
     if yesterday.weekday() < 6:
         attendance.complete_day(yesterday, mgr)
@@ -237,6 +243,12 @@ def _seed_site_operations(users, sites):
                 status=status, method="gps", signed_in_at=at(today, 6, 50), shift_start=at(today, 7, 0),
                 distance_m=9, location_status="on",
             )
+        # A supervisor whose phone could not get a location: it goes to the Manager to approve.
+        sup = users["supervisor1"]
+        AttendanceRecord.objects.create(
+            user=sup, date=today, site=sup.tracking.site, supervisor=None, outcome="present", status="waiting_supervisor",
+            method="no_location", manual_reason="no_signal", signed_in_at=at(today, 6, 45), shift_start=at(today, 7, 0),
+        )
 
     annual = LeaveType.objects.get(code="annual")
     leave.ask_for_leave(users["staff2"], annual, today + timedelta(days=14), today + timedelta(days=18), "Family visit", users["staff2"])

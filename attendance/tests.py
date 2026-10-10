@@ -158,7 +158,9 @@ class PageTests(AttendanceBase):
     def test_people_rows_have_no_coordinates(self):
         services.sign_in(self.staff_a1, ON_SITE, now=at(self.day, 6, 0))
         self.login(self.sup_a)
-        r = self.client.get(reverse("operations:team_today"))
+        # ATT-03: the supervisor's one "My team ▸ Today" page (the old team-today address redirects here).
+        r = self.client.get(reverse("operations:team_today"), follow=True)
+        self.assertEqual(r.redirect_chain[-1][0], reverse("attendance:team"))
         self.assertEqual(r.status_code, 200)
         self.assertNotContains(r, str(ON_SITE["latitude"]))
         self.assertNotContains(r, "34.768")
@@ -200,3 +202,145 @@ class PageTests(AttendanceBase):
         self.assertLess(html.index('id="todo"'), html.index('id="picture-title"'))
         self.assertIn(reverse("attendance:day"), html)
         self.assertNotIn('class="chart"', html)
+
+
+class WithoutLocationTests(AttendanceBase):
+    """ATT-01 and Q7: sign in without location, with a reason; the server stamps the time."""
+
+    def test_guard_goes_to_supervisor_with_reason(self):
+        rec = services.sign_in_without_location(self.staff_a1, "no_signal", now=at(self.day, 6, 20))
+        self.assertEqual((rec.method, rec.status, rec.supervisor, rec.manual_reason),
+                         ("no_location", S.WAITING_SUPERVISOR, self.sup_a, "no_signal"))
+        self.assertEqual(rec.signed_in_at, at(self.day, 6, 20))
+        self.assertIsNone(rec.latitude)
+        self.assertTrue(self.sup_a.notifications.filter(kind="attendance.no_location").exists())
+        from core.todo import todos_for
+
+        todo = [t for t in todos_for(self.sup_a) if t.sender == self.staff_a1][0]
+        self.assertIn("No location: No signal", todo.summary)
+        self.assertIn("without location", todo.actions[0].confirm)
+
+    def test_supervisor_goes_to_the_manager(self):
+        rec = services.sign_in_without_location(self.sup_a, "phone", now=at(self.day, 6, 0))
+        self.assertIsNone(rec.supervisor)
+        self.assertTrue(self.manager.notifications.filter(kind="attendance.no_location").exists())
+        self.assertFalse(services.can_approve(self.sup_b, rec))
+        from core.todo import todos_for
+
+        self.assertTrue(any(t.sender == self.sup_a and "without location" in t.summary for t in todos_for(self.manager)))
+        services.approve(rec, self.manager)
+        self.assertEqual(AttendanceRecord.objects.get(pk=rec.pk).status, S.WAITING_MANAGER)
+
+    def test_reason_is_needed_and_same_shift_rules_apply(self):
+        with self.assertRaises(ValidationError):
+            services.sign_in_without_location(self.staff_a1, "", now=at(self.day, 6, 0))
+        with self.assertRaisesMessage(ValidationError, "You can sign in from 05:00"):
+            services.sign_in_without_location(self.staff_a1, "other", now=at(self.day, 4, 0))
+        services.sign_in_without_location(self.staff_a1, "other", now=at(self.day, 6, 0))
+        with self.assertRaisesMessage(ValidationError, "already recorded"):
+            services.sign_in_without_location(self.staff_a1, "other", now=at(self.day, 6, 5))
+        with self.assertRaises(ValidationError):
+            services.sign_in_without_location(self.secretary, "other", now=at(self.day, 6, 0))
+
+    def test_third_in_a_month_is_a_manager_to_do(self):
+        from core.todo import todos_for
+
+        first = self.day.replace(day=1)
+        for i in range(2):
+            AttendanceRecord.objects.create(user=self.staff_a1, date=first + timedelta(days=i), site=self.site, outcome=O.PRESENT,
+                                            status=S.COMPLETED, method="no_location", manual_reason="no_signal")
+        self.assertFalse(any("times this month" in t.summary for t in todos_for(self.manager)))
+        services.sign_in_without_location(self.staff_a1, "wrong_place", now=at(self.day, 6, 0)) if self.day.day > 2 else \
+            AttendanceRecord.objects.create(user=self.staff_a1, date=first + timedelta(days=2), site=self.site,
+                                            outcome=O.PRESENT, status=S.WAITING_SUPERVISOR, method="no_location")
+        todo = [t for t in todos_for(self.manager) if "times this month" in t.summary][0]
+        self.assertEqual((todo.summary, todo.actions[0].label), (f"{self.staff_a1} signed in without location 3 times this month", "Check this"))
+        self.login(self.manager)
+        r = self.client.get(todo.url)
+        self.assertEqual(len(r.context["records"]), 3)
+
+    def test_form_view(self):
+        self.login(self.staff_a1)
+        with mock.patch("attendance.services.timezone.now", return_value=at(self.day, 6, 5)):
+            r = self.client.post(reverse("attendance:sign_in_no_location"), {"reason": "phone", "note": "Screen cracked"})
+        self.assertRedirects(r, reverse("core:home"), fetch_redirect_response=False)
+        rec = AttendanceRecord.objects.get()
+        self.assertEqual((rec.method, rec.note, rec.marked_by), ("no_location", "Screen cracked", self.staff_a1))
+        self.login(self.secretary)
+        self.assertEqual(self.client.post(reverse("attendance:sign_in_no_location"), {"reason": "phone"}).status_code, 403)
+
+
+class SignOutTests(AttendanceBase):
+    """ATT-02 and Q8: sign-out is recorded, never approved, and never filled in."""
+
+    def test_sign_out_with_location_records_time_and_distance(self):
+        rec = services.sign_in(self.staff_a1, ON_SITE, now=at(self.day, 6, 50))
+        services.sign_out(rec, self.staff_a1, FAR_AWAY, now=at(self.day, 18, 5))
+        rec.refresh_from_db()
+        self.assertEqual((rec.sign_out_method, rec.status), ("gps", S.WAITING_SUPERVISOR))  # nothing to approve
+        self.assertGreater(rec.sign_out_distance_m, 1000)
+        self.assertIn("In 06:50 · Out 18:05 · 11 h 15 m", rec.in_out)
+
+    def test_sign_out_without_location_needs_a_reason(self):
+        rec = services.sign_in(self.staff_a1, ON_SITE, now=at(self.day, 6, 0))
+        with self.assertRaises(ValidationError):
+            services.sign_out(rec, self.staff_a1, reason="", now=at(self.day, 18, 0))
+        services.sign_out(rec, self.staff_a1, reason="no_signal", now=at(self.day, 18, 0))
+        rec.refresh_from_db()
+        self.assertEqual((rec.sign_out_method, rec.sign_out_reason), ("no_location", "no_signal"))
+        with self.assertRaises(ValidationError):  # only once
+            services.sign_out(rec, self.staff_a1, reason="no_signal", now=at(self.day, 18, 5))
+
+    def test_only_your_own_recent_day(self):
+        rec = services.sign_in(self.staff_a1, ON_SITE, now=at(self.day, 6, 0))
+        with self.assertRaises(ValidationError):
+            services.sign_out(rec, self.staff_a2, reason="other", now=at(self.day, 18, 0))
+        old = AttendanceRecord.objects.create(user=self.staff_a2, date=self.day - timedelta(days=3), site=self.site,
+                                              outcome=O.PRESENT, status=S.COMPLETED, method="gps",
+                                              signed_in_at=at(self.day - timedelta(days=3), 6))
+        self.assertFalse(services.can_sign_out(self.staff_a2, old))
+        self.assertEqual(old.in_out, "In 06:00 · No sign-out")  # never filled in for them
+
+    def test_completing_the_day_does_not_need_sign_out(self):
+        services.sign_in(self.staff_a1, ON_SITE, now=at(self.day, 6, 0))
+        services.complete_day(self.day, self.manager)
+        rec = AttendanceRecord.objects.get(user=self.staff_a1)
+        self.assertEqual(rec.status, S.COMPLETED)
+        self.assertIsNone(rec.signed_out_at)
+
+    def test_pages_show_in_and_out(self):
+        rec = services.sign_in(self.staff_a1, ON_SITE, now=at(self.day, 6, 50))
+        services.sign_out(rec, self.staff_a1, ON_SITE, now=at(self.day, 18, 5))
+        for user, name in ((self.staff_a1, "attendance:mine"), (self.sup_a, "attendance:team"),
+                           (self.manager, "attendance:day"), (self.manager, "attendance:records")):
+            self.login(user)
+            self.assertContains(self.client.get(reverse(name)), "In 06:50 · Out 18:05 · 11 h 15 m", msg_prefix=name)
+
+    def test_api_and_form(self):
+        rec = services.sign_in(self.staff_a1, ON_SITE, now=at(self.day, 6, 0))
+        self.login(self.staff_a2)
+        self.assertEqual(self.client.post(reverse("attendance:api_sign_out", args=[rec.pk]), ON_SITE,
+                                          content_type="application/json").status_code, 404)
+        self.login(self.staff_a1)
+        r = self.client.post(reverse("attendance:api_sign_out", args=[rec.pk]), ON_SITE, content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertIn("Signed out at", r.json()["message"])
+        rec2 = services.sign_in(self.staff_a2, ON_SITE, now=at(self.day, 6, 0))
+        self.login(self.staff_a2)
+        r = self.client.post(reverse("attendance:sign_out_no_location", args=[rec2.pk]), {"reason": "phone", "next": "mine"})
+        self.assertRedirects(r, reverse("attendance:mine"), fetch_redirect_response=False)
+        self.assertEqual(AttendanceRecord.objects.get(pk=rec2.pk).sign_out_reason, "phone")
+
+
+class TodayCardTests(AttendanceBase):
+    def test_one_status_card_with_sign_in_and_location(self):
+        # ATT-04: "✔ Signed in 06:50 · ⚠ Location is off: turn it on" in one card at the top of Today.
+        services.sign_in(self.staff_a1, ON_SITE, now=at(self.day, 6, 50))
+        self.login(self.staff_a1)
+        page = self.client.get(reverse("core:home")).content.decode()
+        card = page[page.index('id="today-status"'):]
+        card = card[:card.index('id="location-card"')]
+        self.assertIn("✔ Signed in 06:50", card)
+        self.assertIn("⚠ Location is off: turn it on", card)
+        self.assertEqual(page.count('id="location-card"'), 1)
+        self.assertIn("Sign out", page)

@@ -44,9 +44,8 @@ MENUS = {
             T((None, "tracking:mine", ("/notifications/", "/accounts/", "/payslips/"))),
         ]),
         ("👥", "My team", [
-            T(("Who is on duty", "operations:team_today", ())),
-            T(("Sign-ins", "attendance:team", ())),
-            T(("Attendance records", "attendance:records", ())),
+            T(("Today", "attendance:team", ("/operations/team/",))),
+            T(("History", "attendance:records", ())),
             T(("Sick", "leave:sick_list", ())),
             T(("Leave", "leave:request_list", ())),
             T(("Equipment", "operations:equipment", ())),
@@ -118,10 +117,9 @@ MENUS = {
             T((None, "notifications:inbox", ("/accounts/profile/", "/accounts/password", "/payslips/", "/incidents/"))),
         ]),
         ("📊", "Today's picture", [
-            T(("Day sheet", "attendance:day", ())),
-            T(("Who is on duty", "operations:team_today", ())),
+            T(("Day sheet", "attendance:day", ("/operations/team/",))),
+            T(("Records", "attendance:records", ())),
             T(("Live map", "tracking:tracker", ())),
-            T(("Attendance records", "attendance:records", ())),
         ]),
         ("🗓️", "Leave & sick", [
             T(("Requests to decide", "leave:request_list", ())),

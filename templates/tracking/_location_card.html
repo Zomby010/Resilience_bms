@@ -1,10 +1,10 @@
 {% load static %}
 {# Location tracking card for staff and supervisors. Needs `location_state` (services.my_state). #}
-<section class="card location-card" id="location-card"
+<section class="{% if inline %}location-inline{% else %}card{% endif %} location-card" id="location-card"
          data-start="{% url 'tracking:api_start' %}" data-stop="{% url 'tracking:api_stop' %}"
          data-update="{% url 'tracking:api_update' %}" data-me="{% url 'tracking:api_me' %}"
          data-login="{% url 'accounts:login' %}">
-  <h2>Location tracking</h2>
+  {% if inline %}<h3>Location</h3>{% else %}<h2>Location tracking</h2>{% endif %}
   <p class="lead">Turn on your location while you are working. It is used to check that you are at your work site.</p>
 
   <div class="loc-required" id="loc-required"{% if not location_state.tracking_required %} hidden{% endif %} role="alert">

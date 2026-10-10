@@ -179,6 +179,9 @@ class EquipmentTests(OpsBase):
 
     def test_team_today_lists_items_without_location(self):
         self.login(self.sup_a)
-        r = self.client.get(reverse("operations:team_today"))
+        r = self.client.get(reverse("operations:team_today"), follow=True)  # ATT-03: now My team ▸ Today
         self.assertContains(r, "1 x Torch")
         self.assertNotContains(r, "34.76")
+        self.login(self.manager)
+        r = self.client.get(reverse("operations:team_today") + "?site=")  # the Manager's filtered view from the day sheet
+        self.assertContains(r, "1 x Torch")

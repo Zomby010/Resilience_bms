@@ -8,7 +8,7 @@
 <section class="card" aria-labelledby="picture-title">
   <div class="page-head" style="margin-bottom:.5rem"><h2 id="picture-title">Today's picture</h2><a class="btn small secondary" href="{% url 'attendance:day' %}">Open the full board</a></div>
   <div class="grid kpis ops-kpis">
-    <a class="kpi" href="{% url 'operations:team_today' %}"><div class="num">{{ ops.signed_in }}</div><div class="lbl">Signed in today</div><div class="muted small">{{ ops.on_duty }} still on shift{% if ops.late or ops.off_location %} · {{ ops.late }} late · {{ ops.off_location }} off location{% endif %}</div></a>
+    <a class="kpi" href="{% url 'attendance:day' %}"><div class="num">{{ ops.signed_in }}</div><div class="lbl">Signed in today</div><div class="muted small">{{ ops.on_duty }} still on shift{% if ops.late or ops.off_location %} · {{ ops.late }} late · {{ ops.off_location }} off location{% endif %}</div></a>
     <a class="kpi {% if ops.absent %}now{% endif %}" href="{% url 'operations:team_today' %}?state=not_signed_in"><div class="num">{{ ops.absent }}</div><div class="lbl">Absent or not signed in</div></a>
     <a class="kpi" href="{% url 'leave:request_list' %}?status=approved"><div class="num">{{ ops.on_leave }}</div><div class="lbl">On leave today</div></a>
     <a class="kpi" href="{% url 'leave:sick_list' %}?now=1"><div class="num">{{ ops.sick }}</div><div class="lbl">Off sick today</div></a>

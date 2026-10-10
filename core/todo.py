@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 
 from django.urls import reverse
 
-from accounts.models import Role
+from accounts.models import Role, User
 
 # How many rows one source shows on a home page before "See all".
 LIMIT = 20
@@ -199,10 +199,55 @@ def _signins_for_supervisor(user):
             text += f" at {timezone.localtime(when):%H:%M} on {rec.date:%a %d %b}"
         if rec.late_minutes:
             text += f" ({rec.late_minutes} min late)"
+        label = f"Approve {rec.user}'s sign-in?"
+        if rec.method == AttendanceRecord.Method.NO_LOCATION:
+            text += f". No location: {rec.get_manual_reason_display()}"
+            label = f"Approve {rec.user}'s sign-in without location?"
         yield Todo(rec.user, text, reverse("attendance:team") + f"?date={rec.date}",
-                   [approve(reverse("attendance:approve", args=[rec.pk]), f"Approve {rec.user}'s sign-in?"),
+                   [approve(reverse("attendance:approve", args=[rec.pk]), label),
                     open_("Say no", reverse("attendance:team") + f"?date={rec.date}", "secondary")],
                    "Approved sign-ins go to the Manager, who completes the day.", when)
+
+
+def _signins_for_manager():
+    """ATT-01: a supervisor's own sign-in without location comes to the Manager (it has no supervisor)."""
+    from django.utils import timezone
+
+    from attendance.models import AttendanceRecord
+
+    qs = (AttendanceRecord.objects.filter(supervisor__isnull=True, status=AttendanceRecord.Status.WAITING_SUPERVISOR)
+          .select_related("user", "site"))
+    for rec in qs.order_by("date", "signed_in_at")[:LIMIT]:
+        text = f"Signed in without location at {rec.site or 'their site'}"
+        if rec.signed_in_at:
+            text += f" at {timezone.localtime(rec.signed_in_at):%H:%M} on {rec.date:%a %d %b}"
+        text += f". Reason: {rec.get_manual_reason_display() or 'none given'}"
+        url = reverse("attendance:day") + f"?date={rec.date}"
+        yield Todo(rec.user, text, url,
+                   [approve(reverse("attendance:approve", args=[rec.pk]), f"Approve {rec.user}'s sign-in without location?"),
+                    open_("Say no", url, "secondary")],
+                   "Approved, it counts like any other sign-in when you complete the day.", rec.signed_in_at)
+
+
+def _no_location_often():
+    """Q7: the 3rd sign-in without location in a month becomes a Manager to-do, while the latest one is still open."""
+    from django.db.models import Count
+    from django.utils import timezone
+
+    from attendance.models import AttendanceRecord
+
+    S = AttendanceRecord.Status
+    today = timezone.localdate()
+    month = AttendanceRecord.objects.filter(method=AttendanceRecord.Method.NO_LOCATION, date__year=today.year,
+                                            date__month=today.month)
+    open_ids = set(month.filter(status__in=(S.WAITING_SUPERVISOR, S.WAITING_MANAGER)).values_list("user_id", flat=True))
+    rows = month.filter(user_id__in=open_ids).values("user_id").annotate(n=Count("id")).filter(n__gte=3)
+    people = {u.pk: u for u in User.objects.filter(pk__in=[r["user_id"] for r in rows])}
+    for r in rows:
+        person = people[r["user_id"]]
+        url = reverse("attendance:records") + f"?person={person.pk}&method=no_location&from={today.replace(day=1)}"
+        yield Todo("system", f"{person} signed in without location {r['n']} times this month", url,
+                   [open_("Check this")], "Their phone or the site's signal may need sorting out.")
 
 
 def _incidents_for_supervisor(user):
@@ -325,7 +370,6 @@ def _my_items(user):
 
 
 def _a_manager():
-    from accounts.models import User
 
     return User.objects.filter(role=Role.MANAGER, is_active=True).order_by("pk").first() or "manager"
 
@@ -348,6 +392,7 @@ def todos_for(user, board=None):
     if role == Role.MANAGER:
         sources = [_incidents_for_manager(), _escalations_for_manager(), _payroll_for_manager(), _items_for_manager(),
                    _expenses_for_manager(), _leave_to_decide(user), _reports_for(user),
+                   _signins_for_manager(), _no_location_often(),
                    _attendance_day_for_manager(board)]
     elif role == Role.SECRETARY:
         sources = [_secretary_from_manager(), _unread_replies(user), _secretary_items(), _sick_sheets(),
