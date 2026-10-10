@@ -6,19 +6,22 @@
 </div>
 <div class="card">
   {% filter_bar "q|Search|text||main|Person, action or record" "role|Role|select|roles|||All" "from|From|date" "to|To|date" %}
-  <div class="table-wrap"><table class="cards">
+  {% for g in entries|by_month:"at" %}<details class="fold month" data-fold="m{{ g.key }}"{% if g.open %} open{% endif %}>
+  <summary>{{ g.label }} <span class="n">({{ g.items|length }})</span></summary>
+  <div class="fold-body"><div class="table-wrap"><table class="cards">
     <thead><tr><th>When</th><th>Who</th><th>What happened</th><th>Changes</th></tr></thead>
     <tbody>
-    {% for e in entries %}
+    {% for e in g.items %}
       <tr>
         <td data-label="When" class="card-title">{{ e.at|date:"d M Y H:i" }}</td>
         <td data-label="Who">{{ e.actor|default:"System" }}{% if e.actor_role %}<br><span class="badge role">{{ e.actor_role }}</span>{% endif %}</td>
         <td data-label="What happened">{{ e.summary }}{% if e.confidential %} <span class="badge off">Confidential</span>{% endif %}<br><span class="small muted">{{ e.action }}</span></td>
         <td class="small" data-label="Changes">{% for k, v in e.changes.items %}<div><strong>{{ k }}</strong>: {{ v|change_text }}</div>{% empty %}-{% endfor %}</td>
       </tr>
-    {% empty %}<tr><td colspan="4" class="empty">Nothing recorded yet.</td></tr>{% endfor %}
+    {% endfor %}
     </tbody>
-  </table></div>
+  </table></div></div></details>
+  {% empty %}<p class="empty">Nothing recorded yet.</p>{% endfor %}
   {% include "partials/pagination.html" %}
 </div>
 {% endblock %}

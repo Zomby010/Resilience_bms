@@ -161,3 +161,19 @@ def filter_bar(context, *specs):
         fields.append(F(name, label, kind or "text", opts, hint=hint, main=main == "main", any_label=any_label or "Any"))
     request = context["request"]
     return render_to_string("partials/filter_bar.html", {"fb": build(request, fields)}, request=request)
+
+
+@register.filter
+def hours_summary(rows):
+    """{{ site.hours.all|hours_summary }} -> "Mon–Sat 07:00–18:00, Sun off"."""
+    from tracking.models import hours_summary as summary
+
+    return summary(rows)
+
+
+@register.filter
+def by_month(items, field):
+    """{% for g in entries|by_month:"at" %}: newest-first items split into months, only the current one open."""
+    from core.filters import month_groups
+
+    return month_groups(items, field)

@@ -257,7 +257,12 @@ def _seed_site_operations(users, sites):
     leave.report_sick(users["staff3"], today, today + timedelta(days=1), "", users["supervisor2"])
 
     ops.write_ob(sites[0], users["staff1"], OBEntry.Kind.SHIFT_START, "Shift started. All in order.", at(today, 7, 0))
-    ops.write_ob(sites[0], users["staff1"], OBEntry.Kind.VISITOR, "Water bowser KCA 123B delivered water.", at(today, 9, 20))
+    bowser = ops.write_ob(sites[0], users["staff1"], OBEntry.Kind.VISITOR, "Water bowser KCA 123B delivered water.", at(today, 9, 20))
+    ops.write_ob(sites[0], users["staff1"], OBEntry.Kind.VISITOR, "The bowser was KCA 128B, not KCA 123B.", at(today, 9, 20),
+                 corrects=bowser)
+    ops.write_ob(sites[0], users["staff1"], OBEntry.Kind.PATROL, "Patrol done. All in order.", at(yesterday, 22, 0))
+    ops.write_ob(sites[1], users["staff4"], OBEntry.Kind.ALARM, "Power went off for 20 minutes. Generator started.", at(yesterday, 20, 15))
+    ops.write_ob(sites[1], users["staff4"], OBEntry.Kind.DELIVERY, "Keys to the store handed to the caretaker.", at(yesterday, 17, 30))
     ops.record_visit(sites[0], users["supervisor1"], at(today, 10, 0), ["guards_at_post", "uniform", "ob_up_to_date"],
                      [users["staff1"]], True, "All fine. Asked for a new torch battery.")
     create_incident(Incident(site=sites[1], occurred_at=at(yesterday, 23, 40), kind="trespass", severity="medium",

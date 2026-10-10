@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ site.name }}{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>{{ site.name }}{% if not site.is_active %} <span class="badge role">Not active</span>{% endif %}</h1>
+<div class="page-head"><div><h1><span class="site-chip big" style="--site: {{ site.colour_hex }}">{{ site.name }}</span>{% if not site.is_active %} <span class="badge role">Not active</span>{% endif %}</h1>
   <p class="muted">{% if site.details_updated_at %}Details last updated {{ site.details_updated_at|date:"d M Y" }} by {{ site.details_updated_by }}.{% endif %}{% if not can_edit %} Read only: the Manager keeps these details.{% endif %}</p></div>
   <div class="actions">{% if can_edit and tab == 'details' %}<a class="btn" href="{% url 'operations:site_edit' site.pk %}">Edit details</a>{% endif %}
   {% if can_write_ob %}<a class="btn secondary" href="{% url 'operations:ob_write' %}">Write in the OB</a>{% endif %}</div></div>
@@ -14,7 +14,7 @@
       <dt>Address</dt><dd>{{ site.address|default:"Not written yet" }}</dd>
       <dt>Supervisor</dt><dd>{{ site.supervisor|default:"Not set" }}{% if site.supervisor.phone %} · {{ site.supervisor.phone }}{% endif %}</dd>
       <dt>Guards needed</dt><dd>{{ site.guards_needed }} per shift ({{ people|length }} posted)</dd>
-      <dt>Working hours</dt><dd>{% for h in hours %}{{ h }}{% if not forloop.last %}<br>{% endif %}{% empty %}Not set{% endfor %}</dd>
+      <dt>Working hours</dt><dd>{{ hours|hours_summary }}</dd>
     </dl></div>
   <div>
     <div class="card"><h2>Site instructions</h2>{% if site.instructions %}<div class="report-body">{{ site.instructions|linebreaksbr }}</div>{% else %}<p class="muted">No instructions written yet.</p>{% endif %}</div>
@@ -30,7 +30,9 @@
 
 {% elif tab == 'ob' %}
 <div class="card"><h2>Latest OB entries</h2>
-  <ul class="timeline small">{% for e in ob %}<li><strong>{{ e.occurred_at|date:"d M H:i" }}</strong> {{ e.get_kind_display }}: {{ e.text|truncatechars:120 }} <span class="muted">({{ e.written_by }})</span></li>{% empty %}<li class="muted">No entries yet.</li>{% endfor %}</ul>
+  {% for day in ob_days %}<h3 class="ob-day">{{ day.label }}</h3>
+  <ol class="ob-list">{% for e in day.entries %}{% include "operations/_ob_entry.html" %}{% endfor %}</ol>
+  {% empty %}<p class="muted">No entries yet.</p>{% endfor %}
   <p class="small"><a href="{% url 'operations:ob' %}?site={{ site.pk }}">Open this site's whole OB</a></p></div>
 
 {% elif tab == 'history' %}

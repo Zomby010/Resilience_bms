@@ -1,6 +1,6 @@
 """Shared list helpers: date-range filters, day/week/month periods and safe CSV downloads."""
 import csv
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.http import HttpResponse
 from django.utils import timezone
@@ -107,3 +107,22 @@ def filter_bar(request, fields):
         "keep": keep,
         "clear": "?" + "&".join(f"{k}={v}" for k, v in keep) if keep else "?",
     }
+
+
+def month_groups(items, field, totals=None):
+    """Split a newest-first list into months for <details class="fold"> sections. Only the current month
+    is open (or the newest one, when nothing is from this month). `totals` maps "YYYY-MM" to extra figures."""
+    this_month = timezone.localdate().strftime("%Y-%m")
+    groups = []
+    for item in items:
+        value = getattr(item, field)
+        if isinstance(value, datetime):
+            value = timezone.localtime(value).date()
+        key = value.strftime("%Y-%m")
+        if not groups or groups[-1]["key"] != key:
+            groups.append({"key": key, "label": value.strftime("%B %Y"), "items": [], "open": key == this_month,
+                           "totals": (totals or {}).get(key)})
+        groups[-1]["items"].append(item)
+    if groups and not any(g["open"] for g in groups):
+        groups[0]["open"] = True
+    return groups

@@ -34,3 +34,17 @@ class CompanySettingsForm(forms.ModelForm):
         if cleaned.get("expense_approval_enabled") and not cleaned.get("expense_approval_limit"):
             self.add_error("expense_approval_limit", "Enter the amount above which expenses need your approval.")
         return cleaned
+
+
+class MoreDetailsMixin:
+    """Optional fields listed in `more_fields` go under "Add more details ▸" (partials/form.html); it opens by
+    itself when one of them was filled in or has an error."""
+
+    more_fields = ()
+
+    @property
+    def more_open(self):
+        if not self.is_bound:
+            return False
+        return any(self.errors.get(n) or self.data.get(self.add_prefix(n)) or self.files.get(self.add_prefix(n))
+                   for n in self.more_fields)
