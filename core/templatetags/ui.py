@@ -128,3 +128,36 @@ def kes0(value):
     except (InvalidOperation, TypeError):
         return value
     return f"KES {amount:,.0f}"
+
+
+@register.simple_tag(takes_context=True)
+def filter_bar(context, *specs):
+    """The shared, closed-by-default filter bar (FILT-01), described in the template:
+
+        {% filter_bar "q|Search|text||main|Name or number" "status|Status|select|=unpaid:Not paid,statuses|main" "from|From|date" %}
+
+    Each spec is name|label|kind|options|main|hint|any. `options` is a comma list of context names (a list
+    of (value, label) pairs, or objects: their pk and name are used) and literal "=value:Label" choices.
+    `any` renames the empty choice (default "Any"). Filters not marked main go under "More filters".
+    Other GET values (tabs, view, scope) are kept, so old links keep working.
+    """
+    from django.template.loader import render_to_string
+
+    from core.filters import F, filter_bar as build
+
+    fields = []
+    for spec in specs:
+        if not spec:
+            continue
+        name, label, kind, options, main, hint, any_label = (spec.split("|") + [""] * 7)[:7]
+        opts = []
+        for item in filter(None, options.split(",")):
+            if item.startswith("="):
+                value, _, text = item[1:].partition(":")
+                opts.append((value, text))
+                continue
+            for o in context.get(item) or ():
+                opts.append((o[0], o[1]) if isinstance(o, (list, tuple)) else (o.pk, str(o)))
+        fields.append(F(name, label, kind or "text", opts, hint=hint, main=main == "main", any_label=any_label or "Any"))
+    request = context["request"]
+    return render_to_string("partials/filter_bar.html", {"fb": build(request, fields)}, request=request)

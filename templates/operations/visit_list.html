@@ -5,18 +5,15 @@
   <div class="actions">{% if user.role == 'supervisor' or user.role == 'manager' %}<a class="btn" href="{% url 'operations:visit_create' %}">Record a visit</a>{% endif %}
   {% if can_export %}<a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}export=csv">Download (CSV)</a>{% endif %}</div></div>
 <div class="card">
-  <form method="get" class="filters">
-    <div><label for="site">Site</label><select id="site" name="site"><option value="">Any</option>{% for s in sites %}<option value="{{ s.pk }}" {% if f.site == s.pk|stringformat:"s" %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
-    {% if user.role != 'supervisor' %}<div><label for="supervisor">Supervisor</label><select id="supervisor" name="supervisor"><option value="">Any</option>{% for s in supervisors %}<option value="{{ s.pk }}" {% if f.supervisor == s.pk|stringformat:"s" %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>{% endif %}
-    <div><label for="welfare">Welfare check</label><select id="welfare" name="welfare"><option value="">Any</option><option value="yes" {% if f.welfare == 'yes' %}selected{% endif %}>Done</option><option value="no" {% if f.welfare == 'no' %}selected{% endif %}>Not done</option></select></div>
-    <div><label for="from">From</label><input id="from" type="date" name="from" value="{{ f.from }}"></div>
-    <div><label for="to">To</label><input id="to" type="date" name="to" value="{{ f.to }}"></div>
-    <button class="btn secondary" type="submit">Filter</button>
-  </form>
-  <div class="table-wrap"><table>
+  {% if user.role == 'supervisor' %}
+  {% filter_bar "site|Site|select|sites|main" "welfare|Welfare check|select|=yes:Done,=no:Not done|main" "from|From|date" "to|To|date" %}
+  {% else %}
+  {% filter_bar "site|Site|select|sites|main" "supervisor|Supervisor|select|supervisors|main" "welfare|Welfare check|select|=yes:Done,=no:Not done" "from|From|date" "to|To|date" %}
+  {% endif %}
+  <div class="table-wrap"><table class="cards">
     <thead><tr><th>When</th><th>Site</th><th>Supervisor</th><th>Checks fine</th><th>Welfare check</th></tr></thead>
-    <tbody>{% for v in visits %}<tr><td><a href="{{ v.get_absolute_url }}">{{ v.visited_at|date:"d M Y H:i" }}</a></td><td>{{ v.site }}</td><td>{{ v.supervisor }}</td>
-      <td>{{ v.checks_done|length }} of 6</td><td>{% if v.welfare_check_done %}<span class="badge completed">Done</span>{% else %}<span class="badge off">Not done</span>{% endif %}</td></tr>
+    <tbody>{% for v in visits %}<tr><td data-label="When" class="card-title"><a href="{{ v.get_absolute_url }}">{{ v.visited_at|date:"d M Y H:i" }}</a></td><td data-label="Site">{{ v.site }}</td><td data-label="Supervisor">{{ v.supervisor }}</td>
+      <td data-label="Checks fine">{{ v.checks_done|length }} of 6</td><td data-label="Welfare check">{% if v.welfare_check_done %}<span class="badge completed">Done</span>{% else %}<span class="badge off">Not done</span>{% endif %}</td></tr>
     {% empty %}<tr><td colspan="5" class="empty">No visits recorded.</td></tr>{% endfor %}</tbody>
   </table></div>
   {% include "partials/pagination.html" %}

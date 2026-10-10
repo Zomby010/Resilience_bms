@@ -494,6 +494,7 @@ details.filterbar[open] > summary .arrow { transform: rotate(180deg); }
   table.cards td[data-label]:not([data-label=""])::before { content: attr(data-label) ": "; color: #52606f; font-size: .85rem; }
   table.cards td.card-status { order: -1; }
   table.cards td.card-title { font-weight: 700; font-size: 1.02rem; }
+  table.cards td.card-title::before { content: none !important; }
   table.cards td:empty { display: none; }
   table.cards tr:hover td { background: transparent; }
   .table-wrap:has(table.cards) { overflow: visible; }

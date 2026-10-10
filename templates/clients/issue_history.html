@@ -7,31 +7,19 @@
   <a class="btn secondary" href="{% url 'clients:issue_list' %}">Back to issues</a>
 </div>
 <div class="card">
-  <form method="get" class="filters">
-    <div><label for="q">Search</label><input id="q" name="q" value="{{ f.q }}" placeholder="ISS-0002, subject or words"></div>
-    <div><label for="client">Client</label><select id="client" name="client"><option value="">Any</option>{% for c in clients %}<option value="{{ c.pk }}" {% if f.client == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
-    <div><label for="kind">Type</label><select id="kind" name="kind">
-      <option value="">Everything</option>
-      <option value="status" {% if f.kind == 'status' %}selected{% endif %}>Status changes</option>
-      <option value="note" {% if f.kind == 'note' %}selected{% endif %}>Notes only</option></select></div>
-    <div><label for="author">By</label><select id="author" name="author"><option value="">Anyone</option>{% for a in authors %}<option value="{{ a.pk }}" {% if f.author == a.pk|stringformat:"s" %}selected{% endif %}>{{ a }}</option>{% endfor %}</select></div>
-    <div><label for="from">From</label><input id="from" type="date" name="from" value="{{ f.from }}"></div>
-    <div><label for="to">To</label><input id="to" type="date" name="to" value="{{ f.to }}"></div>
-    <button class="btn secondary" type="submit">Filter</button>
-    <a class="btn secondary" href="{% url 'clients:issue_history' %}">Clear</a>
-    {% if office %}<a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}export=csv">Download CSV</a>{% endif %}
-  </form>
-  <div class="table-wrap"><table>
+  {% filter_bar "q|Search|text||main|ISS-0002, subject or words" "client|Client|select|clients|main" "kind|Type|select|=status:Status changes,=note:Notes only|||Everything" "author|By|select|authors|||Anyone" "from|From|date" "to|To|date" %}
+  {% if office %}<p><a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}export=csv">Download CSV</a></p>{% endif %}
+  <div class="table-wrap"><table class="cards">
     <thead><tr><th>When</th><th>Issue</th><th>Client</th><th>What happened</th><th>By</th></tr></thead>
     <tbody>
     {% for n in entries %}
       <tr>
-        <td>{{ n.created_at|date:"d M Y H:i" }}</td>
-        <td><a href="{{ n.issue.get_absolute_url }}"><strong>{{ n.issue.number }}</strong> {{ n.issue.subject }}</a></td>
-        <td>{{ n.issue.client }}</td>
-        <td>{% if n.status_to %}<span class="badge {{ n.status_to|tone }}">{{ n.status_to_label }}</span>{% endif %}
+        <td data-label="When" class="card-title">{{ n.created_at|date:"d M Y H:i" }}</td>
+        <td data-label="Issue"><a href="{{ n.issue.get_absolute_url }}"><strong>{{ n.issue.number }}</strong> {{ n.issue.subject }}</a></td>
+        <td data-label="Client">{{ n.issue.client }}</td>
+        <td data-label="What happened">{% if n.status_to %}<span class="badge {{ n.status_to|tone }}">{{ n.status_to_label }}</span>{% endif %}
           {% if n.body %}<span class="small">{{ n.body|linebreaksbr }}</span>{% endif %}</td>
-        <td>{{ n.author|default:"System" }}</td>
+        <td data-label="By">{{ n.author|default:"System" }}</td>
       </tr>
     {% empty %}<tr><td colspan="5" class="empty">Nothing found.</td></tr>{% endfor %}
     </tbody>

@@ -2,13 +2,13 @@
 {% block title %}Overdue items{% endblock %}
 {% block content %}
 <div class="page-head"><div><h1>Overdue items</h1><p class="muted">Items that should have been returned by now. A reminder can be sent once a day; the system also sends one each day automatically.</p></div></div>
-<div class="card"><div class="table-wrap"><table>
+<div class="card"><div class="table-wrap"><table class="cards">
   <thead><tr><th>Person</th><th>Item</th><th class="num">Qty</th><th>Was due</th><th>Status</th><th></th></tr></thead>
   <tbody>
   {% for r in reqs %}
-    <tr><td>{{ r.requester }}</td><td><a href="{{ r.get_absolute_url }}">{{ r.item.name }}</a></td><td class="num">{{ r.qty_issued }}</td>
-      <td><strong>{{ r.expected_return_date|date:"d M Y" }}</strong><br><span class="small muted">{{ r.expected_return_date|timesince }} late</span></td><td>{% badge r %}</td>
-      <td>{% if r.status == 'issued' %}<form method="post" action="{% url 'inventory:remind' r.pk %}">{% csrf_token %}<button class="btn small secondary" type="submit">Send reminder</button></form>{% endif %}</td></tr>
+    <tr><td data-label="Person" class="card-title">{{ r.requester }}</td><td data-label="Item"><a href="{{ r.get_absolute_url }}">{{ r.item.name }}</a></td><td class="num" data-label="Qty">{{ r.qty_issued }}</td>
+      <td data-label="Was due"><strong>{{ r.expected_return_date|date:"d M Y" }}</strong><br><span class="small muted">{{ r.expected_return_date|timesince }} late</span></td><td data-label="Status" class="card-status">{% badge r %}</td>
+      <td data-label="">{% if r.status == 'issued' %}<form method="post" action="{% url 'inventory:remind' r.pk %}">{% csrf_token %}<button class="btn small secondary" type="submit">Send reminder</button></form>{% endif %}</td></tr>
   {% empty %}<tr><td colspan="6" class="empty">Nothing is overdue.</td></tr>{% endfor %}
   </tbody>
 </table></div></div>

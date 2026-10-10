@@ -8,16 +8,16 @@
 <div class="card">
   <div class="page-head" style="margin-bottom:.5rem"><h2>{{ in_count }} in, {{ absent_count }} absent, {{ away_count }} on leave or sick</h2>
   {% if waiting and not completed %}<form method="post" action="{% url 'attendance:approve_all' %}">{% csrf_token %}<input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}"><input type="hidden" name="next" value="team"><button class="btn" type="submit">Approve all {{ waiting }} sign-ins</button></form>{% endif %}</div>
-  <div class="table-wrap"><table>
+  <div class="table-wrap"><table class="cards">
     <thead><tr><th>Person</th><th>Site</th><th>Shift</th><th>In and out</th><th>Today</th><th>Status</th><th>Items held</th><th></th></tr></thead>
     <tbody>{% for row in rows %}<tr>
-      <td><strong>{{ row.person }}</strong>{% if row.person.phone %}<br><span class="small muted">{{ row.person.phone }}</span>{% endif %}</td><td>{{ row.site|default:"-" }}</td>
-      <td class="small">{% if row.shift %}{{ row.shift.0|time:"H:i" }} to {{ row.shift.1|time:"H:i" }}{% else %}-{% endif %}</td>
-      <td>{% include "attendance/_in_out.html" with rec=row.record %}{% if row.record.late_minutes %} <span class="small">({{ row.record.late_minutes }} min late)</span>{% endif %}</td>
-      <td><span class="badge {{ row.tone }}">{{ row.label }}</span></td>
-      <td>{% if row.record %}{% badge row.record %}{% else %}-{% endif %}</td>
-      <td class="small">{% for i in row.items %}{{ i.qty_issued|default:i.qty_requested }} x {{ i.item.name }}{% if not forloop.last %}, {% endif %}{% empty %}-{% endfor %}</td>
-      <td>{% if not completed %}{% with next="team" %}{% include "attendance/_row_actions.html" %}{% endwith %}{% endif %}</td></tr>
+      <td data-label="Person" class="card-title"><strong>{{ row.person }}</strong>{% if row.person.phone %}<br><span class="small muted">{{ row.person.phone }}</span>{% endif %}</td><td data-label="Site">{{ row.site|default:"-" }}</td>
+      <td class="small" data-label="Shift">{% if row.shift %}{{ row.shift.0|time:"H:i" }} to {{ row.shift.1|time:"H:i" }}{% else %}-{% endif %}</td>
+      <td data-label="In and out">{% include "attendance/_in_out.html" with rec=row.record %}{% if row.record.late_minutes %} <span class="small">({{ row.record.late_minutes }} min late)</span>{% endif %}</td>
+      <td data-label="Today"><span class="badge {{ row.tone }}">{{ row.label }}</span></td>
+      <td data-label="Status" class="card-status">{% if row.record %}{% badge row.record %}{% else %}-{% endif %}</td>
+      <td class="small" data-label="Items held">{% for i in row.items %}{{ i.qty_issued|default:i.qty_requested }} x {{ i.item.name }}{% if not forloop.last %}, {% endif %}{% empty %}-{% endfor %}</td>
+      <td data-label="">{% if not completed %}{% with next="team" %}{% include "attendance/_row_actions.html" %}{% endwith %}{% endif %}</td></tr>
     {% empty %}<tr><td colspan="8" class="empty">You have no team members yet.</td></tr>{% endfor %}</tbody>
   </table></div>
 </div>

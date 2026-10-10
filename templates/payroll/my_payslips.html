@@ -3,13 +3,13 @@
 {% block content %}
 <div class="page-head"><div><h1>My payslips</h1><p class="muted">Your pay for each month, once the Manager has approved that month's payroll. Open one to print it or download it.</p></div></div>
 <div class="card">
-  <div class="table-wrap"><table>
+  <div class="table-wrap"><table class="cards">
     <thead><tr><th>Month</th><th class="num">Gross (KES)</th><th class="num">Deductions (KES)</th><th class="num">Net pay (KES)</th><th></th></tr></thead>
     <tbody>
     {% for l in lines %}
-      <tr><td><a href="{% url 'payslips:detail' l.pk %}"><strong>{{ l.run.period|date:"F Y" }}</strong></a></td>
-        <td class="num">{{ l.gross|money }}</td><td class="num">{{ l.total_deductions|money }}</td><td class="num"><strong>{{ l.net|money }}</strong></td>
-        <td class="actions"><a class="btn small secondary" href="{% url 'payslips:detail' l.pk %}">Open</a> <a class="btn small secondary" href="{% url 'payslips:pdf' l.pk %}">Download PDF</a></td></tr>
+      <tr><td data-label="Month" class="card-title"><a href="{% url 'payslips:detail' l.pk %}"><strong>{{ l.run.period|date:"F Y" }}</strong></a></td>
+        <td class="num" data-label="Gross (KES)">{{ l.gross|money }}</td><td class="num" data-label="Deductions (KES)">{{ l.total_deductions|money }}</td><td class="num" data-label="Net pay (KES)"><strong>{{ l.net|money }}</strong></td>
+        <td class="actions" data-label=""><a class="btn small secondary" href="{% url 'payslips:detail' l.pk %}">Open</a> <a class="btn small secondary" href="{% url 'payslips:pdf' l.pk %}">Download PDF</a></td></tr>
     {% empty %}<tr><td colspan="5" class="empty">No payslips yet. They appear here after the Manager approves the month's payroll.</td></tr>{% endfor %}
     </tbody>
   </table></div>

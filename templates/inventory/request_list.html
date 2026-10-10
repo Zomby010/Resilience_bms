@@ -4,19 +4,8 @@
 <div class="page-head"><div><h1>Item requests</h1><p class="muted">Items guards and supervisors have asked for. Open one to approve, hand over, or confirm a return.</p></div>
 <a class="btn secondary" href="{% url 'inventory:overdue' %}">Overdue items</a></div>
 <div class="card">
-  <form method="get" class="filters">
-    <div><label for="q">Search</label><input id="q" name="q" value="{{ f.q }}" placeholder="Item, person or reason"></div>
-    <div><label for="status">Show</label><select id="status" name="status">
-      <option value="todo" {% if status == 'todo' %}selected{% endif %}>Needs action</option>
-      <option value="out" {% if status == 'out' %}selected{% endif %}>Out with people (must return)</option>
-      <option value="all" {% if status == 'all' %}selected{% endif %}>All</option>
-      {% for v, l in statuses %}<option value="{{ v }}" {% if status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
-    <div><label for="requester">Person</label><select id="requester" name="requester"><option value="">Anyone</option>{% for p in people %}<option value="{{ p.pk }}" {% if f.requester == p.pk|stringformat:"s" %}selected{% endif %}>{{ p }}</option>{% endfor %}</select></div>
-    <div><label for="from">From</label><input id="from" type="date" name="from" value="{{ f.from }}"></div>
-    <div><label for="to">To</label><input id="to" type="date" name="to" value="{{ f.to }}"></div>
-    <button class="btn secondary" type="submit">Filter</button>
-    <a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}export=csv">Download CSV</a>
-  </form>
+  {% filter_bar "status|Show|select|=out:Out with people (must return),=all:All,statuses|main||Needs action" "q|Search|text||main|Item, person or reason" "requester|Person|select|people|||Anyone" "from|From|date" "to|To|date" %}
+  <p><a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}export=csv">Download CSV</a></p>
   {% include "inventory/_request_table.html" %}
   {% include "partials/pagination.html" %}
 </div>

@@ -1,14 +1,14 @@
-<div class="table-wrap"><table>
+<div class="table-wrap"><table class="cards">
   <thead><tr><th>Asked</th><th>Person</th><th>Item</th><th class="num">Qty</th><th>Status</th><th>Return by</th></tr></thead>
   <tbody>
   {% for r in reqs %}
     <tr>
-      <td><a href="{{ r.get_absolute_url }}">{{ r.created_at|date:"d M Y" }}</a></td>
-      <td>{{ r.requester }}<br><span class="small muted">{{ r.requester_role }}</span></td>
-      <td><a href="{{ r.get_absolute_url }}">{{ r.item.name }}</a></td>
-      <td class="num">{{ r.qty_issued|default:r.qty_requested }}</td>
-      <td>{% badge r %}</td>
-      <td>{{ r.expected_return_date|date:"d M Y"|default:"-" }}</td>
+      <td data-label="Asked" class="card-title"><a href="{{ r.get_absolute_url }}">{{ r.created_at|date:"d M Y" }}</a></td>
+      <td data-label="Person">{{ r.requester }}<br><span class="small muted">{{ r.requester_role }}</span></td>
+      <td data-label="Item"><a href="{{ r.get_absolute_url }}">{{ r.item.name }}</a></td>
+      <td class="num" data-label="Qty">{{ r.qty_issued|default:r.qty_requested }}</td>
+      <td data-label="Status" class="card-status">{% badge r %}</td>
+      <td data-label="Return by">{{ r.expected_return_date|date:"d M Y"|default:"-" }}</td>
     </tr>
   {% empty %}<tr><td colspan="6" class="empty">Nothing here.</td></tr>{% endfor %}
   </tbody>

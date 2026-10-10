@@ -23,20 +23,20 @@
 
 <div class="card">
   <h2>Pay sheet</h2>
-  <div class="table-wrap"><table>
+  <div class="table-wrap"><table class="cards">
     <thead><tr><th>Name</th><th class="num">Basic</th><th class="num">Allow.</th><th class="num">Overtime</th><th class="num">Bonus</th><th class="num">Gross</th><th class="num">Deductions</th><th class="num">Net pay</th><th>Pay to</th>{% if editable or run.status == 'approved' %}<th></th>{% endif %}</tr></thead>
     <tbody>
     {% for l in lines %}
       <tr>
-        <td>{{ l.employee_name }}<br><span class="small muted">{{ l.employee_number }} · {{ l.role }}</span></td>
-        <td class="num">{{ l.basic|money }}</td><td class="num">{{ l.allowances|money }}</td><td class="num">{{ l.overtime|money }}</td><td class="num">{{ l.bonus|money }}</td>
-        <td class="num">{{ l.gross|money }}</td><td class="num">{{ l.total_deductions|money }}</td>
-        <td class="num"><strong {% if l.net < 0 %}style="color:var(--red-dark)"{% endif %}>{{ l.net|money }}</strong></td>
-        <td class="small">{{ l.get_payment_method_display|default:"-" }} {{ l.payment_detail|masked }}</td>
-        {% if editable %}<td class="actions">
+        <td data-label="Name" class="card-title">{{ l.employee_name }}<br><span class="small muted">{{ l.employee_number }} · {{ l.role }}</span></td>
+        <td class="num" data-label="Basic">{{ l.basic|money }}</td><td class="num" data-label="Allow.">{{ l.allowances|money }}</td><td class="num" data-label="Overtime">{{ l.overtime|money }}</td><td class="num" data-label="Bonus">{{ l.bonus|money }}</td>
+        <td class="num" data-label="Gross">{{ l.gross|money }}</td><td class="num" data-label="Deductions">{{ l.total_deductions|money }}</td>
+        <td class="num" data-label="Net pay"><strong {% if l.net < 0 %}style="color:var(--red-dark)"{% endif %}>{{ l.net|money }}</strong></td>
+        <td class="small" data-label="Pay to">{{ l.get_payment_method_display|default:"-" }} {{ l.payment_detail|masked }}</td>
+        {% if editable %}<td class="actions" data-label="">
           <a class="btn small secondary" href="{% url 'payroll:line_edit' run.pk l.pk %}">Edit</a>
           <form method="post" action="{% url 'payroll:line_remove' run.pk l.pk %}">{% csrf_token %}<button class="btn small danger" type="submit" data-confirm="Remove {{ l.employee_name }} from this month's payroll?">Remove</button></form>
-        </td>{% elif run.status == 'approved' %}<td><a class="btn small secondary" href="{% url 'payroll:payslip' run.pk l.pk %}">Payslip</a></td>{% endif %}
+        </td>{% elif run.status == 'approved' %}<td data-label=""><a class="btn small secondary" href="{% url 'payroll:payslip' run.pk l.pk %}">Payslip</a></td>{% endif %}
       </tr>
     {% empty %}<tr><td colspan="10" class="empty">Nobody on this payroll.</td></tr>{% endfor %}
     <tr class="total-row"><td>Total</td><td colspan="4"></td><td class="num">{{ run.total_gross|money }}</td><td class="num">{{ run.total_deductions|money }}</td><td class="num">{{ run.total_net|money }}</td><td colspan="2"></td></tr>

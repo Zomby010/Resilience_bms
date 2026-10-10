@@ -11,13 +11,7 @@
   <div class="kpi slate"><div class="num">{{ draft_count }}</div><div class="lbl">Drafts not sent</div></div>
 </div>
 <div class="card">
-  <form method="get" class="filters">
-    <div><label for="q">Search</label><input id="q" name="q" value="{{ f.q }}" placeholder="Number or client"></div>
-    <div><label for="status">Status</label><select id="status" name="status"><option value="">All</option><option value="unpaid" {% if f.status == 'unpaid' %}selected{% endif %}>Not fully paid</option>{% for v, l in statuses %}<option value="{{ v }}" {% if f.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
-    <div><label for="from">From</label><input id="from" type="date" name="from" value="{{ f.from }}"></div>
-    <div><label for="to">To</label><input id="to" type="date" name="to" value="{{ f.to }}"></div>
-    <button class="btn secondary" type="submit">Filter</button>
-  </form>
+  {% filter_bar "status|Status|select|=unpaid:Not fully paid,statuses|main||All" "q|Search|text||main|Number or client" "from|From|date" "to|To|date" %}
   {% include "billing/_invoice_table.html" %}
   {% include "partials/pagination.html" %}
 </div>

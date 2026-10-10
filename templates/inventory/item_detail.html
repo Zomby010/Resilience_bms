@@ -52,9 +52,9 @@
   </div>
   <div class="card">
     <h2>Stock history</h2>
-    <div class="table-wrap"><table>
+    <div class="table-wrap"><table class="cards">
       <thead><tr><th>When</th><th>What</th><th class="num">Qty</th><th class="num">In store after</th><th>By</th></tr></thead>
-      <tbody>{% for m in movements %}<tr><td>{{ m.at|date:"d M Y H:i" }}</td><td>{{ m.get_action_display }}{% if m.reason %}<br><span class="small muted">{{ m.reason }}</span>{% endif %}</td><td class="num">{{ m.quantity }}</td><td class="num">{{ m.after.qty_available }}</td><td>{{ m.by }}</td></tr>{% empty %}<tr><td colspan="5" class="empty">No stock changes yet.</td></tr>{% endfor %}</tbody>
+      <tbody>{% for m in movements %}<tr><td data-label="When" class="card-title">{{ m.at|date:"d M Y H:i" }}</td><td data-label="What">{{ m.get_action_display }}{% if m.reason %}<br><span class="small muted">{{ m.reason }}</span>{% endif %}</td><td class="num" data-label="Qty">{{ m.quantity }}</td><td class="num" data-label="In store after">{{ m.after.qty_available }}</td><td data-label="By">{{ m.by }}</td></tr>{% empty %}<tr><td colspan="5" class="empty">No stock changes yet.</td></tr>{% endfor %}</tbody>
     </table></div>
   </div>
 </div>

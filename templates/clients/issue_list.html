@@ -13,28 +13,12 @@
   <nav class="chips" aria-label="Show issues by status">
     {% for v, l, n in chips %}<a href="?{% if chip_query %}{{ chip_query }}&amp;{% endif %}status={{ v }}" class="{% if status == v %}on{% endif %}">{{ l }} <span class="n">{{ n }}</span></a>{% endfor %}
   </nav>
-  <form method="get" class="filters">
-    <div><label for="q">Search</label><input id="q" name="q" value="{{ f.q }}" placeholder="ISS-0002, subject or words"></div>
-    <div><label for="status">Status</label>
-      <select id="status" name="status">
-        <option value="all" {% if status == 'all' %}selected{% endif %}>All issues</option>
-        <option value="open" {% if status == 'open' %}selected{% endif %}>Not finished</option>
-        {% for v, l in statuses %}<option value="{{ v }}" {% if status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
-      </select></div>
-    <div><label for="client">Client</label><select id="client" name="client"><option value="">Any</option>{% for c in clients %}<option value="{{ c.pk }}" {% if f.client == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
-    <div><label for="priority">Priority</label><select id="priority" name="priority"><option value="">Any</option>{% for v, l in priorities %}<option value="{{ v }}" {% if f.priority == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
-    {% if office %}
-    <div><label for="supervisor">Supervisor</label>
-      <select id="supervisor" name="supervisor"><option value="">Any</option><option value="none" {% if f.supervisor == 'none' %}selected{% endif %}>No supervisor</option>
-        {% for s in supervisors %}<option value="{{ s.pk }}" {% if f.supervisor == s.pk|stringformat:"s" %}selected{% endif %}>{{ s }}</option>{% endfor %}
-      </select></div>
-    {% endif %}
-    <div><label for="from">Reported from</label><input id="from" type="date" name="from" value="{{ f.from }}"></div>
-    <div><label for="to">To</label><input id="to" type="date" name="to" value="{{ f.to }}"></div>
-    <button class="btn secondary" type="submit">Filter</button>
-    <a class="btn secondary" href="{% url 'clients:issue_list' %}">Clear</a>
-    {% if office %}<a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}export=csv">Download CSV</a>{% endif %}
-  </form>
+  {% if office %}
+  {% filter_bar "q|Search|text||main|ISS-0002, subject or words" "status|Status|select|=open:Not finished,statuses|main||All issues" "client|Client|select|clients" "priority|Priority|select|priorities" "supervisor|Supervisor|select|=none:No supervisor,supervisors" "from|Reported from|date" "to|To|date" %}
+  {% else %}
+  {% filter_bar "q|Search|text||main|ISS-0002, subject or words" "status|Status|select|=open:Not finished,statuses|main||All issues" "client|Client|select|clients" "priority|Priority|select|priorities" "from|Reported from|date" "to|To|date" %}
+  {% endif %}
+  {% if office %}<p><a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}export=csv">Download CSV</a></p>{% endif %}
   {% include "clients/_issue_table.html" %}
   {% include "partials/pagination.html" %}
 </div>

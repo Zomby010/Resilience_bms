@@ -3,17 +3,17 @@
 {% block content %}
 <div class="page-head"><div><h1>Pay details per person</h1><p class="muted">Each person's usual monthly pay. New payrolls start from these amounts. Managers are not paid through payroll. Account numbers are partly hidden.</p></div>
 <a class="btn secondary" href="{% url 'payroll:list' %}">Back to payroll</a></div>
-<div class="card"><div class="table-wrap"><table>
+<div class="card"><div class="table-wrap"><table class="cards">
   <thead><tr><th>Name</th><th>Role</th><th class="num">Basic (KES)</th><th class="num">Allowances (KES)</th><th>Paid by</th><th>Account</th><th></th></tr></thead>
   <tbody>
   {% for p in people %}{% with prof=p.pay_profile %}
     <tr>
-      <td>{{ p }}</td><td><span class="badge role">{{ p.get_role_display }}</span></td>
+      <td data-label="" class="card-title">{{ p }}</td><td data-label="Role"><span class="badge role">{{ p.get_role_display }}</span></td>
       {% if prof %}
-        <td class="num">{{ prof.basic_salary|money }}</td><td class="num">{{ prof.regular_allowances|money }}</td><td>{{ prof.get_payment_method_display }}{% if not prof.is_active %} <span class="badge off">Not in payroll</span>{% endif %}</td>
-        <td>{% if prof.payment_method == 'mpesa' %}{{ prof.mpesa_number|masked }}{% elif prof.payment_method == 'bank' %}{{ prof.bank_name }} {{ prof.bank_account|masked }}{% else %}-{% endif %}</td>
-      {% else %}<td colspan="4"><span class="badge pending">No pay details yet</span></td>{% endif %}
-      <td><a class="btn small secondary" href="{% url 'payroll:profile_edit' p.pk %}">{% if prof %}Edit{% else %}Add{% endif %}</a></td>
+        <td class="num" data-label="Basic (KES)">{{ prof.basic_salary|money }}</td><td class="num" data-label="Allowances (KES)">{{ prof.regular_allowances|money }}</td><td data-label="Paid by">{{ prof.get_payment_method_display }}{% if not prof.is_active %} <span class="badge off">Not in payroll</span>{% endif %}</td>
+        <td data-label="Account">{% if prof.payment_method == 'mpesa' %}{{ prof.mpesa_number|masked }}{% elif prof.payment_method == 'bank' %}{{ prof.bank_name }} {{ prof.bank_account|masked }}{% else %}-{% endif %}</td>
+      {% else %}<td colspan="4" data-label=""><span class="badge pending">No pay details yet</span></td>{% endif %}
+      <td data-label=""><a class="btn small secondary" href="{% url 'payroll:profile_edit' p.pk %}">{% if prof %}Edit{% else %}Add{% endif %}</a></td>
     </tr>
   {% endwith %}{% empty %}<tr><td colspan="7" class="empty">No accounts to pay.</td></tr>{% endfor %}
   </tbody>

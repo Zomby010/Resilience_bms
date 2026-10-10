@@ -4,25 +4,19 @@
 <div class="page-head"><div><h1>Expenses</h1><p class="muted">Every create, edit and delete, kept permanently.</p></div></div>
 {% include "finance/_views.html" with on="history" %}
 <div class="card">
-  <form method="get" class="filters">
-    <div><label for="q">Search</label><input id="q" name="q" value="{{ f.q }}" placeholder="Expense number or words"></div>
-    <div><label for="action">Action</label><select id="action" name="action"><option value="">Any</option>{% for v, l in actions %}<option value="{{ v }}" {% if f.action == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
-    <div><label for="from">From</label><input id="from" type="date" name="from" value="{{ f.from }}"></div>
-    <div><label for="to">To</label><input id="to" type="date" name="to" value="{{ f.to }}"></div>
-    <button class="btn secondary" type="submit">Filter</button>
-    <a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}export=csv">Download CSV</a>
-  </form>
+  {% filter_bar "q|Search|text||main|Expense number or words" "action|Action|select|actions|main" "from|From|date" "to|To|date" %}
+  <p><a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}export=csv">Download CSV</a></p>
   <div class="table-wrap">
-  <table>
+  <table class="cards">
     <thead><tr><th>When</th><th>Action</th><th>Expense</th><th>By</th><th>Details</th></tr></thead>
     <tbody>
     {% for e in entries %}
       <tr>
-        <td>{{ e.at|date:"d M Y, H:i" }}</td>
-        <td>{{ e.get_action_display }}</td>
-        <td>{% if e.expense_id %}<a href="{{ e.expense.get_absolute_url }}">#{{ e.expense_number }}</a>{% else %}#{{ e.expense_number }}{% endif %}</td>
-        <td>{{ e.by }}</td>
-        <td class="small">{{ e.details }}</td>
+        <td data-label="When" class="card-title">{{ e.at|date:"d M Y, H:i" }}</td>
+        <td data-label="Action">{{ e.get_action_display }}</td>
+        <td data-label="Expense">{% if e.expense_id %}<a href="{{ e.expense.get_absolute_url }}">#{{ e.expense_number }}</a>{% else %}#{{ e.expense_number }}{% endif %}</td>
+        <td data-label="By">{{ e.by }}</td>
+        <td class="small" data-label="Details">{{ e.details }}</td>
       </tr>
     {% empty %}<tr><td colspan="5" class="empty">Nothing recorded yet.</td></tr>{% endfor %}
     </tbody>

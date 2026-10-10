@@ -11,17 +11,7 @@
   <a class="kpi {% if overdue %}{% else %}green{% endif %}" href="{% url 'inventory:overdue' %}" style="text-decoration:none"><div class="num">{{ overdue }}</div><div class="lbl">Overdue returns</div></a>
 </div>
 <div class="card">
-  <form method="get" class="filters">
-    <div><label for="q">Search</label><input id="q" name="q" value="{{ f.q }}" placeholder="Name or code"></div>
-    <div><label for="category">Category</label><select id="category" name="category"><option value="">All</option>{% for c in categories %}<option value="{{ c.pk }}" {% if f.category == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
-    <div><label for="stock">Show</label><select id="stock" name="stock"><option value="">All items</option>
-      <option value="low" {% if f.stock == 'low' %}selected{% endif %}>Low on stock</option>
-      <option value="out" {% if f.stock == 'out' %}selected{% endif %}>None in the store</option>
-      <option value="out_with_people" {% if f.stock == 'out_with_people' %}selected{% endif %}>Out with people</option>
-      <option value="damaged" {% if f.stock == 'damaged' %}selected{% endif %}>Has damaged ones</option></select></div>
-    <div><label for="show">Items</label><select id="show" name="show"><option value="">In use</option><option value="retired" {% if f.show == 'retired' %}selected{% endif %}>Retired</option></select></div>
-    <button class="btn secondary" type="submit">Filter</button>
-  </form>
+  {% filter_bar "q|Search|text||main|Name or code" "stock|Show|select|=low:Low on stock,=out:None in the store,=out_with_people:Out with people,=damaged:Has damaged ones|main||All items" "category|Category|select|categories|||All" "show|Items|select|=retired:Retired|||In use" %}
   <div class="lib">
   {% for i in items %}
     <a class="lib-card {% if i.qty_available == 0 %}out{% elif i.is_low and i.min_stock %}low{% endif %}" href="{{ i.get_absolute_url }}">

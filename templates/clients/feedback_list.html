@@ -3,16 +3,8 @@
 {% block content %}
 <div class="page-head"><div><h1>Client feedback</h1><p class="muted">Compliments, complaints and suggestions from clients. To record new feedback, open the client and choose "Record feedback".</p></div></div>
 <div class="card">
-  <form method="get" class="filters">
-    <div><label for="q">Search</label><input id="q" name="q" value="{{ f.q }}" placeholder="Subject, words or client"></div>
-    <div><label for="status">Status</label><select id="status" name="status"><option value="">All</option>{% for v, l in statuses %}<option value="{{ v }}" {% if f.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
-    <div><label for="kind">Type</label><select id="kind" name="kind"><option value="">All</option>{% for v, l in kinds %}<option value="{{ v }}" {% if f.kind == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
-    <div><label for="client">Client</label><select id="client" name="client"><option value="">Any</option>{% for c in clients %}<option value="{{ c.pk }}" {% if f.client == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
-    <div><label for="from">From</label><input id="from" type="date" name="from" value="{{ f.from }}"></div>
-    <div><label for="to">To</label><input id="to" type="date" name="to" value="{{ f.to }}"></div>
-    <button class="btn secondary" type="submit">Filter</button>
-    <a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}export=csv">Download CSV</a>
-  </form>
+  {% filter_bar "q|Search|text||main|Subject, words or client" "status|Status|select|statuses|main||All" "kind|Type|select|kinds|||All" "client|Client|select|clients" "from|From|date" "to|To|date" %}
+  <p><a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}export=csv">Download CSV</a></p>
   {% include "clients/_feedback_table.html" %}
   {% include "partials/pagination.html" %}
 </div>
