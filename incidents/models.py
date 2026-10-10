@@ -12,8 +12,10 @@ class IncidentQuerySet(models.QuerySet):
         """The one rule for who sees which incident (pages, lists, CSV and file downloads)."""
         if not user.is_authenticated:
             return self.none()
-        if user.role in (Role.SECRETARY, Role.MANAGER):
+        if user.role == Role.MANAGER:
             return self
+        if user.role == Role.SECRETARY:
+            return self.none()
         if user.role == Role.SUPERVISOR:
             return self.filter(Q(reported_by=user) | Q(reported_by__supervisor=user) | Q(site__supervisor=user))
         return self.filter(reported_by=user)

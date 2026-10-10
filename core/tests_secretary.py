@@ -37,7 +37,7 @@ class PermissionMatrixTests(OpsTestCase):
             ("payroll:create", (), O), ("payroll:detail", (self.payroll_run.pk,), O), ("payroll:export", (self.payroll_run.pk,), O),
             ("payroll:print", (self.payroll_run.pk,), O),
             ("inventory:library", (), O), ("inventory:create", (), O), ("inventory:categories", (), O),
-            ("inventory:detail", (it,), O), ("inventory:edit", (it,), O), ("inventory:flags", (), O),
+            ("inventory:detail", (it,), O), ("inventory:edit", (it,), O), ("inventory:flags", (), MGR),
             ("inventory:request_list", (), O), ("inventory:overdue", (), O),
             ("inventory:request_detail", (self.req_a1.pk,), O),
             ("inventory:browse", (), REQ), ("inventory:request_new", (it,), REQ), ("inventory:mine", (), REQ),
@@ -87,12 +87,14 @@ class PermissionMatrixTests(OpsTestCase):
     def test_menus_keep_gps_links(self):
         self.login(self.manager)
         page = self.client.get(reverse("core:home")).content.decode()
-        for link in ("tracking:tracker", "tracking:sites", "tracking:people", "tracking:history"):
+        # One Sites page now (FLOW-02): its location and hours are a tab on each site.
+        for link in ("tracking:tracker", "operations:sites", "tracking:people", "tracking:history"):
             self.assertIn(reverse(link), page)
         for user in (self.staff_a1, self.sup_a):
             self.login(user)
             page = self.client.get(reverse("core:home")).content.decode()
-            self.assertIn(reverse("tracking:mine"), page)
+            # "My location" is a banner on Today, not a menu item (report section 2.2); the page still opens.
+            self.assertEqual(self.client.get(reverse("tracking:mine")).status_code, 200)
             self.assertIn(reverse("inventory:browse"), page)
             self.assertNotIn(reverse("payroll:list"), page)
             self.assertNotIn(reverse("billing:list"), page)

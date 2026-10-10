@@ -88,9 +88,40 @@ h2 { font-size: 1.25rem; }
 .nav a:hover { background: rgba(255,255,255,.08); color: #fff; }
 .nav a.active { background: rgba(255,255,255,.14); color: #fff; box-shadow: inset 4px 0 0 var(--brand); font-weight: 600; }
 .nav .group { font-size: .95rem; font-weight: 700; color: #fff; margin: 1rem .75rem .3rem; padding-bottom: .3rem; border-bottom: 1px solid rgba(255,255,255,.18); }
-.userbox { margin-top: auto; font-size: .85rem; border-top: 1px solid rgba(255,255,255,.15); padding-top: .9rem; }
-.userbox strong { color: #fff; display: block; }
-.userbox form { margin-top: .5rem; }
+/* Main menu: top items and collapsible groups (only the current group starts open). */
+.side-top { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; }
+.bell-link { color: #fff; text-decoration: none; min-height: var(--tap); min-width: var(--tap); display: inline-flex; align-items: center; justify-content: center; gap: .2rem; border-radius: 8px; font-size: 1.15rem; }
+.bell-link:hover, .bell-link.active { background: rgba(255,255,255,.14); }
+.bell-link .count, .tabbar .count { background: var(--brand); color: #fff; border-radius: 99px; font-size: .72rem; font-weight: 700; padding: 0 .45rem; min-width: 1.3rem; text-align: center; }
+.nav .ico { display: inline-block; width: 1.5rem; text-align: center; }
+.nav a.navtop, .navgroup > summary { color: #fff; font-weight: 700; font-size: .95rem; padding: .6rem .75rem; border-radius: 8px; min-height: var(--tap); display: flex; align-items: center; gap: .35rem; }
+.navgroup > summary { cursor: pointer; list-style: none; }
+.navgroup > summary::-webkit-details-marker { display: none; }
+.navgroup > summary::after { content: "▸"; margin-left: auto; color: var(--silver); }
+.navgroup[open] > summary::after { content: "▾"; }
+.navgroup > summary:hover { background: rgba(255,255,255,.08); }
+.navgroup > summary.current { background: rgba(255,255,255,.08); }
+.navsub { display: flex; flex-direction: column; gap: .1rem; margin: .1rem 0 .4rem 1.6rem; padding-left: .5rem; border-left: 1px solid rgba(255,255,255,.2); }
+.navsub a { font-size: .92rem; min-height: 40px; display: flex; align-items: center; }
+.userbox { margin-top: auto; font-size: .85rem; border-top: 1px solid rgba(255,255,255,.15); padding-top: .6rem; }
+.userbox > summary { cursor: pointer; list-style: none; min-height: var(--tap); display: flex; flex-direction: column; justify-content: center; padding: .2rem .5rem; border-radius: 8px; }
+.userbox > summary::-webkit-details-marker { display: none; }
+.userbox > summary:hover { background: rgba(255,255,255,.08); }
+.userbox > summary strong { color: #fff; display: block; }
+.userbox > summary strong::after { content: " ▸"; color: var(--silver); font-weight: 400; }
+.userbox[open] > summary strong::after { content: " ▾"; }
+.account-links { display: flex; flex-direction: column; gap: .1rem; padding: .3rem 0 0 .5rem; }
+.account-links a { color: var(--silver); text-decoration: none; padding: .5rem; border-radius: 8px; min-height: 40px; display: flex; align-items: center; }
+.account-links a:hover { background: rgba(255,255,255,.08); color: #fff; }
+.account-links form { margin-top: .4rem; }
+.sheet-close { display: none; }
+/* Tabs at the top of a page: the other pages of the same menu item. */
+.page-tabs { display: flex; gap: .25rem; border-bottom: 2px solid var(--border); margin: -.25rem 0 1.25rem; overflow-x: auto; scrollbar-width: thin; }
+.page-tabs a { padding: .55rem .9rem; min-height: var(--tap); display: inline-flex; align-items: center; white-space: nowrap; text-decoration: none; color: var(--charcoal); font-weight: 600; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+.page-tabs a:hover { color: var(--primary); }
+.page-tabs a.on { color: var(--primary); border-bottom-color: var(--primary); }
+/* Phones: a bottom bar with the main items and "More". Hidden on bigger screens. */
+.tabbar { display: none; }
 .main { padding: 1.5rem 2rem 3rem; min-width: 0; }
 .page-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
 
@@ -231,11 +262,20 @@ details.card summary { cursor: pointer; }
 
 @media (max-width: 860px) {
   .app { grid-template-columns: 1fr; }
-  .sidebar { position: static; height: auto; overflow: visible; flex-direction: row; flex-wrap: wrap; align-items: center; }
-  .nav { flex-direction: row; flex-wrap: wrap; }
-  .nav .group { display: none; }
-  .userbox { margin: 0 0 0 auto; border: 0; padding: 0; }
-  .main { padding: 1rem; }
+  /* The menu becomes a sheet that slides up over the page from the "More" button. */
+  .sidebar { position: fixed; inset: 0; z-index: 60; height: auto; overflow-y: auto; padding-bottom: 5rem;
+             transform: translateY(100%); visibility: hidden; transition: transform .2s ease, visibility .2s; }
+  .sidebar.open { transform: none; visibility: visible; }
+  .sheet-close { display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 1rem; background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.4); border-radius: 8px; font: inherit; font-weight: 600; }
+  .sheet-close[hidden] { display: none; }
+  body.sheet-open { overflow: hidden; }
+  .tabbar { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; position: fixed; left: 0; right: 0; bottom: 0; z-index: 70;
+            background: var(--black); border-top: 1px solid rgba(255,255,255,.15); padding-bottom: env(safe-area-inset-bottom); }
+  .tabbar a, .tabbar button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .1rem; min-height: 56px;
+            color: var(--silver); text-decoration: none; background: none; border: 0; font: inherit; font-size: .72rem; font-weight: 600; padding: .3rem .1rem; text-align: center; line-height: 1.1; }
+  .tabbar .ico { font-size: 1.25rem; }
+  .tabbar .on { color: #fff; box-shadow: inset 0 3px 0 var(--brand); }
+  .main { padding: 1rem 1rem 5.5rem; }
   .map { height: 320px; }
   .btn.wide { max-width: none; }
   table.hours thead { display: none; }
@@ -244,12 +284,10 @@ details.card summary { cursor: pointer; }
   table.hours td:first-child { grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: no-preference) { .btn, .nav a { transition: background-color .15s ease; } }
+@media (prefers-reduced-motion: reduce) { .sidebar { transition: none; } }
 
 /* ---- Secretary operations: menu, bell, tabs ---- */
-.menu-toggle { display: none; }
-.nav a.bell { display: flex; justify-content: space-between; align-items: center; }
 .nav .count { background: var(--brand); color: #fff; border-radius: 99px; font-size: .75rem; font-weight: 700; padding: 0 .5rem; min-width: 1.5rem; text-align: center; }
-.nav a.bell.active .count { background: #fff; color: var(--red); }
 .tabs { display: flex; gap: .25rem; flex-wrap: wrap; border-bottom: 2px solid var(--border); margin-bottom: 1rem; }
 .tabs a { padding: .5rem .9rem; text-decoration: none; color: var(--charcoal); font-weight: 600; border-bottom: 3px solid transparent; margin-bottom: -2px; }
 .tabs a.on { color: var(--primary); border-bottom-color: var(--primary); }
@@ -313,7 +351,7 @@ dl.facts dd { margin: 0; color: var(--black); }
 
 /* print */
 @media print {
-  .sidebar, .no-print, .messages, .location-banner { display: none !important; }
+  .sidebar, .tabbar, .no-print, .messages, .location-banner { display: none !important; }
   .app { display: block; }
   .main { padding: 0; }
   .card { border: 0; padding: 0; }
@@ -321,12 +359,7 @@ dl.facts dd { margin: 0; color: var(--black); }
 }
 
 @media (max-width: 860px) {
-  .menu-toggle { display: inline-block; background: transparent; border: 1px solid rgba(255,255,255,.4); color: #fff; border-radius: 8px; padding: .45rem .9rem; font: inherit; font-weight: 600; }
-  .sidebar .nav { display: none; width: 100%; flex-direction: column; }
-  .sidebar .nav.open { display: flex; }
-  .sidebar .nav.open .group { display: block; }
-  .userbox { width: 100%; display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
-  .userbox form { margin: 0; }
+  .userbox { margin-top: 1rem; }
   .sidebar .userbox .btn { width: auto; }
   dl.facts { grid-template-columns: 1fr; }
   dl.facts dd { margin-bottom: .4rem; }

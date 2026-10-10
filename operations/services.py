@@ -30,7 +30,8 @@ def sites_for(user):
 
 
 def can_edit_site(user):
-    return user.role in OFFICE
+    """Only the Manager edits sites. The Secretary reads them (clients ask about their sites)."""
+    return user.role == Role.MANAGER
 
 
 @transaction.atomic
@@ -49,8 +50,9 @@ def people_at(site):
 # --- Occurrence Book --------------------------------------------------------------
 
 def can_write_ob(user, site):
+    """The people at the site write the OB. The office is not at a site: the Manager reads it, the Secretary has no OB."""
     if user.role in OFFICE:
-        return True
+        return False
     return sites_for(user).filter(pk=site.pk, is_active=True).exists()
 
 

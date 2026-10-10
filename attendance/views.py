@@ -88,7 +88,7 @@ def _mark_outcomes():
 class DaySheetView(RoleRequiredMixin, TemplateView):
     """Manager: everyone for one day, by site, with the button to complete the day."""
 
-    allowed_roles = (Role.MANAGER, Role.SECRETARY)
+    allowed_roles = (Role.MANAGER,)
     template_name = "attendance/day.html"
 
     def get_context_data(self, **kwargs):
@@ -100,7 +100,9 @@ class DaySheetView(RoleRequiredMixin, TemplateView):
         return ctx
 
 
-class RecordListView(LoginRequiredMixin, FilterContextMixin, ListView):
+class RecordListView(RoleRequiredMixin, FilterContextMixin, ListView):
+    # Guards see their own days on "My attendance"; this list is for supervisors and the office.
+    allowed_roles = (Role.SUPERVISOR, Role.MANAGER, Role.SECRETARY)
     template_name = "attendance/records.html"
     context_object_name = "records"
     paginate_by = 50

@@ -11,7 +11,7 @@
   <a class="kpi" href="{% url 'leave:request_list' %}"><div class="num">{{ ops.on_leave }}</div><div class="lbl">On leave today</div></a>
   <a class="kpi {% if sick_to_check %}soon{% endif %}" href="{% url 'leave:sick_list' %}?now=1"><div class="num">{{ ops.sick }}</div><div class="lbl">Off sick today</div>{% if sick_to_check %}<div class="muted small">{{ sick_to_check }} sick sheet{{ sick_to_check|pluralize }} to check</div>{% endif %}</a>
   <a class="kpi {% if ops.short_sites %}now{% endif %}" href="{% url 'attendance:day' %}"><div class="num">{{ ops.short_sites }}</div><div class="lbl">Short-staffed sites</div></a>
-  <a class="kpi {% if ops.serious_incidents %}now{% endif %}" href="{% url 'incidents:list' %}?severity=high"><div class="num">{{ ops.serious_incidents }}</div><div class="lbl">Open high or critical incidents</div></a>
+  <a class="kpi {% if ops.serious_incidents %}now{% endif %}" href="#waiting"><div class="num">{{ ops.serious_incidents }}</div><div class="lbl">Open high or critical incidents</div></a>
 </div>
 
 <div class="grid kpis">
@@ -29,8 +29,9 @@
 </div>
 
 <div class="card">
-  <h2>Waiting for me {% if waiting_total %}<span class="badge off">{{ waiting_total }}</span>{% endif %}</h2>
+  <h2 id="waiting">Waiting for me {% if waiting_total %}<span class="badge off">{{ waiting_total }}</span>{% endif %}</h2>
   <ul class="timeline">
+    {% for i in serious_incidents %}<li><span class="badge high">{{ i.get_severity_display }} incident</span> <a href="{{ i.get_absolute_url }}">{{ i.number }}: {{ i.get_kind_display }} at {{ i.site }}</a> <span class="small muted">{{ i.occurred_at|timesince }} ago</span></li>{% endfor %}
     {% for r in payroll_waiting %}<li><span class="badge pending">Payroll</span> <a href="{{ r.get_absolute_url }}">Approve payroll for {{ r.period|date:"F Y" }}</a> <span class="small muted">net KES {{ r.total_net|money }}</span></li>{% endfor %}
     {% for e in escalations_waiting %}<li><span class="badge pending">From Secretary</span> <a href="{% url 'escalations:detail' e.pk %}">{{ e.subject }}</a> <span class="small muted">{{ e.raised_at|timesince }} ago</span></li>{% endfor %}
     {% for r in items_waiting %}<li><span class="badge pending">Item</span> <a href="{{ r.get_absolute_url }}">{{ r.requester }} asked for {{ r.qty_requested }} x {{ r.item.name }}</a></li>{% endfor %}
@@ -39,7 +40,7 @@
     {% if expenses_waiting %}<li><span class="badge pending">Expenses</span> <a href="{% url 'finance:approvals' %}">{{ expenses_waiting }} expense{{ expenses_waiting|pluralize }} above the limit</a></li>{% endif %}
     {% if not waiting_total %}<li class="empty">Nothing is waiting for you.</li>{% endif %}
   </ul>
-  <p class="small muted"><a href="{% url 'clients:issue_list' %}">{{ open_issue_count }} open client issue{{ open_issue_count|pluralize }}</a> · <a href="{% url 'inventory:flags' %}">Choose items that need my approval</a></p>
+  <p class="small muted"><a href="{% url 'clients:issue_list' %}">{{ open_issue_count }} open client issue{{ open_issue_count|pluralize }}</a> · <a href="{% url 'inventory:flags' %}">Which items need my OK</a></p>
 </div>
 
 <div class="grid two">

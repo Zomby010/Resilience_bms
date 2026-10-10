@@ -3,10 +3,11 @@ from functools import wraps
 
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
+from django.views import View
 from django.views.decorators.http import require_GET, require_POST
 from django.views.generic import ListView, TemplateView
 
@@ -118,19 +119,11 @@ class TrackerView(ManagerMixin, TemplateView):
         return ctx
 
 
-class SiteListView(ManagerMixin, ListView):
-    template_name = "tracking/site_list.html"
-    context_object_name = "sites"
+class SiteListView(ManagerMixin, View):
+    """There is one Sites page now (Sites ▸ Sites); its location and hours are a tab on each site."""
 
-    def get_queryset(self):
-        return Site.objects.annotate(
-            people_count=Count("people", filter=Q(people__user__is_active=True))
-        ).prefetch_related("hours")
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx["audit"] = AuditEntry.objects.select_related("actor")[:20]
-        return ctx
+    def get(self, request):
+        return redirect("operations:sites")
 
 
 class SiteEditView(ManagerMixin, TemplateView):
@@ -152,7 +145,10 @@ class SiteEditView(ManagerMixin, TemplateView):
             ctx["form"], ctx["hours_form"] = self.forms()
         ctx["site"] = self.site
         if self.site:
+            from operations.views import site_tabs
+
             ctx["people"] = User.objects.filter(tracking__site=self.site, is_active=True)
+            ctx["site_tabs"] = site_tabs(self.request.user, self.site, "location")
         return ctx
 
     def post(self, request, *args, **kwargs):
@@ -170,7 +166,7 @@ class SiteEditView(ManagerMixin, TemplateView):
                 f"hours: {hours_form.summary()}",
             )
         messages.success(request, f"Site {site.name} saved.")
-        return redirect("tracking:sites")
+        return redirect("operations:site_detail", pk=site.pk)
 
 
 class PeopleView(ManagerMixin, ListView):
@@ -268,6 +264,7 @@ class HistoryView(ManagerMixin, ListView):
         ctx = super().get_context_data(**kwargs)
         ctx["filter_form"] = self.filter_form
         ctx["history_days"] = HISTORY_DAYS
+        ctx["audit"] = AuditEntry.objects.select_related("actor")[:20]
         params = self.request.GET.copy()
         params.pop("page", None)
         ctx["query_string"] = params.urlencode()

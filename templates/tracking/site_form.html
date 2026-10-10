@@ -6,8 +6,9 @@
 <div class="page-head">
   <div><h1>{% if site %}Edit {{ site.name }}{% else %}Add a site{% endif %}</h1>
   <p class="muted">Enter the site's official work location. Guards and supervisors at this site are compared with it.</p></div>
-  <a class="btn secondary" href="{% url 'tracking:sites' %}">Back to sites</a>
+  <a class="btn secondary" href="{% url 'operations:sites' %}">Back to sites</a>
 </div>
+{% if site %}{% include "operations/_site_tabs.html" %}{% endif %}
 <form method="post" novalidate>
   {% csrf_token %}
   <div class="grid two">
@@ -32,7 +33,7 @@
   {% if people %}
   <div class="card"><h2>People at this site</h2><p>{% for p in people %}{{ p }}{% if not forloop.last %}, {% endif %}{% endfor %}</p></div>
   {% endif %}
-  <div class="form-actions"><button class="btn big" type="submit">Save site</button><a class="btn secondary big" href="{% url 'tracking:sites' %}">Cancel</a></div>
+  <div class="form-actions"><button class="btn big" type="submit">Save site</button><a class="btn secondary big" href="{% url 'operations:sites' %}">Cancel</a></div>
 </form>
 {% endblock %}
 {% block scripts %}

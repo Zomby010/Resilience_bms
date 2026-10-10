@@ -338,6 +338,9 @@ class AccessTests(TrackingTestCase):
     def test_manager_can_open_every_page(self):
         self.login(self.manager)
         for name in self.manager_pages:
+            if name == "sites":  # merged into the one Sites page (FLOW-02)
+                self.assertRedirects(self.client.get(reverse("tracking:sites")), reverse("operations:sites"))
+                continue
             self.assertEqual(self.client.get(reverse(f"tracking:{name}")).status_code, 200, name)
         self.assertEqual(self.client.get(reverse("tracking:person_edit", args=[self.staff_a1.pk])).status_code, 200)
         self.assertEqual(self.client.get(reverse("tracking:site_edit", args=[self.site.pk])).status_code, 200)
@@ -392,8 +395,8 @@ class ManagerSetupTests(TrackingTestCase):
     def test_create_site_with_hours_is_audited(self):
         self.login(self.manager)
         r = self.client.post(reverse("tracking:site_create"), self.site_data())
-        self.assertRedirects(r, reverse("tracking:sites"))
         site = Site.objects.get(name="Mamboleo")
+        self.assertRedirects(r, reverse("operations:site_detail", args=[site.pk]))
         self.assertEqual(site.radius_m, 25)
         hours = site.hours.get()
         self.assertEqual((hours.weekday, hours.start, hours.end), (0, time(18), time(6)))

@@ -81,19 +81,25 @@ class IncidentTests(CompanyTestCase):
         self.assertEqual(self.client.post(reverse("incidents:create"), self.form_data(site=self.closed_site.pk)).status_code, 200)
         self.assertFalse(Incident.objects.exists())
 
-    def test_form_defaults_to_my_site_and_every_role_can_report(self):
+    def test_form_defaults_to_my_site_and_site_people_report(self):
         TrackingProfile.objects.create(user=self.staff_b1, site=self.site_b)
         self.login(self.staff_b1)
         r = self.client.get(reverse("incidents:create"))
         self.assertEqual(r.context["form"].initial["site"], self.site_b.pk)
-        for user in (self.sup_a, self.secretary, self.manager):
+        self.login(self.sup_a)
+        self.assertEqual(self.client.get(reverse("incidents:create")).status_code, 200)
+        # Frank's rule: the office does not report incidents (they happen at sites).
+        for user in (self.secretary, self.manager):
             self.login(user)
-            self.assertEqual(self.client.get(reverse("incidents:create")).status_code, 200)
+            self.assertEqual(self.client.get(reverse("incidents:create")).status_code, 403)
+            self.assertEqual(self.client.get(reverse("incidents:list")).status_code, 403)
+        with self.assertRaises(TransitionError):
+            self.report(self.manager)
 
-    def test_create_notifies_supervisors_and_secretary(self):
+    def test_create_notifies_supervisors_not_secretary(self):
         inc = self.report(self.staff_a1, site=self.site_b)
         told = set(Notification.objects.filter(kind="incident.new").values_list("recipient__username", flat=True))
-        self.assertEqual(told, {"supa", "supb", "secretary"})  # no manager for medium, never the reporter
+        self.assertEqual(told, {"supa", "supb"})  # no manager for medium, no Secretary (Q6), never the reporter
         self.assertEqual(Notification.objects.get(recipient=self.sup_a).entity_id, str(inc.pk))
 
     def test_critical_also_goes_to_manager_high_priority(self):
@@ -104,8 +110,8 @@ class IncidentTests(CompanyTestCase):
         self.assertEqual(Notification.objects.filter(recipient=self.sup_a).count(), 1)  # reporter's and site's supervisor once
 
     def test_reporter_is_not_told_about_own_report(self):
-        self.report(self.manager, severity="high")
-        self.assertFalse(Notification.objects.filter(recipient=self.manager).exists())
+        self.report(self.sup_a, severity="high")
+        self.assertFalse(Notification.objects.filter(recipient=self.sup_a).exists())
 
     # --- visibility -----------------------------------------------------------
 
@@ -113,12 +119,12 @@ class IncidentTests(CompanyTestCase):
         inc = self.report(self.staff_a1, site=self.site_a)
         url = inc.get_absolute_url()
         for user, code in ((self.staff_a1, 200), (self.staff_a2, 404), (self.sup_a, 200), (self.sup_b, 404),
-                           (self.secretary, 200), (self.manager, 200)):
+                           (self.secretary, 403), (self.manager, 200)):
             self.login(user)
             self.assertEqual(self.client.get(url).status_code, code, user)
             self.assertEqual(self.client.get(reverse("incidents:print", args=[inc.pk])).status_code, code, user)
         self.assertEqual(Incident.objects.visible_to(self.staff_a2).count(), 0)
-        self.assertEqual(Incident.objects.visible_to(self.secretary).count(), 1)
+        self.assertEqual(Incident.objects.visible_to(self.secretary).count(), 0)
 
     def test_site_supervisor_sees_incidents_at_their_site(self):
         inc = self.report(self.staff_a1, site=self.site_b)  # sup_b looks after this site
@@ -171,7 +177,9 @@ class IncidentTests(CompanyTestCase):
         self.assertEqual(inc.status, S.MANAGER_REVIEWED)
         self.assertEqual(AuditLog.objects.filter(action="incident.manager_reviewed").count(), 1)
 
-        self.login(self.secretary)
+        self.login(self.secretary)  # Frank's rule: the Secretary has no incident pages (Q6)
+        self.assertEqual(self.client.post(reverse("incidents:close", args=[inc.pk])).status_code, 403)
+        self.login(self.manager)
         url = reverse("incidents:close", args=[inc.pk])
         self.client.post(url, {"body": "Client informed"})
         self.client.post(url, {"body": "Client informed"})
@@ -239,8 +247,9 @@ class IncidentTests(CompanyTestCase):
     def test_list_filters_and_counts(self):
         a = self.report(self.staff_a1, severity="critical")
         b = self.report(self.staff_b1, site=self.site_b)
-        services.close(b, self.secretary)
-        self.login(self.manager)
+        services.close(b, self.manager)
+        self.sup_a.team_members.add(self.staff_b1)  # sup_a now sees both incidents
+        self.login(self.sup_a)
         r = self.client.get(reverse("incidents:list"))
         self.assertEqual(len(r.context["incidents"]), 2)
         chips = {v: n for v, _, n in r.context["chips"]}
@@ -263,7 +272,10 @@ class IncidentTests(CompanyTestCase):
         self.login(self.sup_a)
         self.assertEqual(self.client.get(reverse("incidents:list") + "?export=csv").status_code, 403)
         self.login(self.secretary)
-        r = self.client.get(reverse("incidents:list") + "?export=csv")
+        self.assertEqual(self.client.get(reverse("incidents:list") + "?export=csv").status_code, 403)
+        self.login(self.manager)  # no list page, but the download stays (linked from each site's History tab)
+        self.assertEqual(self.client.get(reverse("incidents:list")).status_code, 403)
+        r = self.client.get(reverse("incidents:list") + f"?export=csv&site={self.site_a.pk}")
         self.assertEqual(r["Content-Type"], "text/csv")
         body = r.content.decode()
         self.assertIn(inc.number, body)
@@ -280,8 +292,13 @@ class IncidentTests(CompanyTestCase):
         self.assertEqual(services.recent_for_site(self.site_b), [])
 
     def test_nav_links_for_every_role(self):
-        for user, label in ((self.staff_a1, "My incidents"), (self.sup_a, "Incidents"), (self.secretary, "Incidents")):
+        for user, label in ((self.staff_a1, "My incidents"), (self.sup_a, "Incidents")):
             self.login(user)
             page = self.client.get(reverse("incidents:list")).content.decode()
             self.assertIn("Report an incident", page)
             self.assertIn(label, page)
+        for user in (self.secretary, self.manager):  # no Incidents page for the office (Frank's rule)
+            self.login(user)
+            page = self.client.get(reverse("core:home")).content.decode()
+            self.assertNotIn(reverse("incidents:list") + '"', page)
+            self.assertNotIn(reverse("incidents:create"), page)

@@ -169,8 +169,9 @@ def set_manager_flags(flagged_ids, user):
             parts.append("Now need Manager approval: " + ", ".join(on[:8]))
         if off:
             parts.append("No longer need it: " + ", ".join(off[:8]))
-        notify_role(Role.SECRETARY, "item.flags_changed", "The Manager changed which items need his approval",
-                    ". ".join(parts) + ".", reverse("inventory:flags"))
+        # No link: the list is the Manager's own setting page (each request still says when it needs the Manager's OK).
+        notify_role(Role.SECRETARY, "item.flags_changed", "The Manager changed which items need the Manager's OK",
+                    ". ".join(parts) + ".", "")
     return len(changed)
 
 

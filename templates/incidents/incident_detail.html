@@ -8,7 +8,7 @@
   </div>
   <div class="actions">
     <a class="btn secondary" href="{% url 'incidents:print' incident.pk %}">Print</a>
-    <a class="btn secondary" href="{% url 'incidents:list' %}">Back to the list</a>
+    {% if user.role == 'manager' %}<a class="btn secondary" href="{% url 'operations:site_detail' incident.site_id %}?tab=history">All incidents at {{ incident.site }}</a>{% else %}<a class="btn secondary" href="{% url 'incidents:list' %}">Back to the list</a>{% endif %}
   </div>
 </div>
 
