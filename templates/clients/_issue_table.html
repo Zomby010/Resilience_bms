@@ -1,15 +1,15 @@
-<div class="table-wrap"><table>
+<div class="table-wrap"><table class="cards">
   <thead><tr><th>Issue</th>{% if not hide_client %}<th>Client</th>{% endif %}<th>Priority</th><th>Status</th><th>Supervisor</th><th>Reported</th><th>Last update</th></tr></thead>
   <tbody>
   {% for i in issues %}
     <tr>
-      <td><a href="{{ i.get_absolute_url }}"><strong>{{ i.number }}</strong> {{ i.subject }}</a></td>
-      {% if not hide_client %}<td>{{ i.client }}</td>{% endif %}
-      <td>{% badge i "priority" %}</td>
-      <td>{% badge i %}</td>
-      <td>{{ i.supervisor|default:"-" }}</td>
-      <td>{{ i.created_at|date:"d M Y" }}</td>
-      <td>{{ i.last_update|default:i.updated_at|date:"d M Y H:i" }}</td>
+      <td data-label="Issue" class="card-title"><a href="{{ i.get_absolute_url }}"><strong>{{ i.number }}</strong> {{ i.subject }}</a></td>
+      {% if not hide_client %}<td data-label="Client">{{ i.client }}</td>{% endif %}
+      <td data-label="Priority">{% badge i "priority" %}</td>
+      <td data-label="Status" class="card-status">{% badge i %}</td>
+      <td data-label="Supervisor">{{ i.supervisor|default:"-" }}</td>
+      <td data-label="Reported">{{ i.created_at|date:"d M Y" }}</td>
+      <td data-label="Last update">{{ i.last_update|default:i.updated_at|date:"d M Y H:i" }}</td>
     </tr>
   {% empty %}<tr><td colspan="7" class="empty">No issues.</td></tr>{% endfor %}
   </tbody>

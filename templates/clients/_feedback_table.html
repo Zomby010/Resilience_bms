@@ -1,13 +1,13 @@
-<div class="table-wrap"><table>
+<div class="table-wrap"><table class="cards">
   <thead><tr><th>Received</th>{% if not hide_client %}<th>Client</th>{% endif %}<th>Type</th><th>Subject</th><th>Status</th></tr></thead>
   <tbody>
   {% for fb in feedback %}
     <tr>
-      <td>{{ fb.recorded_at|date:"d M Y" }}<br><span class="small muted">by {{ fb.get_channel_display|lower }}</span></td>
-      {% if not hide_client %}<td>{{ fb.client }}</td>{% endif %}
-      <td>{{ fb.get_kind_display }}</td>
-      <td><a href="{{ fb.get_absolute_url }}">{{ fb.subject }}</a></td>
-      <td>{% badge fb %}</td>
+      <td data-label="Received" class="card-title">{{ fb.recorded_at|date:"d M Y" }}<br><span class="small muted">by {{ fb.get_channel_display|lower }}</span></td>
+      {% if not hide_client %}<td data-label="Client">{{ fb.client }}</td>{% endif %}
+      <td data-label="Type">{{ fb.get_kind_display }}</td>
+      <td data-label="Subject"><a href="{{ fb.get_absolute_url }}">{{ fb.subject }}</a></td>
+      <td data-label="Status" class="card-status">{% badge fb %}</td>
     </tr>
   {% empty %}<tr><td colspan="5" class="empty">No feedback recorded.</td></tr>{% endfor %}
   </tbody>

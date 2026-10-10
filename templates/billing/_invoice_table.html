@@ -1,15 +1,15 @@
-<div class="table-wrap"><table>
+<div class="table-wrap"><table class="cards">
   <thead><tr><th>Invoice</th>{% if not hide_client %}<th>Client</th>{% endif %}<th>Date</th><th>Due</th><th class="num">Total (KES)</th><th class="num">Balance (KES)</th><th>Status</th></tr></thead>
   <tbody>
   {% for i in invoices %}
     <tr>
-      <td><a href="{{ i.get_absolute_url }}"><strong>{{ i.number|default:"Draft" }}</strong></a>{% if not i.number %} <span class="small muted">#{{ i.pk }}</span>{% endif %}</td>
-      {% if not hide_client %}<td>{{ i.client }}</td>{% endif %}
-      <td>{{ i.invoice_date|date:"d M Y" }}</td>
-      <td>{{ i.due_date|date:"d M Y" }}</td>
-      <td class="num">{{ i.total|money }}</td>
-      <td class="num">{% if i.status == 'draft' or i.status == 'cancelled' %}-{% else %}{{ i.balance|money }}{% endif %}</td>
-      <td>{% badge i %}</td>
+      <td data-label="Invoice" class="card-title"><a href="{{ i.get_absolute_url }}"><strong>{{ i.number|default:"Draft" }}</strong></a>{% if not i.number %} <span class="small muted">#{{ i.pk }}</span>{% endif %}</td>
+      {% if not hide_client %}<td data-label="Client">{{ i.client }}</td>{% endif %}
+      <td data-label="Date">{{ i.invoice_date|date:"d M Y" }}</td>
+      <td data-label="Due">{{ i.due_date|date:"d M Y" }}</td>
+      <td class="num" data-label="Total (KES)">{{ i.total|money }}</td>
+      <td class="num" data-label="Balance (KES)">{% if i.status == 'draft' or i.status == 'cancelled' %}-{% else %}{{ i.balance|money }}{% endif %}</td>
+      <td data-label="Status" class="card-status">{% badge i %}</td>
     </tr>
   {% empty %}<tr><td colspan="7" class="empty">No invoices.</td></tr>{% endfor %}
   </tbody>

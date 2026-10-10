@@ -6,21 +6,17 @@
   {% if can_edit %}<a class="btn" href="{% url 'tracking:site_create' %}">Add a site</a>{% endif %}</div>
 <div class="card">
   {% if user.role != 'staff' %}
-  <form method="get" class="filters">
-    <div><label for="q">Name or address</label><input id="q" name="q" value="{{ f.q }}"></div>
-    <div><label for="show">Show</label><select id="show" name="show"><option value="">Active sites</option><option value="all" {% if f.show == 'all' %}selected{% endif %}>All sites</option></select></div>
-    <button class="btn secondary" type="submit">Filter</button>
-  </form>
+  {% filter_bar "q|Name or address|text||main" "show|Show|select|=all:All sites|main||Active sites" %}
   {% endif %}
-  <div class="table-wrap"><table>
+  <div class="table-wrap"><table class="cards">
     <thead><tr><th>Site</th><th>Supervisor</th><th>Guards posted / needed</th>{% if show_location %}<th>Working hours</th><th class="num">On-location radius</th>{% endif %}<th></th></tr></thead>
     <tbody>{% for s in sites %}<tr>
-      <td><a href="{{ s.get_absolute_url }}"><strong>{{ s.name }}</strong></a>{% if not s.is_active %} <span class="badge role">Not active</span>{% endif %}<br><span class="small muted">{{ s.address }}</span></td>
-      <td>{{ s.supervisor|default:"-" }}</td>
-      <td>{{ s.posted }} / {{ s.guards_needed }}{% if s.posted < s.guards_needed %} <span class="badge off">Short</span>{% endif %}</td>
-      {% if show_location %}<td class="small">{% for h in s.hours.all %}{{ h.get_weekday_display|slice:":3" }} {{ h.start|time:"H:i" }}-{{ h.end|time:"H:i" }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="muted">Not set</span>{% endfor %}</td>
-      <td class="num">{{ s.radius_m }} m</td>{% endif %}
-      <td>{% if can_edit %}<a class="btn small secondary" href="{% url 'operations:site_edit' s.pk %}">Edit details</a>{% endif %}</td></tr>
+      <td data-label="Site" class="card-title"><a href="{{ s.get_absolute_url }}"><strong>{{ s.name }}</strong></a>{% if not s.is_active %} <span class="badge role">Not active</span>{% endif %}<br><span class="small muted">{{ s.address }}</span></td>
+      <td data-label="Supervisor">{{ s.supervisor|default:"-" }}</td>
+      <td data-label="Guards posted / needed">{{ s.posted }} / {{ s.guards_needed }}{% if s.posted < s.guards_needed %} <span class="badge off">Short</span>{% endif %}</td>
+      {% if show_location %}<td class="small" data-label="Working hours">{% for h in s.hours.all %}{{ h.get_weekday_display|slice:":3" }} {{ h.start|time:"H:i" }}-{{ h.end|time:"H:i" }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="muted">Not set</span>{% endfor %}</td>
+      <td class="num" data-label="On-location radius">{{ s.radius_m }} m</td>{% endif %}
+      <td data-label="">{% if can_edit %}<a class="btn small secondary" href="{% url 'operations:site_edit' s.pk %}">Edit details</a>{% endif %}</td></tr>
     {% empty %}<tr><td colspan="{% if show_location %}6{% else %}4{% endif %}" class="empty">{% if user.role == 'staff' %}You have not been given a site yet.{% else %}No sites.{% endif %}</td></tr>{% endfor %}</tbody>
   </table></div>
 </div>

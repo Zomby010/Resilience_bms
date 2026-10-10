@@ -23,7 +23,7 @@
 {% endif %}
 <div class="card">
   <h2>Everyone</h2>
-  <div class="table-wrap"><table>
+  <div class="table-wrap"><table class="cards">
     <thead><tr><th>Person</th><th>Site</th><th>In and out</th><th>Today</th><th>Status</th>{% if user.role == 'manager' and not board.completed %}<th></th>{% endif %}</tr></thead>
     {% for b in board.boxes %}{% for row in b.in %}{% include "attendance/_day_row.html" %}{% endfor %}{% for row in b.absent %}{% include "attendance/_day_row.html" %}{% endfor %}{% for row in b.away %}{% include "attendance/_day_row.html" %}{% endfor %}{% for row in b.later %}{% include "attendance/_day_row.html" %}{% endfor %}{% endfor %}
     </tbody>

@@ -13,27 +13,18 @@
   {% for v, l, n in chips %}<a href="?{% if chip_query %}{{ chip_query }}&amp;{% endif %}status={{ v }}" class="{% if status == v %}on{% endif %}">{{ l }} ({{ n }})</a>{% endfor %}
 </div>
 <div class="card">
-  <form method="get" class="filters">
-    <input type="hidden" name="status" value="{{ status }}">
-    <div><label for="q">Search</label><input id="q" type="search" name="q" value="{{ f.q }}" placeholder="INC-0001 or words"></div>
-    <div><label for="kind">Type</label><select id="kind" name="kind"><option value="">Any</option>{% for v, l in kinds %}<option value="{{ v }}" {% if f.kind == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
-    <div><label for="severity">How serious</label><select id="severity" name="severity"><option value="">Any</option>{% for v, l in severities %}<option value="{{ v }}" {% if f.severity == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
-    {% if sites %}<div><label for="site">Site</label><select id="site" name="site"><option value="">Any</option>{% for s in sites %}<option value="{{ s.pk }}" {% if f.site == s.pk|stringformat:"s" %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>{% endif %}
-    <div><label for="from">From</label><input id="from" type="date" name="from" value="{{ f.from }}"></div>
-    <div><label for="to">To</label><input id="to" type="date" name="to" value="{{ f.to }}"></div>
-    <button class="btn secondary" type="submit">Filter</button>
-  </form>
-  <div class="table-wrap"><table>
+  {% filter_bar "q|Search|text||main|INC-0001 or words" "severity|How serious|select|severities|main" "site|Site|select|sites" "kind|Type|select|kinds" "from|From|date" "to|To|date" %}
+  <div class="table-wrap"><table class="cards">
     <thead><tr><th>Incident</th><th>Site</th><th>When</th><th>How serious</th><th>Status</th>{% if not mine_only %}<th>Reported by</th>{% endif %}</tr></thead>
     <tbody>
     {% for i in incidents %}
       <tr>
-        <td><a href="{{ i.get_absolute_url }}"><strong>{{ i.number }}</strong> {{ i.get_kind_display }}</a></td>
-        <td>{{ i.site }}</td>
-        <td>{{ i.occurred_at|date:"d M Y H:i" }}</td>
-        <td>{% badge i "severity" %}</td>
-        <td>{% badge i %}</td>
-        {% if not mine_only %}<td>{{ i.reported_by }}</td>{% endif %}
+        <td data-label="Incident" class="card-title"><a href="{{ i.get_absolute_url }}"><strong>{{ i.number }}</strong> {{ i.get_kind_display }}</a></td>
+        <td data-label="Site">{{ i.site }}</td>
+        <td data-label="When">{{ i.occurred_at|date:"d M Y H:i" }}</td>
+        <td data-label="How serious">{% badge i "severity" %}</td>
+        <td data-label="Status" class="card-status">{% badge i %}</td>
+        {% if not mine_only %}<td data-label="Reported by">{{ i.reported_by }}</td>{% endif %}
       </tr>
     {% empty %}<tr><td colspan="6" class="empty">No incidents.</td></tr>{% endfor %}
     </tbody>
