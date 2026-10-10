@@ -1,0 +1,14 @@
+{# One OB entry: site stripe and chip, time, kind icon, text, writer. Corrections sit indented under it. #}
+<li class="ob-entry{% if e.tone %} tone-{{ e.tone }}{% endif %}" style="--site: {{ e.site.colour_hex }}">
+  <div class="ob-top">
+    <span class="site-chip" style="--site: {{ e.site.colour_hex }}">{{ e.site.name }}</span>
+    <time datetime="{{ e.occurred_at|date:'c' }}">{{ e.occurred_at|date:"H:i" }}</time>
+    <span class="ob-kind"><span aria-hidden="true">{{ e.icon }}</span> {{ e.get_kind_display }}</span>
+    <span class="small muted">{{ e.number }}</span>
+    {% if e.correctable %}<details class="inline ob-more"><summary class="btn small secondary" aria-label="More for {{ e.number }}">⋯</summary>
+      <a class="btn small secondary" href="{% url 'operations:ob_write' %}?corrects={{ e.pk }}">Correct this entry</a></details>{% endif %}
+  </div>
+  <div class="ob-text">{% if e.corrects_id and not nested %}<span class="badge pending">✏ Corrects {{ e.corrects.number }}</span> {% endif %}{{ e.text|linebreaksbr }}{% if e.incident_id %} <a class="ob-incident" href="{% url 'incidents:detail' e.incident_id %}">Open incident</a>{% endif %}</div>
+  <div class="small muted">by {{ e.written_by }}{% if e.written_at|date:"YmdHi" != e.occurred_at|date:"YmdHi" %} · written {{ e.written_at|date:"d M H:i" }}{% endif %}</div>
+  {% if e.fixes %}<ol class="ob-fixes">{% for c in e.fixes %}{% include "operations/_ob_entry.html" with e=c nested=True %}{% endfor %}</ol>{% endif %}
+</li>

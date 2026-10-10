@@ -62,6 +62,32 @@ class OBEntry(models.Model):
     def number(self):
         return f"OB-{self.pk:05d}" if self.pk else "OB-new"
 
+    # One icon and tone per kind, so a page of entries can be scanned (always shown with the kind's words).
+    LOOK = {"shift_start": ("🟢", "calm"), "handover": ("🟢", "calm"), "patrol": ("🔁", ""), "visitor": ("🚗", ""),
+            "delivery": ("📦", ""), "alarm": ("🔔", "amber"), "incident": ("🚨", "red"), "site_visit": ("🧭", "blue"),
+            "other": ("📝", "")}
+
+    @property
+    def icon(self):
+        return self.LOOK.get(self.kind, ("📝", ""))[0]
+
+    @property
+    def tone(self):
+        return self.LOOK.get(self.kind, ("", ""))[1]
+
+    def can_correct(self, user):
+        """Supervisors correct any entry they can see; a guard only their own, within 24 hours of writing it."""
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from accounts.models import Role
+
+        if user.role == Role.SUPERVISOR:
+            return True
+        return (user.role == Role.STAFF and self.written_by_id == user.pk
+                and self.written_at >= timezone.now() - timedelta(hours=24))
+
 
 class SiteVisitQuerySet(models.QuerySet):
     def visible_to(self, user):

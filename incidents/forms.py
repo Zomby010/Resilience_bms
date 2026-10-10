@@ -3,6 +3,7 @@ from datetime import timedelta
 from django import forms
 from django.utils import timezone
 
+from core.forms import MoreDetailsMixin
 from core.services.files import AttachmentField
 from tracking.models import Site
 
@@ -26,7 +27,8 @@ class PhotosField(AttachmentField):
         return [super(PhotosField, self).clean(f, initial) for f in files]
 
 
-class IncidentForm(forms.ModelForm):
+class IncidentForm(MoreDetailsMixin, forms.ModelForm):
+    more_fields = ("who_involved", "action_taken", "police_reported", "police_ob_number", "client_told", "photos")
     photos = PhotosField(label="Photos (optional)", help_text=f"Up to {MAX_PHOTOS} photos. JPG, PNG or PDF, up to 4 MB each.")
 
     class Meta:

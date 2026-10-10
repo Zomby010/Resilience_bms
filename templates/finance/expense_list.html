@@ -26,11 +26,12 @@
   </table></div>
   <p class="small muted">Only recorded expenses are added up. Ones waiting for (or refused) the Manager's approval are left out.</p>
   {% else %}
-  <div class="table-wrap">
-  <table class="cards">
+  {% for g in groups %}<details class="fold month" data-fold="m{{ g.key }}"{% if g.open %} open{% endif %}>
+  <summary>{{ g.label }} <span class="n">{{ g.totals.n }} expense{{ g.totals.n|pluralize }} · {{ g.totals.total|kes }} recorded</span></summary>
+  <div class="fold-body"><div class="table-wrap"><table class="cards">
     <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Reference</th><th class="num">Amount (KES)</th><th>Recorded by</th></tr></thead>
     <tbody>
-    {% for e in expenses %}
+    {% for e in g.items %}
       <tr>
         <td data-label="Date" class="card-title">{{ e.date|date:"d M Y" }}</td>
         <td data-label="Category">{{ e.category }}</td>
@@ -39,10 +40,10 @@
         <td class="num" data-label="Amount (KES)">{{ e.amount|money }}</td>
         <td data-label="Recorded by">{{ e.recorded_by }}</td>
       </tr>
-    {% empty %}<tr><td colspan="6" class="empty">No expenses match.</td></tr>{% endfor %}
+    {% endfor %}
     </tbody>
-  </table>
-  </div>
+  </table></div></div></details>
+  {% empty %}<p class="empty">No expenses match.</p>{% endfor %}
   {% include "partials/pagination.html" %}
   {% endif %}
 </div>

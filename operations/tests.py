@@ -120,6 +120,76 @@ class OBTests(OpsBase):
         self.assertNotEqual(self.client.get(reverse("operations:ob") + "?export=csv").get("Content-Type"), "text/csv")
 
 
+class OBLookTests(OpsBase):
+    """OB-01..04: site colour and chip, kind icons, corrections under their entry, day headings, "Correct" rules."""
+
+    def test_sites_get_different_colours_and_the_manager_can_change_one(self):
+        self.assertTrue(self.site.colour and self.site_b.colour)
+        self.assertNotEqual(self.site.colour, self.site_b.colour)
+        self.site.colour = "yellow"
+        self.site.save()
+        self.site.refresh_from_db()
+        self.assertEqual(self.site.colour, "yellow")
+        self.assertEqual(self.site.colour_hex, "#F0E442")
+
+    def test_entries_are_cards_under_day_headings_with_corrections_tucked_in(self):
+        first = services.write_ob(self.site, self.staff_a1, OBEntry.Kind.ALARM, "Power off at the gate")
+        services.write_ob(self.site, self.staff_a1, OBEntry.Kind.ALARM, "Power off at the back gate", corrects=first)
+        self.login(self.sup_a)
+        page = self.client.get(reverse("operations:ob")).content.decode()
+        self.assertIn('<h3 class="ob-day">Today</h3>', page)
+        self.assertIn(f"--site: {self.site.colour_hex}", page)
+        self.assertIn('class="site-chip"', page)
+        self.assertIn("🔔", page)
+        self.assertIn("tone-amber", page)
+        self.assertIn('<ol class="ob-fixes">', page)
+        self.assertNotIn("✏ Corrects", page)  # it sits under the entry it corrects instead
+
+    def test_guards_correct_only_their_own_recent_entries(self):
+        mine = services.write_ob(self.site, self.staff_a1, OBEntry.Kind.PATROL, "Mine")
+        theirs = services.write_ob(self.site, self.sup_a, OBEntry.Kind.PATROL, "Supervisor's")
+        old = services.write_ob(self.site, self.staff_a1, OBEntry.Kind.PATROL, "Old")
+        OBEntry.objects.filter(pk=old.pk).update(written_at=timezone.now() - timedelta(hours=25))
+        self.login(self.staff_a1)
+        page = self.client.get(reverse("operations:ob")).content.decode()
+        self.assertIn(f"?corrects={mine.pk}", page)
+        self.assertNotIn(f"?corrects={theirs.pk}", page)
+        self.assertNotIn(f"?corrects={old.pk}", page)
+        write = reverse("operations:ob_write")
+        self.assertEqual(self.client.get(f"{write}?corrects={mine.pk}").status_code, 200)
+        self.assertEqual(self.client.get(f"{write}?corrects={theirs.pk}").status_code, 403)
+        self.assertEqual(self.client.get(f"{write}?corrects={old.pk}").status_code, 403)
+        self.login(self.sup_a)  # supervisors keep "Correct" on every entry they can see
+        page = self.client.get(reverse("operations:ob")).content.decode()
+        self.assertIn(f"?corrects={mine.pk}", page)
+        self.assertIn(f"?corrects={old.pk}", page)
+
+
+class SiteHoursTests(OpsBase):
+    """CLUT-01/03: hours in one line, no radius or coordinates on the list."""
+
+    def test_hours_in_one_line(self):
+        from tracking.models import hours_summary
+
+        for day in range(1, 6):
+            WorkHours.objects.create(site=self.site, weekday=day, start=time(6), end=time(18))
+        self.assertEqual(hours_summary(self.site.hours.all()), "Mon–Sat 06:00–18:00, Sun off")
+        WorkHours.objects.create(site=self.site_b, weekday=0, start=time(18), end=time(6))
+        WorkHours.objects.create(site=self.site_b, weekday=2, start=time(18), end=time(6))
+        self.assertEqual(hours_summary(self.site_b.hours.all()), "Mon 18:00–06:00, Tue off, Wed 18:00–06:00, Thu–Sun off")
+        self.assertEqual(hours_summary([]), "Not set")
+
+    def test_site_list_is_one_line_per_site(self):
+        self.login(self.manager)
+        page = self.client.get(reverse("operations:sites")).content.decode()
+        self.assertIn("Mon 06:00–18:00, Tue–Sun off", page)
+        self.assertNotIn("On-location radius", page)
+        self.assertIn(">Open</a>", page)
+        detail = self.client.get(self.site.get_absolute_url()).content.decode()
+        self.assertIn("Mon 06:00–18:00, Tue–Sun off", detail)
+        self.assertNotIn("Monday", detail)
+
+
 @override_settings(MEDIA_ROOT=MEDIA)
 class VisitTests(OpsBase):
     @classmethod

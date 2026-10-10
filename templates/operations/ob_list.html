@@ -12,15 +12,9 @@
 {% endif %}
 <div class="card">
   {% filter_bar "site|Site|select|sites|main||All my sites" "q|Search|text||main|Words or OB number" "kind|Kind|select|kinds" "from|From|date" "to|To|date" %}
-  <div class="table-wrap"><table class="cards">
-    <thead><tr><th>Entry</th><th>When</th><th>Site</th><th>Kind</th><th>What happened</th><th>Written by</th><th></th></tr></thead>
-    <tbody>{% for e in entries %}<tr>
-      <td data-label="Entry" class="card-title"><strong>{{ e.number }}</strong></td><td data-label="When">{{ e.occurred_at|date:"d M Y H:i" }}</td><td data-label="Site">{{ e.site }}</td><td data-label="Kind">{{ e.get_kind_display }}</td>
-      <td data-label="What happened">{% if e.corrects %}<span class="badge pending">Corrects {{ e.corrects.number }}</span> {% endif %}{{ e.text|linebreaksbr }}{% if e.incident_id %} <a href="{% url 'incidents:detail' e.incident_id %}">Open incident</a>{% endif %}</td>
-      <td data-label="Written by">{{ e.written_by }}<br><span class="small muted">{{ e.written_at|date:"d M H:i" }}</span></td>
-      <td data-label="">{% if can_write %}<a class="small" href="{% url 'operations:ob_write' %}?corrects={{ e.pk }}">Correct</a>{% endif %}</td></tr>
-    {% empty %}<tr><td colspan="7" class="empty">No OB entries.</td></tr>{% endfor %}</tbody>
-  </table></div>
+  {% for day in days %}<h3 class="ob-day">{{ day.label }}</h3>
+  <ol class="ob-list">{% for e in day.entries %}{% include "operations/_ob_entry.html" %}{% endfor %}</ol>
+  {% empty %}<p class="empty">No OB entries.</p>{% endfor %}
   {% include "partials/pagination.html" %}
 </div>
 {% endblock %}

@@ -6,11 +6,12 @@
 <div class="card">
   {% filter_bar "q|Search|text||main|Expense number or words" "action|Action|select|actions|main" "from|From|date" "to|To|date" %}
   <p><a class="btn secondary" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}export=csv">Download CSV</a></p>
-  <div class="table-wrap">
-  <table class="cards">
+  {% for g in entries|by_month:"at" %}<details class="fold month" data-fold="m{{ g.key }}"{% if g.open %} open{% endif %}>
+  <summary>{{ g.label }} <span class="n">({{ g.items|length }})</span></summary>
+  <div class="fold-body"><div class="table-wrap"><table class="cards">
     <thead><tr><th>When</th><th>Action</th><th>Expense</th><th>By</th><th>Details</th></tr></thead>
     <tbody>
-    {% for e in entries %}
+    {% for e in g.items %}
       <tr>
         <td data-label="When" class="card-title">{{ e.at|date:"d M Y, H:i" }}</td>
         <td data-label="Action">{{ e.get_action_display }}</td>
@@ -18,10 +19,10 @@
         <td data-label="By">{{ e.by }}</td>
         <td class="small" data-label="Details">{{ e.details }}</td>
       </tr>
-    {% empty %}<tr><td colspan="5" class="empty">Nothing recorded yet.</td></tr>{% endfor %}
+    {% endfor %}
     </tbody>
-  </table>
-  </div>
+  </table></div></div></details>
+  {% empty %}<p class="empty">Nothing recorded yet.</p>{% endfor %}
   {% include "partials/pagination.html" %}
 </div>
 {% endblock %}

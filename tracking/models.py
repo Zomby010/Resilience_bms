@@ -30,6 +30,29 @@ class LocationStatus(models.TextChoices):
     NO_SITE = "no_site", "No site assigned"
 
 
+class SiteColour(models.TextChoices):
+    """Eight colours that colour-blind people can still tell apart (Okabe-Ito). Always shown with the site name."""
+
+    BLUE = "blue", "Blue"
+    ORANGE = "orange", "Orange"
+    GREEN = "green", "Green"
+    PURPLE = "purple", "Pink-purple"
+    SKY = "sky", "Sky blue"
+    RED = "red", "Red-orange"
+    YELLOW = "yellow", "Yellow"
+    BLACK = "black", "Black"
+
+
+SITE_COLOUR_HEX = {"blue": "#0072B2", "orange": "#E69F00", "green": "#009E73", "purple": "#CC79A7",
+                   "sky": "#56B4E9", "red": "#D55E00", "yellow": "#F0E442", "black": "#000000"}
+
+
+def next_site_colour():
+    """The colour fewest sites use, so new sites look different from the others."""
+    used = dict(Site.objects.values("colour").annotate(n=models.Count("id")).values_list("colour", "n"))
+    return min(SiteColour.values, key=lambda c: used.get(c, 0))
+
+
 class Site(models.Model):
     """A place guards are posted to, e.g. "Kondele Site"."""
 
@@ -47,6 +70,10 @@ class Site(models.Model):
         help_text=f"How close counts as ON LOCATION. Between 5 and {NEAR_LIMIT_M} metres. 30 suits most sites.",
     )
     is_active = models.BooleanField(default=True)
+    colour = models.CharField(
+        max_length=10, choices=SiteColour.choices, blank=True,
+        help_text="Shown as a stripe on this site's OB entries, always with its name. Picked automatically; change it if two sites look alike.",
+    )
     # Site details: edited by the Manager and Secretary, read-only for supervisors and staff.
     address = models.CharField("address / directions", max_length=255, blank=True)
     supervisor = models.ForeignKey(
@@ -73,10 +100,39 @@ class Site(models.Model):
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        if not self.colour:
+            self.colour = next_site_colour()
+        super().save(*args, **kwargs)
+
+    @property
+    def colour_hex(self):
+        return SITE_COLOUR_HEX.get(self.colour, "#52606f")
+
     def get_absolute_url(self):
         from django.urls import reverse
 
         return reverse("operations:site_detail", args=[self.pk])
+
+
+def hours_summary(rows):
+    """A week of WorkHours rows in one line: "Mon–Sat 07:00–18:00, Sun off". A day with no row is a day off."""
+    days = {r.weekday: f"{r.start:%H:%M}–{r.end:%H:%M}" for r in rows}
+    if not days:
+        return "Not set"
+    names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    runs = []  # [first day, last day, hours or None for off]
+    for d in range(7):
+        h = days.get(d)
+        if runs and runs[-1][2] == h:
+            runs[-1][1] = d
+        else:
+            runs.append([d, d, h])
+    parts = []
+    for first, last, h in runs:
+        span = names[first] if first == last else f"{names[first]}–{names[last]}"
+        parts.append(f"{span} {h or 'off'}")
+    return ", ".join(parts)
 
 
 class TrackingProfile(models.Model):

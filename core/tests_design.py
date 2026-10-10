@@ -102,3 +102,32 @@ class PhoneListAndFilterTests(CompanyTestCase):
         self.login(self.manager)
         page = self.client.get(reverse("finance:list") + "?view=month&category=").content.decode()
         self.assertIn('<input type="hidden" name="view" value="month">', page)
+
+
+class MonthFoldAndMoreDetailsTests(CompanyTestCase):
+    """CLUT-05/06 and FORM-01."""
+
+    def test_long_lists_fold_by_month_with_only_the_newest_open(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from core.models import AuditLog
+
+        old = AuditLog.objects.create(action="x.old", summary="Old change")
+        AuditLog.objects.filter(pk=old.pk).update(at=timezone.now() - timedelta(days=70))
+        AuditLog.objects.create(action="x.new", summary="New change")
+        self.login(self.manager)
+        page = self.client.get(reverse("core:audit")).content.decode()
+        this_month = timezone.localdate().strftime("%Y-%m")
+        self.assertIn(f'data-fold="m{this_month}" open>', page)
+        self.assertEqual(page.count('<details class="fold month"'), 2)
+        self.assertEqual(page.count(" open>\n  <summary>"), 1)
+
+    def test_incident_form_tucks_optional_fields_away(self):
+        self.login(self.staff_a1)
+        page = self.client.get(reverse("incidents:create")).content.decode()
+        self.assertIn("Add more details", page)
+        more = page[page.index("Add more details"):]
+        self.assertIn('name="police_ob_number"', more)
+        self.assertNotIn('name="what_happened"', more)

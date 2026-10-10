@@ -9,7 +9,7 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 from accounts.models import Role
 from accounts.permissions import RoleRequiredMixin
 
-from core.filters import apply_dates, query_string
+from core.filters import apply_dates, month_groups, query_string
 from core.mixins import ActionView, CsvExportMixin, FilterContextMixin, csv_time
 from core.services.files import attachments_for, save_attachment
 
@@ -65,6 +65,11 @@ class ExpenseListView(RoleRequiredMixin, CsvExportMixin, ListView):
         if ctx["view"] == "month":
             ctx["months"] = (filtered.annotate(month=TruncMonth("date")).values("month")
                              .annotate(total=Sum("amount"), n=Count("id")).order_by("-month"))
+        # The list is split into months (only the current month open), each with its full count and recorded total.
+        months = (self.get_filtered().annotate(m=TruncMonth("date")).values("m")
+                  .annotate(n=Count("id"), total=Sum("amount", filter=Q(status=Expense.Status.RECORDED))))
+        ctx["groups"] = month_groups(ctx["expenses"], "date",
+                                     {r["m"].strftime("%Y-%m"): {"n": r["n"], "total": r["total"] or 0} for r in months})
         ctx.update(q=g.get("q", ""), f_category=g.get("category", ""), f_from=g.get("from", ""), f_to=g.get("to", ""))
         ctx["query_string"] = query_string(self.request)
         return ctx

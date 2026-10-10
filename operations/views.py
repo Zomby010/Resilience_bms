@@ -1,6 +1,8 @@
+from datetime import timedelta
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Count, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
@@ -72,10 +74,8 @@ class SiteListView(LoginRequiredMixin, FilterContextMixin, ListView):
     def get_context_data(self, **kwargs):
         user = self.request.user
         ctx = {**super().get_context_data(**kwargs), "can_edit": services.can_edit_site(user)}
-        if user.role == Role.MANAGER:
-            # One Sites page: the Manager also sees each site's location and working hours here.
-            ctx["sites"] = ctx["sites"].prefetch_related("hours")
-            ctx["show_location"] = True
+        # One row per site: name, hours in one line, people. Location settings are on each site's page.
+        ctx["sites"] = ctx["sites"].prefetch_related("hours")
         return ctx
 
 
@@ -112,7 +112,8 @@ class SiteDetailView(LoginRequiredMixin, DetailView):
         if tab == "people":
             ctx["postings"] = SitePosting.objects.filter(site=site).select_related("user")[:50] if office else None
         elif tab == "ob":
-            ctx["ob"] = OBEntry.objects.visible_to(user).filter(site=site).select_related("written_by")[:20]
+            ctx["ob_days"] = ob_days(OBEntry.objects.visible_to(user).filter(site=site)
+                                     .select_related("site", "written_by", "corrects")[:20], user)
         elif tab == "history":
             ctx["incidents"] = Incident.objects.visible_to(user).filter(site=site).select_related("reported_by")[:50]
             ctx["visits"] = SiteVisit.objects.visible_to(user).filter(site=site).select_related("supervisor")[:20]
@@ -195,6 +196,30 @@ OB_READERS = (Role.STAFF, Role.SUPERVISOR, Role.MANAGER)
 OB_WRITERS = (Role.STAFF, Role.SUPERVISOR)
 
 
+def ob_days(entries, user):
+    """Entries grouped under day headings ("Today", "Yesterday", "Mon 6 Oct"), each correction tucked under
+    the entry it corrects when that entry is on the same page."""
+    entries = list(entries)
+    by_id = {e.pk: e for e in entries}
+    for e in entries:
+        e.fixes = []
+        e.correctable = user.role in OB_WRITERS and e.can_correct(user)
+    for e in reversed(entries):  # oldest first, so corrections follow their entry in time order
+        if e.corrects_id in by_id:
+            by_id[e.corrects_id].fixes.append(e)
+    top = [e for e in entries if e.corrects_id not in by_id]
+    today = timezone.localdate()
+    days = []
+    for e in top:
+        day = timezone.localtime(e.occurred_at).date()
+        if not days or days[-1]["day"] != day:
+            label = ("Today" if day == today else "Yesterday" if day == today - timedelta(days=1)
+                     else day.strftime("%a %-d %b %Y"))
+            days.append({"day": day, "label": label, "entries": []})
+        days[-1]["entries"].append(e)
+    return days
+
+
 class OBListView(RoleRequiredMixin, FilterContextMixin, ListView):
     allowed_roles = OB_READERS
     template_name = "operations/ob_list.html"
@@ -228,7 +253,8 @@ class OBListView(RoleRequiredMixin, FilterContextMixin, ListView):
         user = self.request.user
         sites = services.sites_for(user)
         my_site = services.my_site(user)
-        return {**super().get_context_data(**kwargs), "sites": sites, "kinds": OBEntry.Kind.choices,
+        ctx = super().get_context_data(**kwargs)
+        return {**ctx, "sites": sites, "kinds": OBEntry.Kind.choices, "days": ob_days(ctx["entries"], user),
                 "can_export": user.role in OFFICE, "my_site": my_site, "can_write": user.role in OB_WRITERS,
                 "quick": services.QUICK_ENTRIES if my_site else None,
                 "print": self.request.GET.get("print") == "1"}
@@ -249,6 +275,8 @@ class OBWriteView(RoleRequiredMixin, FormView):
         self.corrects = None
         if request.user.is_authenticated and request.user.role in OB_WRITERS and request.GET.get("corrects", "").isdigit():
             self.corrects = get_object_or_404(OBEntry.objects.visible_to(request.user), pk=int(request.GET["corrects"]))
+            if not self.corrects.can_correct(request.user):
+                raise PermissionDenied("Guards can correct only their own entries, within 24 hours.")
         return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):

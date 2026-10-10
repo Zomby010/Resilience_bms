@@ -6,8 +6,8 @@ from .models import Site, TrackingProfile, WorkHours
 class SiteForm(forms.ModelForm):
     class Meta:
         model = Site
-        fields = ["name", "latitude", "longitude", "radius_m", "is_active"]
-        labels = {"name": "Site name", "is_active": "Site is in use"}
+        fields = ["name", "latitude", "longitude", "radius_m", "colour", "is_active"]
+        labels = {"name": "Site name", "colour": "Site colour", "is_active": "Site is in use"}
         help_texts = {
             "latitude": "Click the map to fill this in, or type it (for example -0.091702).",
             "longitude": "For example 34.767956.",

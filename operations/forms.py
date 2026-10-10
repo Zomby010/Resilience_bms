@@ -2,6 +2,7 @@ from django import forms
 from django.utils import timezone
 
 from accounts.models import Role, User
+from core.forms import MoreDetailsMixin
 from core.services.files import AttachmentField
 from tracking.models import Site
 
@@ -43,7 +44,8 @@ class OBForm(forms.Form):
             self.fields["site"].initial = site.pk
 
 
-class VisitForm(forms.Form):
+class VisitForm(MoreDetailsMixin, forms.Form):
+    more_fields = ("remarks", "photo")
     site = forms.ModelChoiceField(queryset=Site.objects.none(), empty_label=None)
     visited_at = forms.DateTimeField(label="Time of visit", widget=WHEN, input_formats=["%Y-%m-%dT%H:%M"])
     checks = forms.MultipleChoiceField(label="Checks done (tick what was fine)", choices=SiteVisit.CHECKS,
